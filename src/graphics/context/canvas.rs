@@ -9,15 +9,13 @@ use crate::goodies::matrix_transform_2d::Transform2d;
 use cgmath::{EuclideanSpace, InnerSpace, Matrix3, Point2, Vector2};
 
 pub struct CanvasContext {
-    pub canvas: CanvasRenderingContext2d,
-    pub(crate) screen_coordinates: Option<Rect>,
+    pub canvas: CanvasRenderingContext2d,    
 }
 
 impl CanvasContext {
     pub fn new(canvas: CanvasRenderingContext2d) -> Self {
         CanvasContext {
-            canvas,
-            screen_coordinates: None,
+            canvas,        
         }
     }
 }
@@ -68,9 +66,7 @@ impl CanvasContext {
     pub fn set_screen_coordinates(&mut self, rect: Rect) {
         use crate::matrix_transform_2d::Transform2d;
         use cgmath::Matrix3;
-
-        self.screen_coordinates = Some(rect);
-
+        
         let (width, height) = self.size();
         let translate = Matrix3::from_translation(Vector2::new(-rect.x, -rect.y));
         let scale = Matrix3::from_nonuniform_scale(width as f32 / rect.w, height as f32 / rect.h);

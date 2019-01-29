@@ -78,7 +78,7 @@ pub fn set_screen_coordinates(context: &mut Context, rect: Rect) -> GameResult {
 /// If the Y axis increases downwards, the `height` of the `Rect`
 /// will be negative.
 pub fn screen_coordinates(ctx: &Context) -> Rect {
-    ctx.gfx_context.canvas_context.screen_coordinates.unwrap()
+    ctx.gfx_context.webgl_context.screen_rect
 }
 
 /// Tells the graphics system to actually put everything on the screen.

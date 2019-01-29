@@ -2,6 +2,7 @@
 name = "good-web-game"
 version = "0.1.0"
 authors = ["not-fl3 <not.fl3@gmail.com>"]
+license = "MIT"
 edition = "2018"
 
 [dependencies]

@@ -1,0 +1,13 @@
+[package]
+name = "good-web-game"
+version = "0.1.0"
+authors = ["not-fl3 <not.fl3@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+mint = "0.5"
+smart-default = "0.3"
+cgmath = { version = "0.16", features = ["mint"] }
+nalgebra = { version = "0.16", features = ["mint", "stdweb"], optional = true }
+stdweb = "0.4.12"
+webgl_stdweb = "0.3"

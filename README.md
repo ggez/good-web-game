@@ -5,4 +5,4 @@ in the web.
 
 In action: https://ozkriff.itch.io/zemeroth
 
-![screen](https://i.imgur.com/oHcJgzl.jpg)
+![screen](https://i.imgur.com/TjvCNwa.jpg)

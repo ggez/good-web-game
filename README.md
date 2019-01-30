@@ -23,4 +23,4 @@ In action: <https://ozkriff.itch.io/zemeroth>
     cargo web start
     ```
 
-    Then open `http://[::1]:8000` in your browser.
+    Then open `http://localhost:8000` in your browser.

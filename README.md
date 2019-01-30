@@ -8,11 +8,19 @@ In action: <https://ozkriff.itch.io/zemeroth>
 
 ## Example
 
-```rust
-cargo install cargo-web
-cd examples/simple
-cargo web build
-cargo web start
-```
+1) To build and run an example as a native binary that uses ggez:
 
-Then open `127.0.0.1:8000` in your browser.
+  ```rust
+  cd examples/simple
+  cargo run
+  ```
+
+2) To build and run a web version of an example:
+
+  ```rust
+  cargo install cargo-web
+  cd examples/simple
+  cargo web start
+  ```
+
+  Then open `127.0.0.1:8000` in your browser.

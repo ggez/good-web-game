@@ -21,8 +21,8 @@ where
     F: 'static + FnOnce(Context) -> GameResult,
 {
     stdweb::initialize();
-    
-    filesystem::mount(conf.cache, |fs| {
+
+    filesystem::mount(conf.cache, conf.loading, |fs| {
         let context = Context::build(fs);
         f(context)
     });

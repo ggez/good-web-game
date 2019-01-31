@@ -6,7 +6,7 @@ use cgmath::Matrix3;
 pub(crate) mod canvas;
 pub(crate) mod webgl;
 
-use self::{canvas::CanvasContext, webgl::WebGlContext};
+pub use self::{canvas::CanvasContext, webgl::WebGlContext};
 
 pub struct GraphicsContext {
     pub canvas_context: CanvasContext,

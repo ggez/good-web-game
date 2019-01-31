@@ -8,12 +8,14 @@ mod types;
 use crate::error::GameResult;
 use crate::Context;
 
-pub use self::context::GraphicsContext;
-pub use self::drawparam::DrawParam;
-pub use self::image::*;
-pub use self::shader::*;
-pub use self::text::*;
-pub use self::types::*;
+pub use self::{
+    context::{canvas::*, CanvasContext, GraphicsContext, WebGlContext},
+    drawparam::DrawParam,
+    image::*,
+    shader::*,
+    text::*,
+    types::*,
+};
 
 /// Clear the screen to the background color.
 pub fn clear(ctx: &mut Context, color: Color) {

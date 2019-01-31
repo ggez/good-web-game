@@ -1,9 +1,6 @@
-#![allow(dead_code)]
+use cgmath::{Matrix3, Point2, Rad, SquareMatrix, Transform, Vector2};
 
-use cgmath::{Matrix3, Point2, Rad, Vector2};
-use cgmath::{SquareMatrix, Transform};
-
-use crate::matrix_transform_2d::Transform2d;
+use crate::goodies::matrix_transform_2d::*;
 
 pub struct Camera {
     pub position: Point2<f32>,

@@ -4,7 +4,7 @@ use crate::{Context, GameResult};
 
 mod preload;
 
-pub use self::preload::mount;
+pub(crate) use self::preload::mount;
 
 #[derive(Debug, Clone)]
 pub enum File {

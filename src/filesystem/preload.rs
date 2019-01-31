@@ -1,47 +1,12 @@
 use std::{cell::RefCell, rc::Rc};
 use std::{collections::HashMap, path};
+use stdweb::web::{html_element::ImageElement, window, XmlHttpRequest};
 use stdweb::{_js_impl, js};
-use stdweb::{
-    traits::*,
-    web::{document, html_element::ImageElement, window, XmlHttpRequest},
-};
 
 use super::{File, Filesystem};
-use crate::{conf, GameResult};
+use crate::{conf, goodies::loading_page, GameResult};
 
 type Url<'a> = &'a str;
-
-fn progress_string(progress: f64) -> String {
-    let a = progress * 10.;
-    let b = 10. - progress * 10. + 1.;
-    format!(
-        "[ {} ]",
-        std::iter::repeat('|')
-            .take(a as usize)
-            .chain(std::iter::repeat('-').take(b as usize))
-            .collect::<String>()
-    )
-}
-
-fn show_loading() {
-    let overlay = document().get_element_by_id("overlay").unwrap();
-    let loading = document().get_element_by_id("loading").unwrap();
-
-    js!(@{&loading}.textContent = @{progress_string(0.)});
-
-    js!(@{&overlay}.style.display = "block");
-}
-
-fn hide_loading() {
-    let overlay = document().get_element_by_id("overlay").unwrap();
-
-    js!(@{&overlay}.style.display = "none");
-}
-
-fn update_progress(progress: f32) {
-    let loading = document().get_element_by_id("loading").unwrap();
-    js!(@{&loading}.textContent = @{progress_string(progress as f64)});
-}
 
 struct Cache {
     requests_amount: Option<usize>,
@@ -103,26 +68,28 @@ fn load_image<F: 'static + Fn(ImageElement)>(url: Url, f: F) {
     image_element.set_src(&url[1..]);
 }
 
-fn animate<F: 'static + FnOnce(Filesystem) -> GameResult>(f: F, cache: Rc<RefCell<Option<Cache>>>) {
+fn animate<F: 'static + FnOnce(Filesystem) -> GameResult>(
+    f: F,
+    cache: Rc<RefCell<Option<Cache>>>,
+    loading: Rc<dyn loading_page::LoadingPage>,
+) {
     {
         let progress = cache.borrow_mut().as_ref().unwrap().progress();
-        update_progress(progress as f32);
+        loading.update_progress(progress as f32);
     }
     {
         if cache.borrow_mut().as_ref().unwrap().is_loaded() {
             let cache = cache.borrow_mut().take().unwrap();
             let fs = Filesystem { files: cache.files };
-            hide_loading();
+            loading.hide();
             f(fs).unwrap();
             return;
         }
     }
-    window().request_animation_frame(move |_| animate(f, cache));
+    window().request_animation_frame(move |_| animate(f, cache, loading));
 }
 
 fn load_cache(files: &[&str], cache: Rc<RefCell<Option<Cache>>>) {
-    show_loading();
-
     {
         let mut cache = cache.borrow_mut();
         cache.as_mut().unwrap().requests_amount = Some(files.len());
@@ -147,16 +114,17 @@ fn load_cache(files: &[&str], cache: Rc<RefCell<Option<Cache>>>) {
     }
 }
 
-pub fn mount<F>(cache_conf: conf::Cache, f: F)
+pub(crate) fn mount<F>(cache_conf: conf::Cache, loading: conf::Loading, f: F)
 where
     F: 'static + FnOnce(Filesystem) -> GameResult,
 {
     let cache = Cache::new();
-
-    show_loading();
+    let loading = loading_page::from_conf(loading);
 
     match cache_conf {
         conf::Cache::Index => {
+            loading.show();
+
             load_text_file("/index.txt", {
                 let cache = cache.clone();
                 move |index| {
@@ -165,14 +133,17 @@ where
                 }
             });
 
-            window().request_animation_frame(move |_| animate(f, cache));
+            window().request_animation_frame(move |_| animate(f, cache, loading));
         }
         conf::Cache::List(files) => {
+            loading.show();
+
             load_cache(&files, cache.clone());
-            window().request_animation_frame(move |_| animate(f, cache));
+            window().request_animation_frame(move |_| animate(f, cache, loading));
         }
         conf::Cache::No => {
-            hide_loading();
+            loading.hide();
+
             let fs = Filesystem::new();
             f(fs).unwrap();
         }

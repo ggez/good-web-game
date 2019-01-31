@@ -52,4 +52,8 @@ impl Context {
             timer_context: TimeContext::new(),
         }
     }
+
+    pub fn canvas_context(&self) -> &graphics::CanvasContext {
+        &self.gfx_context.canvas_context
+    }
 }

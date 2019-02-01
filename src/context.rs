@@ -39,9 +39,6 @@ impl Context {
             .expect("#glcanvas element is not a canvas");
 
         let gfx_context = graphics::GraphicsContext::new(canvas, glcanvas);
-
-        gfx_context.update_size();
-
         let input_handler = Rc::new(RefCell::new(InputHandler::new()));
 
         Context {

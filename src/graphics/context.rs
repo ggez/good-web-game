@@ -1,4 +1,4 @@
-use crate::graphics::types::*;
+use crate::graphics::types::{Rect, *};
 use stdweb::{web::html_element::*, web::*};
 
 use cgmath::Matrix3;
@@ -17,10 +17,17 @@ impl GraphicsContext {
     pub fn new(canvas: CanvasElement, glcanvas: CanvasElement) -> GraphicsContext {
         let canvas_context: CanvasRenderingContext2d = canvas.get_context().unwrap();
 
-        GraphicsContext {
+        let mut gfx = GraphicsContext {
             canvas_context: CanvasContext::new(canvas_context),
             webgl_context: WebGlContext::new(glcanvas),
-        }
+        };
+        let size = gfx.canvas_context.size();
+
+        gfx.webgl_context
+            .set_projection_rect(Rect::new(0., 0., size.0 as f32, size.1 as f32));
+        gfx.update_size();
+
+        gfx
     }
 }
 

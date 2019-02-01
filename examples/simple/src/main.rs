@@ -13,7 +13,7 @@ struct MainState {
 
 impl MainState {
     fn new(ctx: &mut Context) -> MainState {
-        let rect = graphics::set_screen_coordinates(ctx, graphics::Rect::new(-1., -1., 1., 1.));
+        // graphics::set_screen_coordinates(ctx, graphics::Rect::new(-1., -1., 1., 1.)).unwrap();
 
         MainState {
             image: graphics::Image::new(ctx, "/rust-logo-64x64-blk.png").unwrap(),
@@ -29,10 +29,10 @@ impl event::EventHandler for MainState {
     }
 
     fn mouse_motion_event(&mut self, ctx: &mut Context, x: f32, y: f32, _dx: f32, _dy: f32) {
-        let rect = graphics::screen_coordinates(ctx);
-        let size = graphics::size(ctx);
-        self.x = rect.x + x * rect.w / size.0 as f32;
-        self.y = rect.y + y * rect.h / size.1 as f32;
+        // let rect = graphics::screen_coordinates(ctx);
+        // let size = graphics::size(ctx);
+        self.x = x; //rect.x + x * rect.w / size.0 as f32;
+        self.y = y; //rect.y + y * rect.h / size.1 as f32;
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
@@ -43,7 +43,7 @@ impl event::EventHandler for MainState {
             &self.image,
             graphics::DrawParam::default()
                 .dest([self.x, self.y])
-                .scale([0.005, 0.005]),
+                .scale([1., 1.]),
         )
         .unwrap();
         graphics::present(ctx)

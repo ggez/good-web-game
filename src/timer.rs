@@ -208,6 +208,12 @@ pub fn time_since_start(ctx: &Context) -> Duration {
     f64_to_duration(time() - tc.init_instant)
 }
 
+/// same as time_since_start, but without f64_to_duration inside
+pub fn time_since_start_f64(ctx: &Context) -> f64 {
+    let tc = &ctx.timer_context;
+    time() - tc.init_instant
+}
+
 /// This function will return true if the time since the
 /// last [`update()`](../event/trait.EventHandler.html#tymethod.update)
 /// call has been equal to or greater to

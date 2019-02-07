@@ -137,12 +137,10 @@ impl Text {
     }
 
     fn measure_dimensions(&self, ctx: &mut Context) -> Rect {
-        let dimensions = ctx.gfx_context.canvas_context.measure_label(
-            &self.fragment.text,
-            cgmath::Point2::new(0., 0.),
-            None,
-            None,
-        );
+        let dimensions = ctx
+            .gfx_context
+            .canvas_context
+            .measure_label(&self.fragment.text, None);
         Rect::new(0., 0., dimensions.x as f32, dimensions.y as f32)
     }
 }
@@ -151,8 +149,8 @@ impl Drawable for Text {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
         ctx.gfx_context.canvas_context.draw_label(
             &self.fragment.text,
-            param.dest.cast::<f64>().unwrap(),
-            Some(param.scale.cast::<f64>().unwrap()),
+            param.dest,
+            Some(param.scale),
             None,
             Some(&Into::<String>::into(param.color)),
         );

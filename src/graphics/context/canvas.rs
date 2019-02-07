@@ -82,7 +82,7 @@ impl CanvasContext {
         self.canvas.restore();
     }
 
-    pub fn draw_arc(&self, position: Point2<f64>, radius: f64, attrs: &[ArcAttr]) {
+    pub fn draw_arc(&self, position: Point2<f32>, radius: f32, attrs: &[ArcAttr]) {
         self.canvas.save();
 
         let mut angle = std::f64::consts::PI * 2.0;
@@ -112,18 +112,18 @@ impl CanvasContext {
 
         self.canvas.begin_path();
         if sector {
-            self.canvas.move_to(position.x, position.y);
+            self.canvas.move_to(position.x as f64, position.y as f64);
         }
         self.canvas.arc(
-            position.x,
-            position.y,
-            radius,
+            position.x as f64,
+            position.y as f64,
+            radius as f64,
             start_angle - angle / 2.,
             start_angle + angle / 2.,
             false,
         );
         if sector {
-            self.canvas.move_to(position.x, position.y);
+            self.canvas.move_to(position.x as f64, position.y as f64);
         }
         for attr in attrs.iter() {
             match attr {
@@ -137,21 +137,57 @@ impl CanvasContext {
         self.canvas.restore();
     }
 
-    pub fn draw_line(&self, from: Point2<f64>, to: Point2<f64>, color: &str) {
+    pub fn draw_line(&self, from: Point2<f32>, to: Point2<f32>, color: &str) {
         self.canvas.save();
         self.canvas.set_stroke_style_color(color);
         self.canvas.begin_path();
-        self.canvas.move_to(from.x, from.y);
-        self.canvas.line_to(to.x, to.y);
+        self.canvas.move_to(from.x as f64, from.y as f64);
+        self.canvas.line_to(to.x as f64, to.y as f64);
         self.canvas.stroke();
+        self.canvas.restore();
+    }
+
+    pub fn draw_rect(&self, rect: Rect, attrs: &[RectAttr]) {
+        self.canvas.save();
+        for attr in attrs.iter() {
+            match attr {
+                RectAttr::Stroke(color) => {
+                    self.canvas.set_stroke_style_color(color);
+                }
+                RectAttr::Fill(color) => {
+                    self.canvas.set_fill_style_color(color);
+                }
+            }
+        }
+        self.canvas.begin_path();
+        self.canvas
+            .rect(rect.x as f64, rect.y as f64, rect.w as f64, rect.h as f64);
+        for attr in attrs.iter() {
+            match attr {
+                RectAttr::Stroke(_) => self.canvas.stroke(),
+                RectAttr::Fill(_) => {
+                    self.canvas.fill(FillRule::NonZero);
+                }
+            }
+        }
+
+        for attr in attrs.iter() {
+            match attr {
+                RectAttr::Stroke(_) => self.canvas.stroke(),
+                RectAttr::Fill(_) => {
+                    self.canvas.fill(FillRule::NonZero);
+                }
+            }
+        }
+
         self.canvas.restore();
     }
 
     pub fn draw_label(
         &self,
         label: &str,
-        pos: Point2<f64>,
-        scale: Option<Vector2<f64>>,
+        pos: Point2<f32>,
+        scale: Option<Vector2<f32>>,
         font: Option<&str>,
         color: Option<&str>,
     ) {
@@ -174,7 +210,8 @@ impl CanvasContext {
         self.canvas.set_text_baseline(TextBaseline::Hanging);
 
         if scale.is_none() {
-            self.canvas.fill_text(label, pos.x, pos.y, None);
+            self.canvas
+                .fill_text(label, pos.x as f64, pos.y as f64, None);
         } else {
             self.canvas.fill_text(label, 0., 0., None);
         }
@@ -185,17 +222,8 @@ impl CanvasContext {
         self.canvas.restore();
     }
 
-    pub fn measure_label(
-        &self,
-        label: &str,
-        _pos: Point2<f64>,
-        font: Option<&str>,
-        color: Option<&str>,
-    ) -> Vector2<f64> {
+    pub fn measure_label(&self, label: &str, font: Option<&str>) -> Vector2<f64> {
         self.canvas.save();
-        if let Some(color) = color {
-            self.canvas.set_fill_style_color(color);
-        }
         if font.is_some() {
             self.canvas.set_font(font.unwrap());
         }
@@ -206,6 +234,11 @@ impl CanvasContext {
 
         Vector2::new(measures.get_width(), 10.)
     }
+}
+
+pub enum RectAttr {
+    Stroke(&'static str),
+    Fill(&'static str),
 }
 
 pub enum ArcAttr {

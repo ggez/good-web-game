@@ -1,0 +1,12 @@
+[package]
+name = "ui"
+version = "0.1.0"
+authors = ["not-fl3 <not.fl3@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+smart-default = "0.3"
+#stdweb = "0.4"
+failure = "0.1.2"
+float-ord = "0.2.0"
+good-web-game = { path="../../" }

@@ -12,6 +12,7 @@ mod error;
 pub use crate::{
     context::Context, error::GameResult, goodies::console, goodies::matrix_transform_2d,
 };
+pub use cgmath;
 
 #[cfg(feature = "nalgebra")]
 pub extern crate nalgebra;

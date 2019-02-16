@@ -1,7 +1,9 @@
+/// Highly experimental and not ggez-compatible things
+
 use good_web_game::{
     cgmath::{Point2, Vector2},
     event,
-    goodies::megaui::{widgets::Window, Ui},
+    goodies::megaui::Ui,
     graphics, hash,
     input::MouseButton,
     Context, GameResult,

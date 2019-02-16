@@ -236,9 +236,9 @@ impl CanvasContext {
     }
 }
 
-pub enum RectAttr {
-    Stroke(&'static str),
-    Fill(&'static str),
+pub enum RectAttr<'a> {
+    Stroke(&'a str),
+    Fill(&'a str),
 }
 
 pub enum ArcAttr {

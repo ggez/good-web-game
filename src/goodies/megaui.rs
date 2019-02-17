@@ -45,6 +45,10 @@ pub(self) enum Widget {
     },
     Group(widgets::Group),
     Window(Window),
+    TreeNode {
+        id: Id,
+        label: String,
+    },
 }
 
 pub mod widgets {
@@ -293,11 +297,18 @@ mod consts {
 
 struct TreeElement {
     widget: Widget,
-    disposed: bool,
+    generation: u32,
     childs: Vec<usize>,
 }
 
+impl TreeElement {
+    fn is_disposed(&self, generation: u32) -> bool {
+        self.generation != generation
+    }
+}
+
 struct Tree {
+    current_generation: u32,
     elements: Vec<TreeElement>,
     windows: Vec<usize>,
 }
@@ -305,19 +316,10 @@ struct Tree {
 impl Tree {
     fn new() -> Tree {
         Tree {
+            current_generation: 0,
             elements: vec![],
             windows: vec![],
         }
-    }
-
-    fn dispose_childs(&mut self, id: usize) {
-        for i in 0..self.elements[id].childs.len() {
-            let child = self.elements[id].childs[i];
-            self.elements[child].disposed = true;
-            self.dispose_childs(child);
-            self.elements[child].childs.clear();
-        }
-        self.elements[id].childs.clear();
     }
 
     fn insert_window(&mut self, new_window: Window) -> usize {
@@ -326,14 +328,15 @@ impl Tree {
             .iter_mut()
             .enumerate()
             .find(|w| w.1.widget.is_window() && w.1.widget.unwrap_window().id == new_window.id);
-        if let Some((id, _)) = window {
-            self.dispose_childs(id);
+        if let Some((id, window)) = window {
+            window.generation = self.current_generation;
+            window.childs.clear();
             id
         } else {
             self.elements.push(TreeElement {
                 widget: Widget::Window(new_window),
                 childs: vec![],
-                disposed: false,
+                generation: self.current_generation,
             });
             let id = self.elements.len() - 1;
             self.windows.push(id);
@@ -343,7 +346,7 @@ impl Tree {
 
     fn alloc_in_disposed(&mut self) -> Option<usize> {
         for i in 0..self.elements.len() {
-            if self.elements[i].disposed {
+            if self.elements[i].is_disposed(self.current_generation) {
                 return Some(i);
             }
         }
@@ -355,13 +358,14 @@ impl Tree {
 
         let id = if let Some(id) = id {
             self.elements[id].widget = widget;
-            self.elements[id].disposed = false;
+            self.elements[id].generation = self.current_generation;
+            self.elements[id].childs.clear();
             id
         } else {
             let element = TreeElement {
                 widget,
                 childs: vec![],
-                disposed: false,
+                generation: self.current_generation,
             };
             self.elements.push(element);
             self.elements.len() - 1
@@ -582,6 +586,22 @@ impl Ui {
         );
     }
 
+    pub fn tree_node<F: FnOnce(&mut Ui)>(&mut self, id: Id, label: &str, f: F) {
+        let tree_node = Widget::TreeNode {
+            id,
+            label: label.to_string(),
+        };
+
+        let widget_id = self
+            .tree
+            .insert_widget(self.current_element.unwrap(), tree_node);
+
+        let previous_current_element = self.current_element;
+        self.current_element = Some(widget_id);
+        f(self);
+        self.current_element = previous_current_element;
+    }
+
     pub fn mouse_down(&mut self, position: Point2<f32>) {
         self.input.is_mouse_down = true;
         self.input.click_down = true;
@@ -705,6 +725,8 @@ impl Ui {
         self.input.click_down = false;
         self.input.click_up = false;
         self.input.mouse_wheel = Vector2::new(0., 0.);
+
+        self.tree.current_generation += 1;
     }
 }
 
@@ -830,6 +852,21 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
             }
 
             rect
+        }
+        Widget::TreeNode { .. } => {
+            // let inside_rect = Rect::new(
+            //     window.rect.x + consts::MARGIN,
+            //     window.rect.y + consts::TITLE_HEIGHT + consts::MARGIN,
+            //     window.rect.w - consts::MARGIN,
+            //     window.rect.h - consts::TITLE_HEIGHT - consts::MARGIN,
+            // )
+
+            // draw_window_frame(context.ctx, context.focused, window);
+            // draw_scroll_area(context, window.id, inside_rect, &element.childs);
+
+            // window.rect
+
+            unimplemented!()
         }
     };
 

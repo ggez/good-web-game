@@ -191,6 +191,7 @@ mod consts {
     pub const MARGIN_BUTTON: f32 = 3.;
     pub const SCROLL_WIDTH: f32 = 10.;
     pub const SCROLL_MULTIPLIER: f32 = 3.;
+    pub const TREE_OFFSET: f32 = 15.;
 
     pub const INACTIVE_TITLE: &'static str = "#6668";
     pub const FOCUSED_TITLE: &'static str = "#000f";
@@ -510,6 +511,28 @@ pub enum Drag {
     Dropped(Point2<f32>, Option<Id>),
 }
 
+struct Toggles {
+    toggles: HashMap<Id, bool>,
+}
+impl Toggles {
+    fn new() -> Toggles {
+        Toggles {
+            toggles: HashMap::new(),
+        }
+    }
+    fn toggle(&mut self, id: Id) {
+        if self.toggled(id) {
+            self.toggles.insert(id, false);
+        } else {
+            self.toggles.insert(id, true);
+        }
+    }
+
+    fn toggled(&self, id: Id) -> bool {
+        *self.toggles.get(&id).unwrap_or(&false)
+    }
+}
+
 pub struct Ui {
     focused: Option<usize>,
     moving: Option<(usize, Vector2<f32>)>,
@@ -520,6 +543,7 @@ pub struct Ui {
     events: Events,
     tree: Tree,
     input: Input,
+    toggles: Toggles,
 }
 
 impl Ui {
@@ -540,6 +564,7 @@ impl Ui {
                 click_up: false,
                 mouse_wheel: Vector2::new(0., 0.),
             },
+            toggles: Toggles::new(),
         }
     }
 }
@@ -666,6 +691,7 @@ impl Ui {
                     hovered: Some(&mut self.hovered),
                     focused: self.focused.as_ref().map_or(false, |w| w == window),
                     scroll_bars: &mut self.scroll_bars,
+                    toggles: &mut self.toggles,
                 },
                 &mut cursor,
                 *window,
@@ -703,6 +729,7 @@ impl Ui {
                             hovered: None,
                             focused: true,
                             scroll_bars: &mut self.scroll_bars,
+                            toggles: &mut self.toggles,
                         },
                         &mut cursor,
                         n,
@@ -739,6 +766,7 @@ struct UiContext<'a> {
     dragging: &'a mut Option<(Id, DragState)>,
     scroll_bars: &'a mut HashMap<Id, Scroll>,
     hovered: Option<&'a mut Option<Id>>,
+    toggles: &'a mut Toggles,
 }
 
 fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect {
@@ -853,20 +881,56 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
 
             rect
         }
-        Widget::TreeNode { .. } => {
-            // let inside_rect = Rect::new(
-            //     window.rect.x + consts::MARGIN,
-            //     window.rect.y + consts::TITLE_HEIGHT + consts::MARGIN,
-            //     window.rect.w - consts::MARGIN,
-            //     window.rect.h - consts::TITLE_HEIGHT - consts::MARGIN,
-            // )
+        Widget::TreeNode { id, label, .. } => {
+            let label = if context.toggles.toggled(*id) {
+                format!(" - {}", label)
+            } else {
+                format!("+ {}", label)
+            };
+            let size = context.ctx.canvas_context().measure_label(&label, None);
+            let pos = cursor.fit(size, Layout::Vertical) + orig;
+            let title_rect = Rect::new(pos.x, pos.y, size.x as f32, size.y as f32);
+            let hovered = title_rect.contains(context.input.mouse_position);
 
-            // draw_window_frame(context.ctx, context.focused, window);
-            // draw_scroll_area(context, window.id, inside_rect, &element.childs);
+            context.ctx.canvas_context().draw_label(
+                &label,
+                pos,
+                None,
+                None,
+                Some(consts::text(context.focused)),
+            );
 
-            // window.rect
-
-            unimplemented!()
+            if context.focused && hovered && context.input.click_up {
+                context.toggles.toggle(*id);
+            }
+            let mut rect = Rect::new(title_rect.x, title_rect.y + title_rect.h, 0., 0.);
+            if context.toggles.toggled(*id) {
+                let mut child_cursor = Cursor::new(Rect::new(
+                    pos.x + cursor.x + consts::TREE_OFFSET,
+                    pos.y + title_rect.h,
+                    9999.,
+                    9999.,
+                ));
+                for child in element.childs.iter() {
+                    let child_rect = draw_element(context, &mut child_cursor, *child);
+                    rect = extend_rect(
+                        rect,
+                        Rect::new(
+                            pos.x + child_rect.x,
+                            pos.y + child_rect.y,
+                            child_rect.w,
+                            child_rect.h,
+                        ),
+                    );
+                }
+                cursor.y += rect.h + consts::MARGIN;
+            }
+            Rect::new(
+                title_rect.x,
+                title_rect.y,
+                title_rect.w,
+                title_rect.h + rect.h + consts::MARGIN * 2.,
+            )
         }
     };
 

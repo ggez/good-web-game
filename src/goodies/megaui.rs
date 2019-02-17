@@ -35,11 +35,11 @@ macro_rules! hash {
 
 pub(self) enum Widget {
     Label {
-        pos: Point2<f32>,
+        pos: Option<Point2<f32>>,
         label: String,
     },
     Button {
-        pos: Point2<f32>,
+        pos: Option<Point2<f32>>,
         id: Id,
         label: String,
     },
@@ -372,7 +372,12 @@ impl Tree {
     }
 }
 
-pub struct Cursor {
+enum Layout {
+    Vertical,
+    Horizontal,
+}
+
+struct Cursor {
     x: f32,
     y: f32,
     scroll: Vector2<f32>,
@@ -380,7 +385,7 @@ pub struct Cursor {
 }
 
 impl Cursor {
-    pub fn new(area: Rect) -> Cursor {
+    fn new(area: Rect) -> Cursor {
         Cursor {
             x: consts::MARGIN,
             y: consts::MARGIN,
@@ -389,17 +394,26 @@ impl Cursor {
         }
     }
 
-    pub fn fit(&mut self, size: Vector2<f32>) -> Point2<f32> {
+    fn fit(&mut self, size: Vector2<f32>, layout: Layout) -> Point2<f32> {
         let res;
 
-        if self.x + size.x < self.area.w as f32 - consts::MARGIN * 2. {
-            res = Point2::new(self.x, self.y);
-        } else {
-            self.x = consts::MARGIN;
-            self.y += size.y + consts::MARGIN;
-            res = Point2::new(self.x, self.y);
+        match layout {
+            Layout::Horizontal => {
+                if self.x + size.x < self.area.w as f32 - consts::MARGIN * 2. {
+                    res = Point2::new(self.x, self.y);
+                } else {
+                    self.x = consts::MARGIN;
+                    self.y += size.y + consts::MARGIN; // TODO: not size.y, but previous row max y, which is currently unknown :(
+                    res = Point2::new(self.x, self.y);
+                }
+                self.x += size.x + consts::MARGIN;
+            }
+            Layout::Vertical => {
+                res = Point2::new(self.x, self.y);
+                self.x = consts::MARGIN;
+                self.y += size.y + consts::MARGIN
+            }
         }
-        self.x += size.x + consts::MARGIN;
         res
     }
 }
@@ -546,11 +560,11 @@ impl Ui {
         f(self)
     }
 
-    pub fn button(&mut self, pos: Point2<f32>, id: Id, label: &str) -> bool {
+    pub fn button<T: Into<Option<Point2<f32>>>>(&mut self, pos: T, id: Id, label: &str) -> bool {
         self.tree.insert_widget(
             self.current_element.unwrap(),
             Widget::Button {
-                pos,
+                pos: pos.into(),
                 id: id,
                 label: label.to_string(),
             },
@@ -558,11 +572,11 @@ impl Ui {
         self.events.previous_frame_button_clicked(id)
     }
 
-    pub fn label(&mut self, pos: Point2<f32>, label: &str) {
+    pub fn label<T: Into<Option<Point2<f32>>>>(&mut self, pos: T, label: &str) {
         self.tree.insert_widget(
             self.current_element.unwrap(),
             Widget::Label {
-                pos,
+                pos: pos.into(),
                 label: label.to_string(),
             },
         );
@@ -725,8 +739,9 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
             window.rect
         }
         Widget::Label { pos, label } => {
-            let pos = pos + orig;
             let size = context.ctx.canvas_context().measure_label(label, None);
+            let pos = pos.unwrap_or(cursor.fit(size, Layout::Vertical)) + orig;
+
             context.ctx.canvas_context().draw_label(
                 label,
                 pos,
@@ -738,14 +753,13 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
             Rect::new(pos.x, pos.y, size.x as f32, size.y as f32)
         }
         Widget::Button { pos, label, id, .. } => {
-            let pos = pos + orig;
-            let size = context.ctx.canvas_context().measure_label(label, None);
-            let rect = Rect::new(
-                pos.x,
-                pos.y,
-                size.x as f32 + consts::MARGIN_BUTTON as f32 * 2.,
-                size.y as f32 + consts::MARGIN_BUTTON as f32 * 2.,
-            );
+            let size = context.ctx.canvas_context().measure_label(label, None)
+                + Vector2::new(
+                    consts::MARGIN_BUTTON as f32 * 2.,
+                    consts::MARGIN_BUTTON as f32 * 2.,
+                );
+            let pos = pos.unwrap_or(cursor.fit(size, Layout::Vertical)) + orig;
+            let rect = Rect::new(pos.x, pos.y, size.x as f32, size.y as f32);
             let hovered = rect.contains(context.input.mouse_position);
 
             context.ctx.canvas_context().draw_rect(
@@ -776,7 +790,7 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
             hoverable,
             highlight,
         }) => {
-            let pos: Point2<f32> = cursor.fit(*size);
+            let pos: Point2<f32> = cursor.fit(*size, Layout::Horizontal);
             let rect = Rect::new(pos.x + orig.x, pos.y + orig.y, size.x as f32, size.y as f32);
             let mut hovered = false;
 

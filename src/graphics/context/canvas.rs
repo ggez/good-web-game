@@ -222,7 +222,7 @@ impl CanvasContext {
         self.canvas.restore();
     }
 
-    pub fn measure_label(&self, label: &str, font: Option<&str>) -> Vector2<f64> {
+    pub fn measure_label(&self, label: &str, font: Option<&str>) -> Vector2<f32> {
         self.canvas.save();
         if font.is_some() {
             self.canvas.set_font(font.unwrap());
@@ -232,7 +232,7 @@ impl CanvasContext {
         let measures = self.canvas.measure_text(label).unwrap();
         self.canvas.restore();
 
-        Vector2::new(measures.get_width(), 10.)
+        Vector2::new(measures.get_width() as f32, 10.)
     }
 }
 

@@ -62,6 +62,18 @@ impl event::EventHandler for MainState {
                 }
             },
         );
+
+        self.ui.window(
+            hash!(),
+            "Scroll!",
+            Point2::new(270., 70.),
+            Vector2::new(200., 200.),
+            |ui| {
+                for i in 0 .. 100 {
+                    ui.label(None, &format!("i: {}", i));
+                }
+            },
+        );
         self.ui.draw(ctx);
         graphics::present(ctx)
     }

@@ -496,6 +496,14 @@ impl Scroll {
             .max(self.inner_rect.y)
             .min(self.inner_rect.h - self.rect.h + self.inner_rect.y);
     }
+
+    fn update(&mut self) {
+        self.rect.y = self
+            .rect
+            .y
+            .max(self.inner_rect.y)
+            .min(self.inner_rect.h - self.rect.h + self.inner_rect.y);
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -982,10 +990,15 @@ fn draw_scroll_area(context: &mut UiContext, id: Id, rect: Rect, elements: &[usi
         inner_rect = extend_rect(inner_rect, element_rect);
     }
 
-    let mut scroll = context.scroll_bars.get_mut(&id).unwrap();
-    scroll.inner_rect = inner_rect;
+    {
+        let mut scroll = context.scroll_bars.get_mut(&id).unwrap();
+        scroll.inner_rect = inner_rect;
+    }
 
     if inner_rect.h > rect.h {
+        let mut scroll = context.scroll_bars.get_mut(&id).unwrap();
+        scroll.inner_rect = inner_rect;
+
         draw_vertical_scroll_bar(
             context,
             rect,
@@ -997,6 +1010,10 @@ fn draw_scroll_area(context: &mut UiContext, id: Id, rect: Rect, elements: &[usi
             ),
             id,
         );
+    }
+    {
+        let scroll = context.scroll_bars.get_mut(&id).unwrap();
+        scroll.update();
     }
 
     context.ctx.canvas_context().canvas.restore();

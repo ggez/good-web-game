@@ -209,11 +209,13 @@ impl CanvasContext {
         self.canvas.set_text_align(TextAlign::Left);
         self.canvas.set_text_baseline(TextBaseline::Hanging);
 
-        if scale.is_none() {
-            self.canvas
-                .fill_text(label, pos.x as f64, pos.y as f64, None);
+        let (x, y) = if scale.is_none() {
+            (pos.x as f64, pos.y as f64)
         } else {
-            self.canvas.fill_text(label, 0., 0., None);
+            (0., 0.)
+        };
+        for (n, line) in label.split('\n').enumerate() {
+            self.canvas.fill_text(line, x, y + n as f64 * 10., None);
         }
 
         if scale.is_some() {
@@ -229,10 +231,19 @@ impl CanvasContext {
         }
         self.canvas.set_text_align(TextAlign::Left);
         self.canvas.set_text_baseline(TextBaseline::Hanging);
-        let measures = self.canvas.measure_text(label).unwrap();
+        let mut max_width = 0.;
+        let mut height = 0.;
+        for (n, line) in label.split('\n').enumerate() {
+            let measures = self.canvas.measure_text(line).unwrap();
+            let width = measures.get_width();
+            if max_width < width {
+                max_width = width;
+            }
+            height = (n + 1) as f64 * 10.;
+        }
         self.canvas.restore();
 
-        Vector2::new(measures.get_width() as f32, 10.)
+        Vector2::new(max_width as f32, height as f32)
     }
 }
 

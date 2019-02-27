@@ -12,7 +12,7 @@ use stdweb::{
 
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{context::Context, error::GameResult};
+use crate::{context::Context, error::GameResult, input::input_handler::InputHandler};
 
 pub use crate::input::MouseButton;
 
@@ -42,8 +42,11 @@ pub trait EventHandler {
     fn key_down_event(&mut self, _ctx: &mut Context, _key: &str) {}
 }
 
-fn animate<S>(ctx: Rc<RefCell<Context>>, state: Rc<RefCell<S>>)
-where
+fn animate<S>(
+    ctx: Rc<RefCell<Context>>,
+    state: Rc<RefCell<S>>,
+    input_handler: Rc<RefCell<InputHandler>>,
+) where
     S: 'static + EventHandler,
 {
     window().request_animation_frame(move |_| {
@@ -55,8 +58,11 @@ where
 
             state.update(&mut *ctx).unwrap();
             state.draw(&mut *ctx).unwrap();
+
+            let mut input_handler = input_handler.borrow_mut();
+            input_handler.handle_end_frame();
         }
-        animate(ctx, state);
+        animate(ctx, state, input_handler);
     });
 }
 
@@ -241,10 +247,12 @@ where
             if event.code() == "Space" {
                 event.prevent_default();
             }
-            input_handler.borrow_mut().handle_key_down(event.code());
-            state
-                .borrow_mut()
-                .key_down_event(&mut *ctx.borrow_mut(), &event.code());
+            if event.repeat() == false {
+                input_handler.borrow_mut().handle_key_down(event.code());
+                state
+                    .borrow_mut()
+                    .key_down_event(&mut *ctx.borrow_mut(), &event.code());
+            }
         }
     });
 
@@ -256,7 +264,7 @@ where
         }
     });
 
-    animate(ctx, state);
+    animate(ctx, state, input_handler);
 
     Ok(())
 }

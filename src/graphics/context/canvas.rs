@@ -85,7 +85,7 @@ impl CanvasContext {
     pub fn draw_arc(&self, position: Point2<f32>, radius: f32, attrs: &[ArcAttr]) {
         self.canvas.save();
 
-        let mut angle = std::f64::consts::PI * 2.0;
+        let mut angle = std::f32::consts::PI * 2.0;
         let mut start_angle = 0.;
         let mut sector = false;
         let mut forward = false;
@@ -97,7 +97,9 @@ impl CanvasContext {
                 ArcAttr::Fill(color) => {
                     self.canvas.set_fill_style_color(color);
                 }
-                ArcAttr::Dash(dash) => self.canvas.set_line_dash(dash.clone()),
+                ArcAttr::Dash(dash) => self
+                    .canvas
+                    .set_line_dash(dash.iter().map(|d| *d as f64).collect()),
                 ArcAttr::Angle(a) => angle = *a,
                 ArcAttr::Forward(dir) => {
                     start_angle = Vector2::new(dir.x, -dir.y).angle(Vector2::new(-1., 0.)).0;
@@ -118,8 +120,8 @@ impl CanvasContext {
             position.x as f64,
             position.y as f64,
             radius as f64,
-            start_angle - angle / 2.,
-            start_angle + angle / 2.,
+            (start_angle - angle / 2.) as f64,
+            (start_angle + angle / 2.) as f64,
             false,
         );
         if sector {
@@ -255,8 +257,8 @@ pub enum RectAttr<'a> {
 pub enum ArcAttr {
     Stroke(&'static str),
     Fill(&'static str),
-    Dash(Vec<f64>),
-    Angle(f64),
-    Forward(Vector2<f64>),
+    Dash(Vec<f32>),
+    Angle(f32),
+    Forward(Vector2<f32>),
     Sector,
 }

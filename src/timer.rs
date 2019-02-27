@@ -24,7 +24,7 @@ use stdweb::web::Date;
 
 type Instant = f64;
 
-fn time() -> f64 {
+pub fn time() -> f64 {
     Date::now() / 1000.
 }
 

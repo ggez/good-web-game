@@ -28,6 +28,7 @@ impl From<&WebMouseButton> for MouseButton {
 
 pub struct InputHandler {
     pub keys: HashSet<String>,
+    pub frame_keys: HashSet<String>,
     pub mouse_position: Point2<f64>,
     pub mouse_keys: HashSet<MouseButton>,
 }
@@ -36,6 +37,7 @@ impl InputHandler {
     pub fn new() -> InputHandler {
         InputHandler {
             keys: HashSet::new(),
+            frame_keys: HashSet::new(),
             mouse_position: Point2::new(0., 0.),
             mouse_keys: HashSet::new(),
         }
@@ -57,6 +59,11 @@ impl InputHandler {
 
     pub fn handle_key_down(&mut self, key: String) {
         self.keys.insert(key.clone());
+        self.frame_keys.insert(key.clone());
+    }
+
+    pub fn handle_end_frame(&mut self) {
+        self.frame_keys.clear();
     }
 
     pub fn handle_key_up(&mut self, key: String) {
@@ -67,6 +74,10 @@ impl InputHandler {
 
     pub fn is_key_pressed(&self, key: &str) -> bool {
         self.keys.contains(key)
+    }
+
+    pub fn is_key_down(&self, key: &str) -> bool {
+        self.frame_keys.contains(key)
     }
 
     pub fn is_mouse_key_down(&self, key: &MouseButton) -> bool {

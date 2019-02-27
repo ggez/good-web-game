@@ -304,7 +304,7 @@ struct TreeElement {
 
 impl TreeElement {
     fn is_disposed(&self, generation: u32) -> bool {
-        self.generation != generation
+        self.generation != generation && self.widget.is_window() == false
     }
 }
 
@@ -332,14 +332,15 @@ impl Tree {
         if let Some((id, window)) = window {
             window.generation = self.current_generation;
             window.childs.clear();
+            self.windows.push(id);
             id
         } else {
             self.elements.push(TreeElement {
                 widget: Widget::Window(new_window),
                 childs: vec![],
                 generation: self.current_generation,
-            });
-            let id = self.elements.len() - 1;
+            });            
+            let id = self.elements.len() - 1;            
             self.windows.push(id);
             id
         }
@@ -640,6 +641,9 @@ impl Ui {
         self.input.click_down = true;
 
         for (n, wid) in self.tree.windows.iter().enumerate() {
+            if self.tree.elements[*wid].is_disposed(self.tree.current_generation - 1) {
+                continue;
+            }
             let window = &self.tree.elements[*wid].widget.unwrap_window();
 
             if window.title_contains(position) {
@@ -684,10 +688,15 @@ impl Ui {
 
     pub fn begin_frame(&mut self) {
         self.events.next_frame();
+        self.tree.windows.clear();
     }
 
     pub fn draw(&mut self, ctx: &mut Context) {
         for window in self.tree.windows.iter().rev() {
+            if self.tree.elements[*window].is_disposed(self.tree.current_generation) {
+                continue;
+            }
+            
             let mut cursor = Cursor::new(Rect::new(0., 0., 0., 0.));
             draw_element(
                 &mut UiContext {
@@ -759,8 +768,8 @@ impl Ui {
         self.hovered = None;
         self.input.click_down = false;
         self.input.click_up = false;
-        self.input.mouse_wheel = Vector2::new(0., 0.);
-
+        self.input.mouse_wheel = Vector2::new(0., 0.);        
+        
         self.tree.current_generation += 1;
     }
 }

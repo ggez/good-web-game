@@ -59,6 +59,7 @@ pub mod widgets {
         id: Id,
         position: Point2<f32>,
         size: Vector2<f32>,
+        close_button: bool,
         label: Option<String>,
     }
 
@@ -68,6 +69,7 @@ pub mod widgets {
                 id,
                 position,
                 size,
+                close_button: false,
                 label: None,
             }
         }
@@ -79,16 +81,26 @@ pub mod widgets {
             }
         }
 
-        pub fn ui<F: FnOnce(&mut Ui)>(self, ui: &mut Ui, f: F) {
+        pub fn close_button(self, close_button: bool) -> Window {
+            Window {
+                close_button,
+                ..self
+            }
+        }
+
+        pub fn ui<F: FnOnce(&mut Ui)>(self, ui: &mut Ui, f: F) -> bool {
             let new_window = super::Window {
                 id: self.id,
                 label: self.label.unwrap_or("".to_string()),
                 rect: super::Rect::new(self.position.x, self.position.y, self.size.x, self.size.y),
+                close_button: self.close_button,
             };
             let window_element_id = ui.tree.insert_window(new_window);
             ui.current_element = Some(window_element_id);
 
-            f(ui)
+            f(ui);
+
+            ui.events.previous_frame_window_closed(self.id) == false
         }
     }
 
@@ -173,6 +185,7 @@ struct Window {
     id: Id,
     label: String,
     rect: Rect,
+    close_button: bool,
 }
 
 impl Window {
@@ -339,8 +352,8 @@ impl Tree {
                 widget: Widget::Window(new_window),
                 childs: vec![],
                 generation: self.current_generation,
-            });            
-            let id = self.elements.len() - 1;            
+            });
+            let id = self.elements.len() - 1;
             self.windows.push(id);
             id
         }
@@ -436,6 +449,7 @@ enum Event {
     ButtonClick(Id),
     Dragging(Id),
     DragDrop(Id, Point2<f32>, Option<Id>),
+    WindowClose(Id),
 }
 struct Events {
     frame_events: Vec<Event>,
@@ -460,6 +474,13 @@ impl Events {
     fn previous_frame_button_clicked(&self, button_id: Id) -> bool {
         self.previous_frame_events.iter().any(|e| match e {
             Event::ButtonClick(id) => *id == button_id,
+            _ => false,
+        })
+    }
+
+    fn previous_frame_window_closed(&self, window_id: Id) -> bool {
+        self.previous_frame_events.iter().any(|e| match e {
+            Event::WindowClose(id) => *id == window_id,
             _ => false,
         })
     }
@@ -591,6 +612,7 @@ impl Ui {
             id,
             label: label.to_string(),
             rect: Rect::new(position.x, position.y, size.x, size.y),
+            close_button: false,
         };
         let window_element_id = self.tree.insert_window(new_window);
         self.current_element = Some(window_element_id);
@@ -696,7 +718,7 @@ impl Ui {
             if self.tree.elements[*window].is_disposed(self.tree.current_generation) {
                 continue;
             }
-            
+
             let mut cursor = Cursor::new(Rect::new(0., 0., 0., 0.));
             draw_element(
                 &mut UiContext {
@@ -768,8 +790,8 @@ impl Ui {
         self.hovered = None;
         self.input.click_down = false;
         self.input.click_up = false;
-        self.input.mouse_wheel = Vector2::new(0., 0.);        
-        
+        self.input.mouse_wheel = Vector2::new(0., 0.);
+
         self.tree.current_generation += 1;
     }
 }
@@ -802,6 +824,24 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
 
             draw_window_frame(context.ctx, context.focused, window);
             draw_scroll_area(context, window.id, inside_rect, &element.childs);
+
+            if window.close_button {
+                let button_rect =
+                    Rect::new(window.rect.x + window.rect.w - 15., window.rect.y, 20., 20.);
+                context.ctx.canvas_context().draw_label(
+                    "X",
+                    Point2::new(window.rect.x + window.rect.w - 10., window.rect.y + 3.),
+                    None,
+                    None,
+                    None,
+                );
+                if context.focused
+                    && button_rect.contains(context.input.mouse_position)
+                    && context.input.click_up
+                {
+                    context.events.push(Event::WindowClose(window.id));
+                }
+            }
 
             window.rect
         }

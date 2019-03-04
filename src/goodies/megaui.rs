@@ -40,19 +40,17 @@ pub(self) enum Widget {
     },
     Button {
         pos: Option<Point2<f32>>,
-        id: Id,
         label: String,
     },
     Group(widgets::Group),
     Window(Window),
     TreeNode {
-        id: Id,
         label: String,
     },
 }
 
 pub mod widgets {
-    use super::{Drag, Id, Ui, Widget};
+    use super::{tree, Drag, Id, Rect, Ui, Widget};
     use cgmath::{Point2, Vector2};
 
     pub struct Window {
@@ -89,16 +87,27 @@ pub mod widgets {
         }
 
         pub fn ui<F: FnOnce(&mut Ui)>(self, ui: &mut Ui, f: F) -> bool {
-            let new_window = super::Window {
-                id: self.id,
+            let id = self.id;
+            let window = super::Window {
                 label: self.label.unwrap_or("".to_string()),
                 rect: super::Rect::new(self.position.x, self.position.y, self.size.x, self.size.y),
                 close_button: self.close_button,
             };
-            let window_element_id = ui.tree.insert_window(new_window);
-            ui.current_element = Some(window_element_id);
 
-            f(ui);
+            if ui.tree.elements.contains_key(&id) == false {
+                ui.positions.insert(id, self.position);
+                ui.windows_focus_queue.push(id);
+            }
+            let position = ui.positions[&id];
+            tree::insert_widget(
+                ui,
+                id,
+                Widget::Window(super::Window {
+                    rect: Rect::new(position.x, position.y, self.size.x, self.size.y),
+                    ..window
+                }),
+                f,
+            );
 
             ui.events.previous_frame_window_closed(self.id) == false
         }
@@ -109,7 +118,7 @@ pub mod widgets {
         pub(super) draggable: bool,
         pub(super) hoverable: bool,
         pub(super) highlight: bool,
-        pub(super) id: Id,
+        id: Id,
     }
     impl Group {
         pub fn new(id: Id, size: Vector2<f32>) -> Group {
@@ -135,17 +144,9 @@ pub mod widgets {
         }
 
         pub fn ui<F: FnOnce(&mut Ui)>(self, ui: &mut Ui, f: F) -> Drag {
-            let self_id = self.id;
-            let widget_id = ui
-                .tree
-                .insert_widget(ui.current_element.unwrap(), Widget::Group(self));
-            let current_element = ui.current_element;
-            ui.current_element = Some(widget_id);
-
-            f(ui);
-
-            ui.current_element = current_element;
-            ui.events.previous_frame_drag(self_id)
+            let id = self.id;
+            tree::insert_widget(ui, id, Widget::Group(self), f);
+            ui.events.previous_frame_drag(id)
         }
     }
 }
@@ -166,23 +167,9 @@ impl Widget {
             _ => panic!("not a window"),
         }
     }
-
-    fn is_window(&self) -> bool {
-        match self {
-            Widget::Window(_) => true,
-            _ => false,
-        }
-    }
-
-    fn group_id(&self) -> Option<Id> {
-        match self {
-            Widget::Group(widgets::Group { id, .. }) => Some(*id),
-            _ => None,
-        }
-    }
 }
+
 struct Window {
-    id: Id,
     label: String,
     rect: Rect,
     close_button: bool,
@@ -312,82 +299,59 @@ mod consts {
 struct TreeElement {
     widget: Widget,
     generation: u32,
-    childs: Vec<usize>,
+    parent: Option<Id>,
+    childs: Vec<Id>,
 }
 
 impl TreeElement {
     fn is_disposed(&self, generation: u32) -> bool {
-        self.generation != generation && self.widget.is_window() == false
+        self.generation != generation
     }
 }
 
-struct Tree {
-    current_generation: u32,
-    elements: Vec<TreeElement>,
-    windows: Vec<usize>,
-}
+mod tree {
+    use super::*;
 
-impl Tree {
-    fn new() -> Tree {
-        Tree {
-            current_generation: 0,
-            elements: vec![],
-            windows: vec![],
-        }
+    pub struct Tree {
+        pub current_generation: u32,
+        pub current_element: Option<Id>,
+        pub(super) elements: HashMap<Id, TreeElement>,
     }
 
-    fn insert_window(&mut self, new_window: Window) -> usize {
-        let window = self
-            .elements
-            .iter_mut()
-            .enumerate()
-            .find(|w| w.1.widget.is_window() && w.1.widget.unwrap_window().id == new_window.id);
-        if let Some((id, window)) = window {
-            window.generation = self.current_generation;
-            window.childs.clear();
-            self.windows.push(id);
-            id
-        } else {
-            self.elements.push(TreeElement {
-                widget: Widget::Window(new_window),
-                childs: vec![],
-                generation: self.current_generation,
-            });
-            let id = self.elements.len() - 1;
-            self.windows.push(id);
-            id
-        }
-    }
-
-    fn alloc_in_disposed(&mut self) -> Option<usize> {
-        for i in 0..self.elements.len() {
-            if self.elements[i].is_disposed(self.current_generation) {
-                return Some(i);
+    impl Tree {
+        pub fn new() -> Tree {
+            Tree {
+                current_generation: 0,
+                current_element: None,
+                elements: HashMap::new(),
             }
         }
-        None
     }
 
-    fn insert_widget(&mut self, parent: usize, widget: Widget) -> usize {
-        let id = self.alloc_in_disposed();
-
-        let id = if let Some(id) = id {
-            self.elements[id].widget = widget;
-            self.elements[id].generation = self.current_generation;
-            self.elements[id].childs.clear();
-            id
-        } else {
-            let element = TreeElement {
+    pub(super) fn insert_widget<F: FnOnce(&mut Ui)>(ui: &mut Ui, id: Id, widget: Widget, f: F) {
+        ui.tree.elements.insert(
+            id,
+            TreeElement {
                 widget,
+                generation: ui.tree.current_generation,
+                parent: ui.tree.current_element,
                 childs: vec![],
-                generation: self.current_generation,
-            };
-            self.elements.push(element);
-            self.elements.len() - 1
-        };
-        self.elements[parent].childs.push(id);
+            },
+        );
 
-        id
+        if let Some(current_element) = ui.tree.current_element {
+            ui.tree
+                .elements
+                .get_mut(&current_element)
+                .unwrap()
+                .childs
+                .push(id);
+        }
+
+        let old_root = ui.tree.current_element;
+        ui.tree.current_element = Some(id);
+        f(ui);
+        ui.tree.current_element = old_root;
     }
 }
 
@@ -564,14 +528,15 @@ impl Toggles {
 }
 
 pub struct Ui {
-    focused: Option<usize>,
-    moving: Option<(usize, Vector2<f32>)>,
+    focused: Option<Id>,
+    moving: Option<(Id, Vector2<f32>)>,
     dragging: Option<(Id, DragState)>,
-    current_element: Option<usize>,
     hovered: Option<Id>,
     scroll_bars: HashMap<Id, Scroll>,
+    positions: HashMap<Id, Point2<f32>>,
     events: Events,
-    tree: Tree,
+    tree: tree::Tree,
+    windows_focus_queue: Vec<Id>,
     input: Input,
     toggles: Toggles,
 }
@@ -582,11 +547,12 @@ impl Ui {
             focused: None,
             moving: None,
             dragging: None,
-            current_element: None,
             hovered: None,
             scroll_bars: HashMap::new(),
+            positions: HashMap::new(),
             events: Events::new(),
-            tree: Tree::new(),
+            tree: tree::Tree::new(),
+            windows_focus_queue: Vec::new(),
             input: Input {
                 mouse_position: Point2::new(0., 0.),
                 is_mouse_down: false,
@@ -600,73 +566,54 @@ impl Ui {
 }
 
 impl Ui {
-    pub fn window<F: FnOnce(&mut Ui)>(
-        &mut self,
-        id: Id,
-        label: &str,
-        position: Point2<f32>,
-        size: Vector2<f32>,
-        f: F,
-    ) {
-        let new_window = Window {
-            id,
-            label: label.to_string(),
-            rect: Rect::new(position.x, position.y, size.x, size.y),
-            close_button: false,
-        };
-        let window_element_id = self.tree.insert_window(new_window);
-        self.current_element = Some(window_element_id);
-
-        f(self)
-    }
-
     pub fn button<T: Into<Option<Point2<f32>>>>(&mut self, pos: T, id: Id, label: &str) -> bool {
-        self.tree.insert_widget(
-            self.current_element.unwrap(),
+        let id = hash!(self.tree.current_element, "btn", label, id);
+        tree::insert_widget(
+            self,
+            id,
             Widget::Button {
                 pos: pos.into(),
-                id: id,
                 label: label.to_string(),
             },
+            |_| {},
         );
         self.events.previous_frame_button_clicked(id)
     }
 
     pub fn label<T: Into<Option<Point2<f32>>>>(&mut self, pos: T, label: &str) {
-        self.tree.insert_widget(
-            self.current_element.unwrap(),
+        let pos = pos.into();
+        let id = hash!(self.tree.current_element, "lbl", label);
+        tree::insert_widget(
+            self,
+            id,
             Widget::Label {
-                pos: pos.into(),
+                pos,
                 label: label.to_string(),
             },
+            |_| {},
         );
     }
 
     pub fn tree_node<F: FnOnce(&mut Ui)>(&mut self, id: Id, label: &str, f: F) {
-        let tree_node = Widget::TreeNode {
+        tree::insert_widget(
+            self,
             id,
-            label: label.to_string(),
-        };
-
-        let widget_id = self
-            .tree
-            .insert_widget(self.current_element.unwrap(), tree_node);
-
-        let previous_current_element = self.current_element;
-        self.current_element = Some(widget_id);
-        f(self);
-        self.current_element = previous_current_element;
+            Widget::TreeNode {
+                label: label.to_string(),
+            },
+            f,
+        );
     }
 
     pub fn mouse_down(&mut self, position: Point2<f32>) {
         self.input.is_mouse_down = true;
         self.input.click_down = true;
 
-        for (n, wid) in self.tree.windows.iter().enumerate() {
-            if self.tree.elements[*wid].is_disposed(self.tree.current_generation - 1) {
+        for (n, wid) in self.windows_focus_queue.iter().enumerate() {
+            if self.tree.elements[wid].is_disposed(self.tree.current_generation - 1) {
                 continue;
             }
-            let window = &self.tree.elements[*wid].widget.unwrap_window();
+            let window = &self.tree.elements[wid].widget.unwrap_window();
 
             if window.title_contains(position) {
                 self.moving = Some((*wid, position - Point2::new(window.rect.x, window.rect.y)));
@@ -674,8 +621,8 @@ impl Ui {
 
             if window.window_contains(position) {
                 self.focused = Some(*wid);
-                let window = self.tree.windows.remove(n);
-                self.tree.windows.insert(0, window);
+                let window = self.windows_focus_queue.remove(n);
+                self.windows_focus_queue.insert(0, window);
                 return;
             }
         }
@@ -694,15 +641,8 @@ impl Ui {
 
     pub fn mouse_move(&mut self, position: Point2<f32>) {
         if let Some((id, orig)) = self.moving.as_ref() {
-            let mut window = self
-                .tree
-                .elements
-                .get_mut(*id)
-                .unwrap()
-                .widget
-                .unwrap_window_mut();
-            window.rect.x = position.x - orig.x;
-            window.rect.y = position.y - orig.y;
+            *self.positions.get_mut(&id).unwrap() =
+                Point2::new(position.x - orig.x, position.y - orig.y);
         }
 
         self.input.mouse_position = position;
@@ -710,12 +650,11 @@ impl Ui {
 
     pub fn begin_frame(&mut self) {
         self.events.next_frame();
-        self.tree.windows.clear();
     }
 
     pub fn draw(&mut self, ctx: &mut Context) {
-        for window in self.tree.windows.iter().rev() {
-            if self.tree.elements[*window].is_disposed(self.tree.current_generation) {
+        for window in self.windows_focus_queue.iter().rev() {
+            if self.tree.elements[window].is_disposed(self.tree.current_generation) {
                 continue;
             }
 
@@ -730,6 +669,7 @@ impl Ui {
                     hovered: Some(&mut self.hovered),
                     focused: self.focused.as_ref().map_or(false, |w| w == window),
                     scroll_bars: &mut self.scroll_bars,
+                    positions: &mut self.positions,
                     toggles: &mut self.toggles,
                 },
                 &mut cursor,
@@ -745,13 +685,7 @@ impl Ui {
                 }
             }
             if let DragState::Dragging(orig) = drag {
-                if let Some((n, _)) = self
-                    .tree
-                    .elements
-                    .iter()
-                    .enumerate()
-                    .find(|(_, e)| e.widget.group_id().map_or(false, |i| i == id))
-                {
+                if let Some(_) = self.tree.elements.get(&id) {
                     let mut cursor = Cursor::new(Rect::new(
                         self.input.mouse_position.x + orig.x,
                         self.input.mouse_position.y + orig.y,
@@ -768,10 +702,11 @@ impl Ui {
                             hovered: None,
                             focused: true,
                             scroll_bars: &mut self.scroll_bars,
+                            positions: &mut self.positions,
                             toggles: &mut self.toggles,
                         },
                         &mut cursor,
-                        n,
+                        id,
                     );
                 }
                 if self.input.is_mouse_down == false {
@@ -797,24 +732,28 @@ impl Ui {
 }
 
 struct UiContext<'a> {
-    elements: &'a [TreeElement],
+    elements: &'a HashMap<Id, TreeElement>,
     ctx: &'a mut Context,
     events: &'a mut Events,
     input: &'a Input,
     focused: bool,
     dragging: &'a mut Option<(Id, DragState)>,
     scroll_bars: &'a mut HashMap<Id, Scroll>,
+    positions: &'a mut HashMap<Id, Point2<f32>>,
     hovered: Option<&'a mut Option<Id>>,
     toggles: &'a mut Toggles,
 }
 
-fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect {
-    let element = &context.elements[id];
+fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: Id) -> Rect {
+    let element = &context.elements[&id];
     let widget = &element.widget;
     let orig = Vector2::new(cursor.area.x as f32, cursor.area.y as f32) + cursor.scroll;
 
     let rect = match widget {
         Widget::Window(window) => {
+            let mut window = window.clone();
+            let position = context.positions[&id];
+
             let inside_rect = Rect::new(
                 window.rect.x + consts::MARGIN,
                 window.rect.y + consts::TITLE_HEIGHT + consts::MARGIN,
@@ -823,7 +762,7 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
             );
 
             draw_window_frame(context.ctx, context.focused, window);
-            draw_scroll_area(context, window.id, inside_rect, &element.childs);
+            draw_scroll_area(context, id, inside_rect, &element.childs);
 
             if window.close_button {
                 let button_rect =
@@ -839,7 +778,7 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
                     && button_rect.contains(context.input.mouse_position)
                     && context.input.click_up
                 {
-                    context.events.push(Event::WindowClose(window.id));
+                    context.events.push(Event::WindowClose(id));
                 }
             }
 
@@ -859,7 +798,7 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
 
             Rect::new(pos.x, pos.y, size.x as f32, size.y as f32)
         }
-        Widget::Button { pos, label, id, .. } => {
+        Widget::Button { pos, label, .. } => {
             let size = context.ctx.canvas_context().measure_label(label, None)
                 + Vector2::new(
                     consts::MARGIN_BUTTON as f32 * 2.,
@@ -892,23 +831,23 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
         }
         Widget::Group(widgets::Group {
             size,
-            id,
             draggable,
             hoverable,
             highlight,
+            ..
         }) => {
             let pos: Point2<f32> = cursor.fit(*size, Layout::Horizontal);
             let rect = Rect::new(pos.x + orig.x, pos.y + orig.y, size.x as f32, size.y as f32);
             let mut hovered = false;
 
-            if *draggable {
+            if context.focused && *draggable {
                 if element.childs.len() != 0
                     && context.dragging.is_none()
                     && context.input.is_mouse_down
                     && rect.contains(context.input.mouse_position)
                 {
                     *context.dragging = Some((
-                        *id,
+                        id,
                         DragState::Clicked(
                             context.input.mouse_position,
                             Point2::new(rect.x, rect.y),
@@ -920,7 +859,7 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
             if *draggable || *hoverable {
                 if rect.contains(context.input.mouse_position) {
                     if let Some(ref mut hover) = context.hovered {
-                        **hover = Some(*id);
+                        **hover = Some(id);
                         hovered = true;
                     }
                 }
@@ -933,13 +872,13 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
                     *highlight,
                     rect,
                 );
-                draw_scroll_area(context, *id, rect, &element.childs);
+                draw_scroll_area(context, id, rect, &element.childs);
             }
 
             rect
         }
-        Widget::TreeNode { id, label, .. } => {
-            let label = if context.toggles.toggled(*id) {
+        Widget::TreeNode { label, .. } => {
+            let label = if context.toggles.toggled(id) {
                 format!(" - {}", label)
             } else {
                 format!("+ {}", label)
@@ -958,10 +897,10 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: usize) -> Rect
             );
 
             if context.focused && hovered && context.input.click_up {
-                context.toggles.toggle(*id);
+                context.toggles.toggle(id);
             }
             let mut rect = Rect::new(title_rect.x, title_rect.y + title_rect.h, 0., 0.);
-            if context.toggles.toggled(*id) {
+            if context.toggles.toggled(id) {
                 let mut child_cursor = Cursor::new(Rect::new(
                     pos.x + cursor.x + consts::TREE_OFFSET,
                     pos.y + title_rect.h,
@@ -1016,7 +955,7 @@ fn extend_rect(left: Rect, right: Rect) -> Rect {
     rect
 }
 
-fn draw_scroll_area(context: &mut UiContext, id: Id, rect: Rect, elements: &[usize]) {
+fn draw_scroll_area(context: &mut UiContext, id: Id, rect: Rect, elements: &[Id]) {
     let mut cursor = Cursor::new(rect);
     let mut inner_rect = Rect::new(0., 0., rect.w, rect.h);
     {

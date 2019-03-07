@@ -1,9 +1,8 @@
 /// Highly experimental and not ggez-compatible things
-
 use good_web_game::{
     cgmath::{Point2, Vector2},
     event,
-    goodies::megaui::Ui,
+    goodies::megaui::{widgets::Window, Ui},
     graphics, hash,
     input::MouseButton,
     Context, GameResult,
@@ -50,11 +49,8 @@ impl event::EventHandler for MainState {
         self.ui.begin_frame();
 
         let counter = &mut self.counter;
-        self.ui.window(
-            hash!(),
-            "Hello!",
-            Point2::new(50., 50.),
-            Vector2::new(200., 100.),
+        Window::new(hash!(), Point2::new(50., 50.), Vector2::new(200., 100.)).ui(
+            &mut self.ui,
             |ui| {
                 ui.label(Point2::new(20., 20.), &format!("Counter: {}", counter));
                 if ui.button(Point2::new(100., 50.), hash!(), "increment") {
@@ -63,17 +59,13 @@ impl event::EventHandler for MainState {
             },
         );
 
-        self.ui.window(
-            hash!(),
-            "Scroll!",
-            Point2::new(270., 70.),
-            Vector2::new(200., 200.),
-            |ui| {
-                for i in 0 .. 100 {
+        Window::new(hash!(), Point2::new(270., 70.), Vector2::new(200., 200.))
+            .label("scroll")
+            .ui(&mut self.ui, |ui| {
+                for i in 0..100 {
                     ui.label(None, &format!("i: {}", i));
                 }
-            },
-        );
+            });
         self.ui.draw(ctx);
         graphics::present(ctx)
     }

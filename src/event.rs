@@ -40,6 +40,8 @@ pub trait EventHandler {
     }
 
     fn key_down_event(&mut self, _ctx: &mut Context, _key: &str) {}
+
+    fn key_up_event(&mut self, _ctx: &mut Context, _key: &str) {}
 }
 
 fn animate<S>(
@@ -258,9 +260,19 @@ where
 
     canvas.add_event_listener({
         let input_handler = input_handler.clone();
+        let state = state.clone();
+        let ctx = ctx.clone();
 
         move |event: KeyUpEvent| {
-            input_handler.borrow_mut().handle_key_up(event.code());
+            if event.code() == "Space" {
+                event.prevent_default();
+            }
+            if event.repeat() == false {
+                input_handler.borrow_mut().handle_key_up(event.code());
+                state
+                    .borrow_mut()
+                    .key_up_event(&mut *ctx.borrow_mut(), &event.code());
+            }
         }
     });
 

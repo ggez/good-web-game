@@ -264,9 +264,6 @@ where
         let ctx = ctx.clone();
 
         move |event: KeyUpEvent| {
-            if event.code() == "Space" {
-                event.prevent_default();
-            }
             if event.repeat() == false {
                 input_handler.borrow_mut().handle_key_up(event.code());
                 state

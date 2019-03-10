@@ -274,4 +274,13 @@ impl<C> crate::event::EventHandler for SceneStack<C> {
 
         current_scene.key_down_event(&mut self.world, ctx, key);
     }
+
+    fn key_up_event(&mut self, ctx: &mut crate::Context, key: &str) {
+        let current_scene = &mut **self
+            .scenes
+            .last_mut()
+            .expect("Tried to update empty scene stack");
+
+        current_scene.key_up_event(&mut self.world, ctx, key);
+    }
 }

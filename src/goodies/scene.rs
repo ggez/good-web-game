@@ -74,6 +74,7 @@ pub trait Scene<C> {
     ) {
     }
     fn key_down_event(&mut self, _gameworld: &mut C, _ctx: &mut crate::Context, _key: &str) {}
+    fn key_up_event(&mut self, _gameworld: &mut C, _ctx: &mut crate::Context, _key: &str) {}
 
     /// Only used for human-readable convenience (or not at all, tbh)
     fn name(&self) -> &str;

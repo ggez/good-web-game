@@ -679,9 +679,11 @@ impl Ui {
 
         if let Some((id, drag)) = self.dragging {
             if let DragState::Clicked(orig, pos) = drag {
-                if self.input.mouse_position.distance(orig) > 5. {
-                    self.dragging =
-                        Some((id, DragState::Dragging(pos - self.input.mouse_position)));
+                if self.input.is_mouse_down && self.input.mouse_position.distance(orig) > 5. {
+                    self.dragging = Some((id, DragState::Dragging(pos - orig)));
+                }
+                if self.input.is_mouse_down == false {
+                    self.dragging = None;
                 }
             }
             if let DragState::Dragging(orig) = drag {

@@ -28,7 +28,7 @@ impl Scale {
 /// A piece of text with optional color, font and font scale information.
 /// Drawing text generally involves one or more of these.
 /// These options take precedence over any similar field/argument.
-/// Can be implicitly constructed from `String`, `(String, Color)`, and `(String, FontId, Scale)`.
+/// Can be implicitly constructed from `String`, `(String, Color)`, and `(String, Font, Scale)`.
 #[derive(Clone, Debug)]
 pub struct TextFragment {
     /// Text string itself.
@@ -151,7 +151,7 @@ impl Drawable for Text {
             &self.fragment.text,
             param.dest,
             Some(param.scale),
-            None,
+            self.fragment.font.as_ref().map(|x| &*x.0),
             Some(&Into::<String>::into(param.color)),
         );
         Ok(())

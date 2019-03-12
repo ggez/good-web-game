@@ -4,7 +4,6 @@ use stdweb::{
 };
 
 use crate::goodies::matrix_transform_2d::*;
-use crate::graphics::text::Font;
 use crate::graphics::types::Rect;
 
 use cgmath::{EuclideanSpace, InnerSpace, Matrix3, Point2, Vector2};

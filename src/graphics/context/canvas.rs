@@ -229,8 +229,8 @@ impl CanvasContext {
 
     pub fn measure_label(&self, label: &str, font: Option<&str>) -> Vector2<f32> {
         self.canvas.save();
-        if font.is_some() {
-            self.canvas.set_font(font.unwrap());
+        if let Some(f) = font {
+            self.canvas.set_font(f);
         }
         self.canvas.set_text_align(TextAlign::Left);
         self.canvas.set_text_baseline(TextBaseline::Hanging);

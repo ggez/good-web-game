@@ -1,11 +1,11 @@
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Font {}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Font(String);
 
 impl Font {
-    pub fn new(_: &mut Context, _: &str) -> GameResult<Font> {
-        Ok(Font {})
+    pub fn new(_: &mut Context, font: &str) -> GameResult<Font> {
+        Ok(Font(font.to_owned()))
     }
 }
 

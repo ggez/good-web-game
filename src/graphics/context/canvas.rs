@@ -4,6 +4,7 @@ use stdweb::{
 };
 
 use crate::goodies::matrix_transform_2d::*;
+use crate::graphics::text::Font;
 use crate::graphics::types::Rect;
 
 use cgmath::{EuclideanSpace, InnerSpace, Matrix3, Point2, Vector2};
@@ -204,8 +205,8 @@ impl CanvasContext {
         if let Some(color) = color {
             self.canvas.set_fill_style_color(color);
         }
-        if font.is_some() {
-            self.canvas.set_font(font.unwrap());
+        if let Some(f) = font {
+            self.canvas.set_font(f);
         }
 
         self.canvas.set_text_align(TextAlign::Left);

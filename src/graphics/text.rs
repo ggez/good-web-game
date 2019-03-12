@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Font(String);
+pub struct Font(pub String);
 
 impl Font {
     pub fn new(_: &mut Context, font: &str) -> GameResult<Font> {

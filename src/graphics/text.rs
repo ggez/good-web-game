@@ -1,11 +1,34 @@
 use super::*;
 
+use std::cell::RefCell;
+
+thread_local! {
+    static FONTS: RefCell<Vec<String>> = RefCell::new(vec![]);
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Font {}
+pub enum FontId {
+    TtfFontId,
+    CanvasFontId(usize),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Font(pub FontId);
 
 impl Font {
+    /// Should construct font from the ttf file path.
     pub fn new(_: &mut Context, _: &str) -> GameResult<Font> {
-        Ok(Font {})
+        Ok(Font(FontId::TtfFontId))
+    }
+
+    pub fn from_html_font(_: &mut Context, font: &str) -> GameResult<Font> {
+        let id = FONTS.with(|f| {
+            let mut fonts = f.borrow_mut();
+            fonts.push(font.to_owned());
+            fonts.len() - 1
+        });
+
+        Ok(Font(FontId::CanvasFontId(id)))
     }
 }
 
@@ -147,11 +170,21 @@ impl Text {
 
 impl Drawable for Text {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+        let font = FONTS.with(|f| {
+            self.fragment.font.and_then(|font_id| match font_id.0 {
+                FontId::TtfFontId => None,
+                FontId::CanvasFontId(id) => {
+                    let fonts = f.borrow();
+                    fonts.get(id).map(|s| s.to_owned())
+                }
+            })
+        });
+
         ctx.gfx_context.canvas_context.draw_label(
             &self.fragment.text,
             param.dest,
             Some(param.scale),
-            None,
+            font.as_ref().map(|s| &**s),
             Some(&Into::<String>::into(param.color)),
         );
         Ok(())

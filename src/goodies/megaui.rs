@@ -753,9 +753,6 @@ fn draw_element(context: &mut UiContext, cursor: &mut Cursor, id: Id) -> Rect {
 
     let rect = match widget {
         Widget::Window(window) => {
-            let mut window = window.clone();
-            let position = context.positions[&id];
-
             let inside_rect = Rect::new(
                 window.rect.x + consts::MARGIN,
                 window.rect.y + consts::TITLE_HEIGHT + consts::MARGIN,

@@ -648,6 +648,27 @@ impl Ui {
         self.input.mouse_position = position;
     }
 
+    pub fn is_mouse_over(&self, mouse: Point2<f32>) -> bool {
+        if self.dragging.is_some() {
+            return true;
+        }
+        for window in self.windows_focus_queue.iter() {
+            let element = &self.tree.elements[window];
+
+            // -1 for accessing previous frame data
+            if element.is_disposed(self.tree.current_generation - 1)
+                && element.is_disposed(self.tree.current_generation)
+            {
+                continue;
+            }
+            match element.widget {
+                Widget::Window(ref window) if window.rect.contains(mouse) => return true,
+                _ => {}
+            }
+        }
+        false
+    }
+
     pub fn begin_frame(&mut self) {
         self.events.next_frame();
     }

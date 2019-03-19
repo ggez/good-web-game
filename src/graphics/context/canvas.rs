@@ -151,6 +151,8 @@ impl CanvasContext {
 
     pub fn draw_rect(&self, rect: Rect, attrs: &[RectAttr]) {
         self.canvas.save();
+        let (mut x, mut y) = (rect.x, rect.y);
+
         for attr in attrs.iter() {
             match attr {
                 RectAttr::Stroke(color) => {
@@ -159,26 +161,27 @@ impl CanvasContext {
                 RectAttr::Fill(color) => {
                     self.canvas.set_fill_style_color(color);
                 }
+                RectAttr::Rotate(angle) => {
+                    self.canvas.translate(
+                        rect.x as f64 + rect.w as f64 / 2.,
+                        rect.y as f64 + rect.h as f64 / 2.,
+                    );
+                    self.canvas.rotate(*angle as f64);
+                    x = -rect.w / 2.;
+                    y = -rect.h / 2.;
+                }
             }
         }
         self.canvas.begin_path();
         self.canvas
-            .rect(rect.x as f64, rect.y as f64, rect.w as f64, rect.h as f64);
+            .rect(x as f64, y as f64, rect.w as f64, rect.h as f64);
         for attr in attrs.iter() {
             match attr {
                 RectAttr::Stroke(_) => self.canvas.stroke(),
                 RectAttr::Fill(_) => {
                     self.canvas.fill(FillRule::NonZero);
                 }
-            }
-        }
-
-        for attr in attrs.iter() {
-            match attr {
-                RectAttr::Stroke(_) => self.canvas.stroke(),
-                RectAttr::Fill(_) => {
-                    self.canvas.fill(FillRule::NonZero);
-                }
+                RectAttr::Rotate(_) => {}
             }
         }
 
@@ -252,6 +255,7 @@ impl CanvasContext {
 pub enum RectAttr<'a> {
     Stroke(&'a str),
     Fill(&'a str),
+    Rotate(f32),
 }
 
 pub enum ArcAttr {

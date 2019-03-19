@@ -211,7 +211,6 @@ where
             event.prevent_default();
 
             input_handler.handle_mouse_down(WebMouseButton::Right);
-
             state.borrow_mut().mouse_button_down_event(
                 &mut *ctx.borrow_mut(),
                 MouseButton::Right,

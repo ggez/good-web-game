@@ -31,6 +31,7 @@ pub struct InputHandler {
     pub frame_keys: HashSet<String>,
     pub mouse_position: Point2<f64>,
     pub mouse_keys: HashSet<MouseButton>,
+    pub wheel: f32,
 }
 
 impl InputHandler {
@@ -40,6 +41,7 @@ impl InputHandler {
             frame_keys: HashSet::new(),
             mouse_position: Point2::new(0., 0.),
             mouse_keys: HashSet::new(),
+            wheel: 0.,
         }
     }
 
@@ -64,13 +66,16 @@ impl InputHandler {
 
     pub fn handle_end_frame(&mut self) {
         self.frame_keys.clear();
+        self.wheel = 0.;
     }
 
     pub fn handle_key_up(&mut self, key: String) {
         self.keys.remove(&key);
     }
 
-    pub fn handle_mouse_wheel(&mut self, _delta_y: f64) {}
+    pub fn handle_mouse_wheel(&mut self, delta_y: f64) {
+        self.wheel = delta_y as f32;
+    }
 
     pub fn is_key_pressed(&self, key: &str) -> bool {
         self.keys.contains(key)

@@ -58,6 +58,7 @@ pub mod widgets {
         position: Point2<f32>,
         size: Vector2<f32>,
         close_button: bool,
+        enabled: bool,
         label: Option<String>,
     }
 
@@ -68,6 +69,7 @@ pub mod widgets {
                 position,
                 size,
                 close_button: false,
+                enabled: true,
                 label: None,
             }
         }
@@ -86,12 +88,17 @@ pub mod widgets {
             }
         }
 
+        pub fn enabled(self, enabled: bool) -> Window {
+            Window { enabled, ..self }
+        }
+
         pub fn ui<F: FnOnce(&mut Ui)>(self, ui: &mut Ui, f: F) -> bool {
             let id = self.id;
             let window = super::Window {
                 label: self.label.unwrap_or("".to_string()),
                 rect: super::Rect::new(self.position.x, self.position.y, self.size.x, self.size.y),
                 close_button: self.close_button,
+                enabled: self.enabled,
             };
 
             if ui.tree.elements.contains_key(&id) == false {
@@ -173,6 +180,7 @@ struct Window {
     label: String,
     rect: Rect,
     close_button: bool,
+    enabled: bool,
 }
 
 impl Window {
@@ -299,7 +307,6 @@ mod consts {
 struct TreeElement {
     widget: Widget,
     generation: u32,
-    parent: Option<Id>,
     childs: Vec<Id>,
 }
 
@@ -334,7 +341,6 @@ mod tree {
             TreeElement {
                 widget,
                 generation: ui.tree.current_generation,
-                parent: ui.tree.current_element,
                 childs: vec![],
             },
         );
@@ -678,6 +684,7 @@ impl Ui {
             if self.tree.elements[window].is_disposed(self.tree.current_generation) {
                 continue;
             }
+            let enabled = self.tree.elements[window].widget.unwrap_window().enabled;
 
             let mut cursor = Cursor::new(Rect::new(0., 0., 0., 0.));
             draw_element(
@@ -688,9 +695,8 @@ impl Ui {
                     input: &self.input,
                     dragging: &mut self.dragging,
                     hovered: Some(&mut self.hovered),
-                    focused: self.focused.as_ref().map_or(false, |w| w == window),
+                    focused: enabled & self.focused.as_ref().map_or(false, |w| w == window),
                     scroll_bars: &mut self.scroll_bars,
-                    positions: &mut self.positions,
                     toggles: &mut self.toggles,
                 },
                 &mut cursor,
@@ -725,7 +731,6 @@ impl Ui {
                             hovered: None,
                             focused: true,
                             scroll_bars: &mut self.scroll_bars,
-                            positions: &mut self.positions,
                             toggles: &mut self.toggles,
                         },
                         &mut cursor,
@@ -762,7 +767,6 @@ struct UiContext<'a> {
     focused: bool,
     dragging: &'a mut Option<(Id, DragState)>,
     scroll_bars: &'a mut HashMap<Id, Scroll>,
-    positions: &'a mut HashMap<Id, Point2<f32>>,
     hovered: Option<&'a mut Option<Id>>,
     toggles: &'a mut Toggles,
 }

@@ -101,11 +101,15 @@ pub mod widgets {
                 enabled: self.enabled,
             };
 
+            // special case for first window frame
             if ui.tree.elements.contains_key(&id) == false {
                 ui.positions.insert(id, self.position);
-                ui.windows_focus_queue.push(id);
+                ui.windows_focus_queue.insert(0, id);
+                ui.focused = Some(id);
             }
+
             let position = ui.positions[&id];
+            ui.tree.current_root_window = Some(id);
             tree::insert_widget(
                 ui,
                 id,
@@ -115,6 +119,7 @@ pub mod widgets {
                 }),
                 f,
             );
+            ui.tree.current_root_window = None;
 
             ui.events.previous_frame_window_closed(self.id) == false
         }
@@ -322,6 +327,7 @@ mod tree {
     pub struct Tree {
         pub current_generation: u32,
         pub current_element: Option<Id>,
+        pub current_root_window: Option<Id>,
         pub(super) elements: HashMap<Id, TreeElement>,
     }
 
@@ -330,6 +336,7 @@ mod tree {
             Tree {
                 current_generation: 0,
                 current_element: None,
+                current_root_window: None,
                 elements: HashMap::new(),
             }
         }
@@ -611,6 +618,25 @@ impl Ui {
         );
     }
 
+    pub fn close_current_window(&mut self) {
+        if let Some(id) = self.tree.current_root_window {
+            self.events.push(Event::WindowClose(id));
+        }
+    }
+
+    pub fn focused(&self) -> bool {
+        self.focused == self.tree.current_root_window
+    }
+
+    pub fn focus_window(&mut self, id: Id, position: Point2<f32>) {
+        if let Some(n) = self.windows_focus_queue.iter().position(|wid| *wid == id) {
+            let window = self.windows_focus_queue.remove(n);
+            self.windows_focus_queue.insert(0, window);
+        }
+        self.focused = Some(id);
+        self.positions.insert(id, position);
+    }
+
     pub fn mouse_down(&mut self, position: Point2<f32>) {
         self.input.is_mouse_down = true;
         self.input.click_down = true;
@@ -680,10 +706,25 @@ impl Ui {
     }
 
     pub fn draw(&mut self, ctx: &mut Context) {
-        for window in self.windows_focus_queue.iter().rev() {
-            if self.tree.elements[window].is_disposed(self.tree.current_generation) {
-                continue;
+        // pre frame drawing
+        // removing stalled windows and moving focus to the next window in queue
+        {
+            let mut n = 0;
+            while n < self.windows_focus_queue.len() {
+                let window = self.windows_focus_queue[n];
+                if self.tree.elements[&window].is_disposed(self.tree.current_generation) {
+                    self.tree.elements.remove(&window);
+                    self.windows_focus_queue.remove(n);
+                } else {
+                    n += 1;
+                }
             }
+            if self.focused.is_some() {
+                self.focused = self.windows_focus_queue.get(0).map(|x| *x);
+            }
+        }
+
+        for window in self.windows_focus_queue.iter().rev() {
             let enabled = self.tree.elements[window].widget.unwrap_window().enabled;
 
             let mut cursor = Cursor::new(Rect::new(0., 0., 0., 0.));

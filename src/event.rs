@@ -122,6 +122,8 @@ where
         let state = state.clone();
 
         move |event: MouseWheelEvent| {
+            event.prevent_default();
+
             input_handler
                 .borrow_mut()
                 .handle_mouse_wheel(event.delta_y());

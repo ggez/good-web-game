@@ -1,4 +1,4 @@
-use cgmath::{EuclideanSpace, Point2, Vector2};
+use mint::{Point2, Vector2};
 
 use crate::graphics::{Color, Rect, WHITE};
 
@@ -27,10 +27,10 @@ impl Default for DrawParam {
     fn default() -> Self {
         DrawParam {
             src: Rect::one(),
-            dest: Point2::origin(),
+            dest: [0.0, 0.0].into(),
             rotation: 0.0,
-            scale: Vector2::new(1.0, 1.0),
-            offset: Point2::new(0.0, 0.0),
+            scale: [1.0, 1.0].into(),
+            offset: [0.0, 0.0].into(),
             color: WHITE,
         }
     }
@@ -53,8 +53,7 @@ impl DrawParam {
     where
         P: Into<mint::Point2<f32>>,
     {
-        let p: mint::Point2<f32> = dest.into();
-        self.dest = Point2::from(p);
+        self.dest = dest.into();
         self
     }
 
@@ -76,8 +75,7 @@ impl DrawParam {
     where
         V: Into<mint::Vector2<f32>>,
     {
-        let p: mint::Vector2<f32> = scale.into();
-        self.scale = Vector2::from(p);
+        self.scale = scale.into();
         self
     }
 
@@ -86,8 +84,7 @@ impl DrawParam {
     where
         P: Into<mint::Point2<f32>>,
     {
-        let p: mint::Point2<f32> = offset.into();
-        self.offset = Point2::from(p);
+        self.offset = offset.into();
         self
     }
 }

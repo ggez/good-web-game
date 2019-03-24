@@ -182,8 +182,8 @@ impl Drawable for Text {
 
         ctx.gfx_context.canvas_context.draw_label(
             &self.fragment.text,
-            param.dest,
-            Some(param.scale),
+            param.dest.into(),
+            Some(param.scale.into()),
             font.as_ref().map(|s| &**s),
             Some(&Into::<String>::into(param.color)),
         );

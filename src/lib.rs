@@ -1,4 +1,5 @@
 pub mod conf;
+pub mod error;
 pub mod event;
 pub mod filesystem;
 pub mod goodies;
@@ -7,10 +8,10 @@ pub mod input;
 pub mod timer;
 
 mod context;
-mod error;
 
 pub use crate::{
-    context::Context, error::GameResult, goodies::console, goodies::matrix_transform_2d,
+    context::Context, error::GameError, error::GameResult, goodies::console,
+    goodies::matrix_transform_2d,
 };
 pub use cgmath;
 

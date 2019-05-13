@@ -75,8 +75,8 @@ impl Drawable for Image {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
         if let Some(ref texture) = self.texture {
             ctx.gfx_context.webgl_context.draw_image(
-                param.dest,
-                param.scale,
+                param.dest.into(),
+                param.scale.into(),
                 Vector2::new(self.width as f32, self.height as f32),
                 param.color,
                 texture,

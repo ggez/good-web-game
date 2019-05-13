@@ -53,4 +53,11 @@ impl Context {
     pub fn canvas_context(&self) -> &graphics::CanvasContext {
         &self.gfx_context.canvas_context
     }
+
+    pub fn webgl_context(&self) -> &graphics::WebGlContext {
+        &self.gfx_context.webgl_context
+    }
+    pub fn webgl_context_mut(&mut self) -> &mut graphics::WebGlContext {
+        &mut self.gfx_context.webgl_context
+    }
 }

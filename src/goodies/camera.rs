@@ -1,4 +1,4 @@
-use cgmath::{Matrix3, Point2, Rad, SquareMatrix, Transform, Vector2};
+use cgmath::{Matrix3, Matrix4, Point2, Rad, SquareMatrix, Transform, Vector2};
 
 use crate::goodies::matrix_transform_2d::*;
 
@@ -10,7 +10,8 @@ pub struct Camera {
     pub screen_width: f32,
     pub screen_height: f32,
 
-    matrix: Matrix3<f32>,
+    canvas_matrix: Matrix3<f32>,
+    gl_matrix: Matrix4<f32>,
 }
 
 impl Default for Camera {
@@ -21,18 +22,19 @@ impl Default for Camera {
             rotation: 0.,
             screen_width: 100.,
             screen_height: 100.,
-            matrix: Matrix3::identity(),
+            canvas_matrix: Matrix3::identity(),
+            gl_matrix: Matrix4::identity(),
         }
     }
 }
 
 impl Camera {
     pub fn screen_to_world_point(&self, point: Point2<f32>) -> Point2<f32> {
-        self.matrix.invert().unwrap().transform_point(point)
+        self.canvas_matrix.invert().unwrap().transform_point(point)
     }
 
     pub fn screen_to_world_vector(&self, vector: Vector2<f32>) -> Vector2<f32> {
-        let matrix = self.matrix.invert().unwrap();
+        let matrix = self.canvas_matrix.invert().unwrap();
 
         Transform::<Point2<f32>>::transform_vector(&matrix, vector)
     }
@@ -50,15 +52,19 @@ impl Camera {
     }
 
     pub fn world_to_screen_point(&self, point: Point2<f32>) -> Point2<f32> {
-        self.matrix.transform_point(point)
+        self.canvas_matrix.transform_point(point)
     }
 
     pub fn world_to_screen_vector(&self, vector: Vector2<f32>) -> Vector2<f32> {
-        Transform::<Point2<f32>>::transform_vector(&self.matrix, vector)
+        Transform::<Point2<f32>>::transform_vector(&self.canvas_matrix, vector)
     }
 
-    pub fn matrix(&self) -> Matrix3<f32> {
-        self.matrix
+    pub fn canvas_matrix(&self) -> Matrix3<f32> {
+        self.canvas_matrix
+    }
+
+    pub fn gl_matrix(&self) -> Matrix4<f32> {
+        self.gl_matrix
     }
 
     pub fn set_position(&mut self, position: Point2<f32>) {
@@ -80,6 +86,17 @@ impl Camera {
 
         let rotation = Matrix3::from_angle_z(Rad(self.rotation));
 
-        self.matrix = translate0 * rotation * scale * translate1;
+        self.canvas_matrix = translate0 * rotation * scale * translate1;
+
+        self.gl_matrix = cgmath::ortho(
+            camera_center.x - self.visible_field_width / 2.,
+            camera_center.x + self.visible_field_width / 2.,
+            camera_center.y
+                + self.screen_height / self.screen_width * self.visible_field_width / 2.,
+            camera_center.y
+                - self.screen_height / self.screen_width * self.visible_field_width / 2.,
+            -1.0,
+            1.0,
+        );
     }
 }

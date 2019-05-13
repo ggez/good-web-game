@@ -59,6 +59,7 @@ pub mod widgets {
         size: Vector2<f32>,
         close_button: bool,
         enabled: bool,
+        force_focus: bool,
         label: Option<String>,
     }
 
@@ -70,6 +71,7 @@ pub mod widgets {
                 size,
                 close_button: false,
                 enabled: true,
+                force_focus: false,
                 label: None,
             }
         }
@@ -92,6 +94,13 @@ pub mod widgets {
             Window { enabled, ..self }
         }
 
+        pub fn force_focus(self, force_focus: bool) -> Window {
+            Window {
+                force_focus,
+                ..self
+            }
+        }
+
         pub fn ui<F: FnOnce(&mut Ui)>(self, ui: &mut Ui, f: F) -> bool {
             let id = self.id;
             let window = super::Window {
@@ -99,6 +108,7 @@ pub mod widgets {
                 rect: super::Rect::new(self.position.x, self.position.y, self.size.x, self.size.y),
                 close_button: self.close_button,
                 enabled: self.enabled,
+                force_focus: self.force_focus,
             };
 
             // special case for first window frame
@@ -172,19 +182,13 @@ impl Widget {
             _ => panic!("not a window"),
         }
     }
-
-    fn unwrap_window_mut(&mut self) -> &mut Window {
-        match self {
-            Widget::Window(window) => window,
-            _ => panic!("not a window"),
-        }
-    }
 }
 
 struct Window {
     label: String,
     rect: Rect,
     close_button: bool,
+    force_focus: bool,
     enabled: bool,
 }
 
@@ -216,7 +220,7 @@ mod consts {
     pub const WINDOW_BORDER_INACTIVE: &'static str = "#6668";
     pub const GROUP_BORDER_FOCUSED_HOVERED: &'static str = "#2924";
     pub const GROUP_BORDER_FOCUSED: &'static str = "#2224";
-    pub const GROUP_BORDER_FOCUSED_HIGHLIGHT: &'static str = "#22e7";
+    pub const GROUP_BORDER_FOCUSED_HIGHLIGHT: &'static str = "#22ff";
     pub const GROUP_BORDER_INACTIVE_HOVERED: &'static str = "#1812";
     pub const GROUP_BORDER_INACTIVE: &'static str = "#1112";
     pub const BUTTON_BACKGROUND_FOCUSED_CLICKED: &'static str = "#bbbe";
@@ -680,10 +684,11 @@ impl Ui {
         self.input.mouse_position = position;
     }
 
+    pub fn is_dragging(&self) -> bool {
+        self.dragging.is_some()
+    }
+
     pub fn is_mouse_over(&self, mouse: Point2<f32>) -> bool {
-        if self.dragging.is_some() {
-            return true;
-        }
         for window in self.windows_focus_queue.iter() {
             let element = &self.tree.elements[window];
 
@@ -725,7 +730,9 @@ impl Ui {
         }
 
         for window in self.windows_focus_queue.iter().rev() {
-            let enabled = self.tree.elements[window].widget.unwrap_window().enabled;
+            let widget = self.tree.elements[window].widget.unwrap_window();
+            let force_focus = widget.force_focus;
+            let enabled = widget.enabled;
 
             let mut cursor = Cursor::new(Rect::new(0., 0., 0., 0.));
             draw_element(
@@ -736,7 +743,8 @@ impl Ui {
                     input: &self.input,
                     dragging: &mut self.dragging,
                     hovered: Some(&mut self.hovered),
-                    focused: enabled & self.focused.as_ref().map_or(false, |w| w == window),
+                    focused: force_focus
+                        || (enabled & self.focused.as_ref().map_or(false, |w| w == window)),
                     scroll_bars: &mut self.scroll_bars,
                     toggles: &mut self.toggles,
                 },

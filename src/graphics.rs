@@ -9,7 +9,12 @@ use crate::error::GameResult;
 use crate::Context;
 
 pub use self::{
-    context::{canvas::*, CanvasContext, GraphicsContext, WebGlContext},
+    context::{
+        canvas::CanvasContext,
+        canvas::*,
+        webgl::{ShaderObject, Uniform, WebGlContext},
+        GraphicsContext,
+    },
     drawparam::DrawParam,
     image::*,
     shader::*,

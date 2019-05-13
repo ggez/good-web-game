@@ -1,6 +1,6 @@
 use stdweb::{unstable::*, web::html_element::*, web::*};
 
-use cgmath::{Matrix4, Point2, Vector2, Vector3};
+use cgmath::{Matrix4, Point2, Vector2, Vector3, Rad};
 use webgl_stdweb::{
     GLenum, WebGLBuffer, WebGLProgram, WebGLRenderingContext, WebGLRenderingContext as gl,
     WebGLShader, WebGLTexture, WebGLUniformLocation,
@@ -84,6 +84,12 @@ pub trait UniformValue: Clone + PartialEq {
     fn set(self, ctx: &WebGLRenderingContext, location: &WebGLUniformLocation);
 }
 
+impl UniformValue for f32 {
+    fn set(self, ctx: &WebGLRenderingContext, location: &WebGLUniformLocation) {
+        ctx.uniform1f(Some(location), self);
+    }
+}
+
 impl UniformValue for Matrix4<f32> {
     fn set(self, ctx: &WebGLRenderingContext, location: &WebGLUniformLocation) {
         let matrix: [f32; 16] = unsafe { std::mem::transmute(self) };
@@ -118,7 +124,9 @@ impl<T: UniformValue> Uniform<T> {
         name: &str,
         value: T,
     ) -> Uniform<T> {
-        let location = ctx.get_uniform_location(program, name).unwrap();
+        let location = ctx
+            .get_uniform_location(program, name)
+            .expect(&format!("Cant get \"{}\" uniform location", name));
 
         value.clone().set(ctx, &location);
 
@@ -137,7 +145,51 @@ pub struct UniformsState {
     model: Uniform<Matrix4<f32>>,
     projection: Uniform<Matrix4<f32>>,
     color: Uniform<Color>,
-    texture: Uniform<Texture>,
+    texture: Option<Uniform<Texture>>,
+}
+
+pub struct ShaderObject {
+    pub program: WebGLProgram,
+    pub uniforms: UniformsState,
+}
+
+impl ShaderObject {
+    pub fn apply(
+        &mut self,
+        gl_ctx: &WebGLRenderingContext,
+        projection: Matrix4<f32>,
+        model: Matrix4<f32>,
+        color: Color,
+        texture: Option<Texture>,
+    ) {
+        let pos_attrib = gl_ctx.get_attrib_location(&self.program, "position") as u32;
+        let stride_distance = (2 * std::mem::size_of::<f32>()) as i32;
+        gl_ctx.vertex_attrib_pointer(pos_attrib, 2, gl::FLOAT, false, stride_distance, 0);
+        gl_ctx.enable_vertex_attrib_array(pos_attrib);
+
+        gl_ctx.use_program(Some(&self.program));
+
+        self.uniforms.projection.update(gl_ctx, projection);
+        self.uniforms.model.update(gl_ctx, model);
+        self.uniforms.color.update(gl_ctx, color);
+        if let Some(texture) = texture {
+            let program = &self.program;
+            self.uniforms
+                .texture
+                .get_or_insert_with(|| Uniform::new(&gl_ctx, &program, "Texture", texture.clone()))
+                .update(gl_ctx, texture.clone());
+        }
+    }
+
+    pub fn set_uniform<T: UniformValue>(
+        &mut self,
+        gl_ctx: &WebGLRenderingContext,
+        name: &str,
+        uniform: T,
+    ) {
+        let location = gl_ctx.get_uniform_location(&self.program, name).unwrap();
+        uniform.set(gl_ctx, &location);
+    }
 }
 
 pub struct WebGlContext {
@@ -145,7 +197,7 @@ pub struct WebGlContext {
     pub gl_ctx: WebGLRenderingContext,
     pub screen_rect: Rect,
     pub projection: Matrix4<f32>,
-    uniforms: UniformsState,
+    sprite_shader: ShaderObject,
 }
 
 fn get_context(canvas: &CanvasElement) -> WebGLRenderingContext {
@@ -159,7 +211,7 @@ fn get_context(canvas: &CanvasElement) -> WebGLRenderingContext {
 impl WebGlContext {
     pub fn new(canvas: CanvasElement) -> WebGlContext {
         let gl_ctx: WebGLRenderingContext = get_context(&canvas);
-        let sprite_shader = init_shader_program(&gl_ctx);
+        let sprite_shader = load_shader_object(&gl_ctx, &VERTEX_SHADER, &FRAGMENT_SHADER);
         let quad = create_quad(&gl_ctx);
         let projection = cgmath::One::one();
         let screen_rect = Rect::new(-1., -1., 2., 2.);
@@ -170,32 +222,12 @@ impl WebGlContext {
 
         gl_ctx.bind_buffer(gl::ARRAY_BUFFER, Some(&quad));
 
-        let pos_attrib = gl_ctx.get_attrib_location(&sprite_shader, "position") as u32;
-        let stride_distance = (2 * std::mem::size_of::<f32>()) as i32;
-        gl_ctx.vertex_attrib_pointer(pos_attrib, 2, gl::FLOAT, false, stride_distance, 0);
-        gl_ctx.enable_vertex_attrib_array(pos_attrib);
-
-        gl_ctx.use_program(Some(&sprite_shader));
-
-        let default_texture = Texture::from_rgba8_gl(&gl_ctx, 1, 1, &[255, 0, 0, 255]);
-
-        let model_uniform = Uniform::new(&gl_ctx, &sprite_shader, "Model", cgmath::One::one());
-        let projection_uniform =
-            Uniform::new(&gl_ctx, &sprite_shader, "Projection", cgmath::One::one());
-        let color_uniform = Uniform::new(&gl_ctx, &sprite_shader, "Color", [0., 0., 0., 0.].into());
-        let texture_uniform = Uniform::new(&gl_ctx, &sprite_shader, "Texture", default_texture);
-
         WebGlContext {
             canvas,
             gl_ctx,
             projection,
             screen_rect,
-            uniforms: UniformsState {
-                model: model_uniform,
-                projection: projection_uniform,
-                color: color_uniform,
-                texture: texture_uniform,
-            },
+            sprite_shader,
         }
     }
 
@@ -205,14 +237,14 @@ impl WebGlContext {
             .clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
     }
 
+    pub fn set_projection_matrix(&mut self, transform: Matrix4<f32>) {
+        self.projection = transform;
+    }
+
     pub(crate) fn set_projection_rect(&mut self, rect: Rect) {
         self.screen_rect = rect;
         self.projection =
             cgmath::ortho(rect.x, rect.x + rect.w, rect.y + rect.h, rect.y, -1.0, 1.0);
-
-        self.uniforms
-            .projection
-            .update(&self.gl_ctx, self.projection);
     }
 
     pub(crate) fn resize(&self, w: u32, h: u32) {
@@ -231,28 +263,77 @@ impl WebGlContext {
         let pos = Matrix4::from_translation(Vector3::new(dest.x, dest.y, 0.));
         let transform = pos * scale;
 
-        self.uniforms.model.update(&self.gl_ctx, transform);
-        self.uniforms.color.update(&self.gl_ctx, color);
-        self.uniforms.texture.update(&self.gl_ctx, texture.clone());
+        self.sprite_shader.apply(
+            &self.gl_ctx,
+            self.projection,
+            transform,
+            color,
+            Some(texture.clone()),
+        );
 
         self.gl_ctx.draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
     }
+
+    pub fn draw_rect(
+        &self,
+        dest: Point2<f32>,
+        scale: Vector2<f32>,
+        size: Vector2<f32>,
+        angle: f32,
+        color: Color,
+        shader: &mut ShaderObject,
+    ) {
+        let scale = Matrix4::from_nonuniform_scale(scale.x * size.x, scale.y * size.y, 0.);
+        let pos = Matrix4::from_translation(Vector3::new(dest.x + size.x / 2., dest.y + size.y / 2., 0.));
+        let rot = Matrix4::from_angle_z(Rad(angle));
+        let pos0 = Matrix4::from_translation(Vector3::new(-size.x / 2., -size.y / 2., 0.));
+        let transform = pos * rot * pos0 * scale;
+
+        shader.apply(&self.gl_ctx, self.projection, transform, color, None);
+
+        self.gl_ctx.draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
+    }
+
+    pub fn load_shader_object(&self, vertex_shader: &str, fragment_shader: &str) -> ShaderObject {
+        load_shader_object(&self.gl_ctx, vertex_shader, fragment_shader)
+    }
 }
 
-pub fn init_shader_program(ctx: &WebGLRenderingContext) -> WebGLProgram {
-    let vertex_shader = load_shader(ctx, gl::VERTEX_SHADER, VERTEX_SHADER);
-    let fragment_shader = load_shader(ctx, gl::FRAGMENT_SHADER, FRAGMENT_SHADER);
+fn load_shader_object(
+    ctx: &WebGLRenderingContext,
+    vertex_shader: &str,
+    fragment_shader: &str,
+) -> ShaderObject {
+    let vertex_shader = load_shader(ctx, gl::VERTEX_SHADER, vertex_shader);
+    let fragment_shader = load_shader(ctx, gl::FRAGMENT_SHADER, fragment_shader);
 
-    let program = ctx.create_program().unwrap();
+    let program = ctx.create_program().expect("Cant create program");
     ctx.attach_shader(&program, &vertex_shader);
     ctx.attach_shader(&program, &fragment_shader);
     ctx.link_program(&program);
 
     if ctx.get_program_parameter(&program, gl::LINK_STATUS) == false {
-        panic!(ctx.get_program_info_log(&program));
+        if let Some(error) = ctx.get_program_info_log(&program) {
+            crate::console::log(&error);
+        }
+        panic!("cant link shader!");
     }
 
-    program
+    ctx.use_program(Some(&program));
+
+    let model_uniform = Uniform::new(&ctx, &program, "Model", cgmath::One::one());
+    let projection_uniform = Uniform::new(&ctx, &program, "Projection", cgmath::One::one());
+    let color_uniform = Uniform::new(&ctx, &program, "Color", [0., 0., 0., 0.].into());
+
+    ShaderObject {
+        program,
+        uniforms: UniformsState {
+            model: model_uniform,
+            projection: projection_uniform,
+            color: color_uniform,
+            texture: None,
+        },
+    }
 }
 
 pub fn load_shader(ctx: &WebGLRenderingContext, shader_type: GLenum, source: &str) -> WebGLShader {
@@ -262,7 +343,10 @@ pub fn load_shader(ctx: &WebGLRenderingContext, shader_type: GLenum, source: &st
     ctx.compile_shader(&shader);
 
     if ctx.get_shader_parameter(&shader, gl::COMPILE_STATUS) == false {
-        panic!(ctx.get_shader_info_log(&shader));
+        if let Some(error) = ctx.get_shader_info_log(&shader) {
+            crate::console::log(&error);
+        }
+        panic!("cant compile shader!");
     }
 
     shader

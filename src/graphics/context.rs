@@ -6,7 +6,7 @@ use cgmath::Matrix3;
 pub(crate) mod canvas;
 pub(crate) mod webgl;
 
-pub use self::{canvas::CanvasContext, webgl::WebGlContext};
+use self::{canvas::CanvasContext, webgl::WebGlContext};
 
 pub struct GraphicsContext {
     pub canvas_context: CanvasContext,
@@ -54,16 +54,16 @@ impl GraphicsContext {
         &self.canvas_context.canvas
     }
 
-    pub fn set_transform(&self, transform: &Matrix3<f32>) {
-        self.canvas_context.set_transform(transform);
+    pub fn set_transform(&mut self, _transform: &Matrix3<f32>) {
+        unimplemented!();
     }
 
-    pub fn push_transform(&self, transform: &Matrix3<f32>) {
-        self.canvas_context.push_transform(transform);
+    pub fn push_transform(&mut self, _transform: &Matrix3<f32>) {
+        unimplemented!();
     }
 
-    pub fn pop_transform(&self) {
-        self.canvas_context.pop_transform();
+    pub fn pop_transform(&mut self) {
+        unimplemented!();
     }
 
     pub fn size(&self) -> (f64, f64) {

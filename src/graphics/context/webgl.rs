@@ -1,12 +1,15 @@
 use stdweb::{unstable::*, web::html_element::*, web::*};
 
-use cgmath::{Matrix4, Point2, Vector2, Vector3, Rad};
+use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4, Rad};
 use webgl_stdweb::{
     GLenum, WebGLBuffer, WebGLProgram, WebGLRenderingContext, WebGLRenderingContext as gl,
     WebGLShader, WebGLTexture, WebGLUniformLocation,
 };
 
 use crate::graphics::types::{Color, Rect};
+
+pub const LINEAR_FILTER: i32 = gl::LINEAR as i32;
+pub const NEAREST_FILTER: i32 = gl::NEAREST as i32;
 
 #[derive(Clone, Debug)]
 pub struct Texture {
@@ -37,6 +40,7 @@ impl Texture {
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
         Texture { texture }
     }
@@ -75,8 +79,17 @@ impl Texture {
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
         Texture { texture }
+    }
+
+    pub(crate) fn set_filter(&self, context: &mut crate::Context, filter: i32) {
+        let gl_ctx = &mut context.gfx_context.webgl_context.gl_ctx;
+        gl_ctx.bind_texture(gl::TEXTURE_2D, Some(&self.texture));
+
+        gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, filter);
+        gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, filter);
     }
 }
 
@@ -94,6 +107,13 @@ impl UniformValue for Matrix4<f32> {
     fn set(self, ctx: &WebGLRenderingContext, location: &WebGLUniformLocation) {
         let matrix: [f32; 16] = unsafe { std::mem::transmute(self) };
         ctx.uniform_matrix4fv(Some(location), false, &matrix[..]);
+    }
+}
+
+impl UniformValue for Vector4<f32> {
+    fn set(self, ctx: &WebGLRenderingContext, location: &WebGLUniformLocation) {
+        let vec4: [f32; 4] = self.into();
+        ctx.uniform4fv(Some(location), &vec4[..]);
     }
 }
 
@@ -144,6 +164,7 @@ impl<T: UniformValue> Uniform<T> {
 pub struct UniformsState {
     model: Uniform<Matrix4<f32>>,
     projection: Uniform<Matrix4<f32>>,
+    source: Uniform<Vector4<f32>>,
     color: Uniform<Color>,
     texture: Option<Uniform<Texture>>,
 }
@@ -159,6 +180,7 @@ impl ShaderObject {
         gl_ctx: &WebGLRenderingContext,
         projection: Matrix4<f32>,
         model: Matrix4<f32>,
+        source: Vector4<f32>,
         color: Color,
         texture: Option<Texture>,
     ) {
@@ -172,6 +194,7 @@ impl ShaderObject {
         self.uniforms.projection.update(gl_ctx, projection);
         self.uniforms.model.update(gl_ctx, model);
         self.uniforms.color.update(gl_ctx, color);
+        self.uniforms.source.update(gl_ctx, source);
         if let Some(texture) = texture {
             let program = &self.program;
             self.uniforms
@@ -254,19 +277,20 @@ impl WebGlContext {
     pub fn draw_image(
         &mut self,
         dest: Point2<f32>,
-        scale: Vector2<f32>,
         size: Vector2<f32>,
+        source: Vector4<f32>,
         color: Color,
         texture: &Texture,
     ) {
-        let scale = Matrix4::from_nonuniform_scale(scale.x * size.x, scale.y * size.y, 0.);
+        let size = Matrix4::from_nonuniform_scale(size.x, size.y, 0.);
         let pos = Matrix4::from_translation(Vector3::new(dest.x, dest.y, 0.));
-        let transform = pos * scale;
+        let transform = pos * size;
 
         self.sprite_shader.apply(
             &self.gl_ctx,
             self.projection,
             transform,
+            source,
             color,
             Some(texture.clone()),
         );
@@ -289,7 +313,7 @@ impl WebGlContext {
         let pos0 = Matrix4::from_translation(Vector3::new(-size.x / 2., -size.y / 2., 0.));
         let transform = pos * rot * pos0 * scale;
 
-        shader.apply(&self.gl_ctx, self.projection, transform, color, None);
+        shader.apply(&self.gl_ctx, self.projection, transform, [0., 0., 1., 1.].into(), color, None);
 
         self.gl_ctx.draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
     }
@@ -323,6 +347,7 @@ fn load_shader_object(
 
     let model_uniform = Uniform::new(&ctx, &program, "Model", cgmath::One::one());
     let projection_uniform = Uniform::new(&ctx, &program, "Projection", cgmath::One::one());
+    let source_uniform = Uniform::new(&ctx, &program, "Source", [0., 0., 1., 1.].into());
     let color_uniform = Uniform::new(&ctx, &program, "Color", [0., 0., 0., 0.].into());
 
     ShaderObject {
@@ -330,6 +355,7 @@ fn load_shader_object(
         uniforms: UniformsState {
             model: model_uniform,
             projection: projection_uniform,
+            source: source_uniform,
             color: color_uniform,
             texture: None,
         },
@@ -368,15 +394,16 @@ varying lowp vec2 uv;
 
 uniform mat4 Projection;
 uniform mat4 Model;
+uniform vec4 Source;
 uniform vec4 Color;
 
 void main() {
     gl_Position = Projection * Model * vec4(position, 0, 1);
     color = Color;
-    uv = position;
+    uv = position * Source.zw + Source.xy;
 }"#;
 
-const FRAGMENT_SHADER: &str = r#"    
+const FRAGMENT_SHADER: &str = r#"
 varying lowp vec4 color;
 varying lowp vec2 uv;
 

@@ -1,12 +1,12 @@
-use cgmath::Vector2;
-use std::path;
+use cgmath::{Point2, Vector2, Vector4};
+use std::{path, cell::Cell};
 use stdweb::web::html_element::ImageElement;
 
 use crate::{
     error::{GameError, GameResult},
     filesystem,
     filesystem::File,
-    graphics::{context::webgl::Texture, BlendMode, DrawParam, Drawable, Rect},
+    graphics::{context::webgl::{Texture, NEAREST_FILTER, LINEAR_FILTER}, BlendMode, DrawParam, Drawable, Rect},
     Context,
 };
 
@@ -15,6 +15,14 @@ pub struct Image {
     texture: Option<Texture>,
     width: u16,
     height: u16,
+    filter: FilterMode,
+    dirty_filter: Cell<bool>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum FilterMode {
+    Linear = LINEAR_FILTER as isize,
+    Nearest = NEAREST_FILTER as isize,
 }
 
 impl Image {
@@ -23,6 +31,8 @@ impl Image {
             texture: Some(Texture::new(context, image_element.clone())),
             width: image_element.width() as u16,
             height: image_element.height() as u16,
+            filter: FilterMode::Linear,
+            dirty_filter: Cell::new(false),
         }
     }
 
@@ -46,6 +56,8 @@ impl Image {
                 texture: None,
                 width: width,
                 height: height,
+                filter: FilterMode::Linear,
+                dirty_filter: Cell::new(false),
             });
         }
         let texture = Some(Texture::from_rgba8(ctx, width, height, bytes));
@@ -54,6 +66,8 @@ impl Image {
             texture,
             width,
             height,
+            filter: FilterMode::Linear,
+            dirty_filter: Cell::new(false),
         })
     }
 
@@ -69,15 +83,35 @@ impl Image {
     pub fn dimensions(&self) -> Rect {
         Rect::new(0.0, 0.0, self.width() as f32, self.height() as f32)
     }
+
+    pub fn set_filter(&mut self, filter: FilterMode) {
+        self.dirty_filter.set(true);
+        self.filter = filter;
+    }
+
+    pub fn filter(&self) -> FilterMode {
+        self.filter
+    }
 }
 
 impl Drawable for Image {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
         if let Some(ref texture) = self.texture {
+            if self.dirty_filter.get() {
+                self.dirty_filter.set(false);
+
+                texture.set_filter(ctx, self.filter as i32);
+            }
+
+            let real_size = Vector2::new(param.src.w * self.width as f32, param.src.h * self.height as f32);
+
             ctx.gfx_context.webgl_context.draw_image(
-                param.dest.into(),
-                param.scale.into(),
-                Vector2::new(self.width as f32, self.height as f32),
+                Point2::new(
+                    param.dest.x - real_size.x * param.offset.x * param.scale.x,
+                    param.dest.y - real_size.y * param.offset.y * param.scale.y,
+                ),
+                Vector2::new(real_size.x * param.scale.x, real_size.y * param.scale.y),
+                Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
                 param.color,
                 texture,
             );

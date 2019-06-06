@@ -62,8 +62,6 @@ impl CanvasContext {
     }
 
     pub fn set_screen_coordinates(&mut self, rect: Rect) {
-        use cgmath::Matrix3;
-
         let (width, height) = self.size();
         let translate = Matrix3::from_translation(Vector2::new(-rect.x, -rect.y));
         let scale = Matrix3::from_nonuniform_scale(width as f32 / rect.w, height as f32 / rect.h);

@@ -122,6 +122,49 @@ impl Rect {
         self.w *= sx;
         self.h *= sy;
     }
+
+    /// Returns a new `Rect` that includes all points of these two `Rect`s.
+    pub fn combine_with(self, other: Rect) -> Rect {
+        let x = f32::min(self.x, other.x);
+        let y = f32::min(self.y, other.y);
+        let w = f32::max(self.right(), other.right()) - x;
+        let h = f32::max(self.bottom(), other.bottom()) - y;
+        Rect { x, y, w, h }
+    }
+
+    /// Calculated the new Rect around the rotated one.
+    pub fn rotate(&mut self, rotation: f32) {
+        use cgmath::{Basis2, Rotation, Rotation2};
+
+        let rotation: Basis2<f32> = Rotation2::from_angle(cgmath::Rad(rotation));
+        let x0 = self.x;
+        let y0 = self.y;
+        let x1 = self.right();
+        let y1 = self.bottom();
+        let points = [
+            rotation.rotate_point(cgmath::Point2::new(x0, y0)),
+            rotation.rotate_point(cgmath::Point2::new(x0, y1)),
+            rotation.rotate_point(cgmath::Point2::new(x1, y0)),
+            rotation.rotate_point(cgmath::Point2::new(x1, y1)),
+        ];
+        let p0 = points[0];
+        let mut x_max = p0.x;
+        let mut x_min = p0.x;
+        let mut y_max = p0.y;
+        let mut y_min = p0.y;
+        for p in &points {
+            x_max = f32::max(x_max, p.x);
+            x_min = f32::min(x_min, p.x);
+            y_max = f32::max(y_max, p.y);
+            y_min = f32::min(y_min, p.y);
+        }
+        *self = Rect {
+            w: x_max - x_min,
+            h: y_max - y_min,
+            x: x_min,
+            y: y_min,
+        }
+    }
 }
 
 impl From<[f32; 4]> for Rect {

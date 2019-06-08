@@ -8,7 +8,7 @@ use std::fmt;
 pub enum GameError {
     /// Something went wrong trying to read from a file
     IOError(std::io::Error),
-    UnknownError(String),
+    UnknownError(&'static str),
 }
 
 impl fmt::Display for GameError {

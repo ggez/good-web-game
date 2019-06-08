@@ -3,7 +3,7 @@ use stdweb::{unstable::*, web::html_element::*, web::*};
 use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4, Rad};
 use webgl_stdweb::{
     GLenum, WebGLBuffer, WebGLProgram, WebGLRenderingContext, WebGLRenderingContext as gl,
-    WebGLShader, WebGLTexture, WebGLUniformLocation,
+    WebGLShader, WebGLTexture, WebGLUniformLocation, WebGLFramebuffer,
 };
 
 use crate::graphics::types::{Color, Rect};
@@ -27,7 +27,7 @@ impl Texture {
         let gl_ctx = &mut context.gfx_context.webgl_context.gl_ctx;
 
         let texture = gl_ctx.create_texture().unwrap();
-        gl_ctx.active_texture(gl::TEXTURE0);
+        // gl_ctx.active_texture(gl::TEXTURE0);
         gl_ctx.bind_texture(gl::TEXTURE_2D, Some(&texture));
         gl_ctx.tex_image2_d_1(
             gl::TEXTURE_2D,
@@ -49,7 +49,7 @@ impl Texture {
         context: &mut crate::Context,
         width: u16,
         height: u16,
-        bytes: &[u8],
+        bytes: Option<&[u8]>,
     ) -> Texture {
         let gl_ctx = &context.gfx_context.webgl_context.gl_ctx;
 
@@ -60,7 +60,7 @@ impl Texture {
         gl_ctx: &WebGLRenderingContext,
         width: u16,
         height: u16,
-        bytes: &[u8],
+        bytes: Option<&[u8]>,
     ) -> Texture {
         let texture = gl_ctx.create_texture().unwrap();
         gl_ctx.active_texture(gl::TEXTURE0);
@@ -74,7 +74,7 @@ impl Texture {
             0,
             gl::RGBA,
             gl::UNSIGNED_BYTE,
-            Some(bytes),
+            bytes,
         );
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
@@ -90,6 +90,28 @@ impl Texture {
 
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, filter);
         gl_ctx.tex_parameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, filter);
+    }
+}
+
+pub struct Framebuffer {
+    fb: WebGLFramebuffer,
+}
+
+impl Framebuffer {
+    pub fn new(context: &mut crate::Context, texture: &Texture) -> Option<Framebuffer> {
+        let gl_ctx = &mut context.gfx_context.webgl_context.gl_ctx;
+
+        let tex = &texture.texture;
+        let fb = gl_ctx.create_framebuffer()?;
+
+        gl_ctx.bind_texture(gl::TEXTURE_2D, Some(tex));
+        gl_ctx.bind_framebuffer(gl::FRAMEBUFFER, Some(&fb));
+        gl_ctx.framebuffer_texture2_d(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, Some(tex), 0);
+        gl_ctx.bind_framebuffer(gl::FRAMEBUFFER, None);
+
+        Some(Framebuffer {
+            fb
+        })
     }
 }
 
@@ -272,6 +294,10 @@ impl WebGlContext {
 
     pub(crate) fn resize(&self, w: u32, h: u32) {
         self.gl_ctx.viewport(0, 0, w as i32, h as i32);
+    }
+
+    pub(crate) fn set_framebuffer(&self, fb: Option<&Framebuffer>) {
+        self.gl_ctx.bind_framebuffer(gl::FRAMEBUFFER, fb.map(|fb| &fb.fb));
     }
 
     pub fn draw_image(

@@ -18,7 +18,9 @@ impl Canvas {
         height: u16,
         samples: NumSamples
     ) -> GameResult<Canvas> {
-        let texture = Texture::from_rgba8(ctx, width, height, None);
+        let dummy = vec![255; usize::from(width) * usize::from(height) * 4];
+
+        let texture = Texture::from_rgba8(ctx, width, height, Some(&dummy));
         let framebuffer = Framebuffer::new(ctx, &texture)
                             .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
         let image = Image::from_texture(width, height, Some(texture));
@@ -36,7 +38,12 @@ impl Canvas {
 
 impl Drawable for Canvas {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        self.image.draw(ctx, param)
+        // Gotta flip the image on the Y axis here
+        // to account for OpenGL's origin being at the bottom-left.
+        let mut flipped_param = param;
+        flipped_param.scale.y *= -1.0;
+        flipped_param.dest.y += self.image.height() as f32 * param.scale.y;
+        self.image.draw(ctx, flipped_param)
     }
 
     fn set_blend_mode(&mut self, blend_mode: Option<BlendMode>) {

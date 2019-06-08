@@ -27,7 +27,7 @@ impl Texture {
         let gl_ctx = &mut context.gfx_context.webgl_context.gl_ctx;
 
         let texture = gl_ctx.create_texture().unwrap();
-        // gl_ctx.active_texture(gl::TEXTURE0);
+        gl_ctx.active_texture(gl::TEXTURE0);
         gl_ctx.bind_texture(gl::TEXTURE_2D, Some(&texture));
         gl_ctx.tex_image2_d_1(
             gl::TEXTURE_2D,

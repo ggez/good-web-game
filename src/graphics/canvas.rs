@@ -60,10 +60,6 @@ impl Canvas {
         // than the default; does that matter?
         self.image
     }
-
-    fn dimensions(&self) -> Rect {
-        self.image.dimensions()
-    }
 }
 
 impl Drawable for Canvas {
@@ -85,7 +81,7 @@ impl Drawable for Canvas {
     }
 
     fn dimensions(&self, _: &mut Context) -> Option<Rect> {
-        Some(self.dimensions())
+        Some(self.image.dimensions())
     }
 }
 
@@ -94,7 +90,7 @@ impl Drawable for Canvas {
 pub fn set_canvas(ctx: &mut Context, target: Option<&Canvas>) {
     let (width, height) = target.map(|canvas| {
         // Use dimensions of the image bound to framebuffer
-        let rect = canvas.dimensions();
+        let rect = canvas.image().dimensions();
 
         (rect.w as u32, rect.h as u32)
     }).unwrap_or_else(|| {

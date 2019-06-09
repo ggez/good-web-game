@@ -4,6 +4,7 @@ mod image;
 mod shader;
 mod text;
 mod types;
+mod canvas;
 
 pub mod spritebatch;
 
@@ -16,6 +17,10 @@ pub use self::{
         canvas::*,
         webgl::{ShaderObject, Uniform, WebGlContext},
         GraphicsContext,
+    },
+    canvas::{
+        Canvas,
+        set_canvas,
     },
     drawparam::DrawParam,
     image::*,

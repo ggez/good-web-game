@@ -31,3 +31,20 @@ pub struct Conf {
     #[default(Loading::No)]
     pub loading: Loading,
 }
+
+/// The possible number of samples for multisample anti-aliasing.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum NumSamples {
+    /// Multisampling disabled.
+    Zero = 0,
+    /// One sample
+    One = 1,
+    /// Two samples
+    Two = 2,
+    /// Four samples
+    Four = 4,
+    /// Eight samples
+    Eight = 8,
+    /// Sixteen samples
+    Sixteen = 16,
+}

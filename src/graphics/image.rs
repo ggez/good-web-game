@@ -27,13 +27,9 @@ pub enum FilterMode {
 
 impl Image {
     fn from_image_element(context: &mut Context, image_element: ImageElement) -> Image {
-        Image {
-            texture: Some(Texture::new(context, image_element.clone())),
-            width: image_element.width() as u16,
-            height: image_element.height() as u16,
-            filter: FilterMode::Linear,
-            dirty_filter: Cell::new(false),
-        }
+        let texture = Some(Texture::new(context, image_element.clone()));
+
+        Self::from_texture(image_element.width() as u16, image_element.height() as u16, texture)
     }
 
     pub fn new<P: AsRef<path::Path>>(ctx: &mut Context, path: P) -> GameResult<Self> {
@@ -41,7 +37,7 @@ impl Image {
 
         match file {
             File::Image(image_element) => Ok(Image::from_image_element(ctx, image_element.clone())),
-            _ => Err(GameError::UnknownError("File is not an image!".to_string())),
+            _ => Err(GameError::UnknownError("File is not an image!")),
         }
     }
 
@@ -51,24 +47,23 @@ impl Image {
         height: u16,
         bytes: &[u8],
     ) -> GameResult<Image> {
-        if width == 0 || height == 0 {
-            return Ok(Image {
-                texture: None,
-                width: width,
-                height: height,
-                filter: FilterMode::Linear,
-                dirty_filter: Cell::new(false),
-            });
-        }
-        let texture = Some(Texture::from_rgba8(ctx, width, height, bytes));
+        let texture = if width == 0 || height == 0 {
+            None
+        } else {
+            Some(Texture::from_rgba8(ctx, width, height, Some(bytes)))
+        };
 
-        Ok(Image {
+        Ok(Self::from_texture(width, height, texture))
+    }
+
+    pub(crate) fn from_texture(width: u16, height: u16, texture: Option<Texture>) -> Image {
+        Image {
             texture,
             width,
             height,
             filter: FilterMode::Linear,
             dirty_filter: Cell::new(false),
-        })
+        }
     }
 
     pub fn width(&self) -> u16 {

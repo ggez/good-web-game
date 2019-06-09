@@ -3,7 +3,7 @@ use crate::{
     GameResult,
     conf::NumSamples,
     error::GameError,
-    graphics::{Drawable, DrawParam, Rect, BlendMode, Image, context::webgl::{Texture, Framebuffer}},
+    graphics::{Drawable, DrawParam, Rect, BlendMode, FilterMode, Image, context::webgl::{Texture, Framebuffer}},
 };
 
 pub struct Canvas {
@@ -18,9 +18,7 @@ impl Canvas {
         height: u16,
         samples: NumSamples
     ) -> GameResult<Canvas> {
-        let dummy = vec![255; usize::from(width) * usize::from(height) * 4];
-
-        let texture = Texture::from_rgba8(ctx, width, height, Some(&dummy));
+        let texture = Texture::from_rgba8(ctx, width, height, None);
         let framebuffer = Framebuffer::new(ctx, &texture)
                             .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
         let image = Image::from_texture(width, height, Some(texture));
@@ -29,6 +27,38 @@ impl Canvas {
             image,
             framebuffer,
         })
+    }
+
+    /// Create a new `Canvas` with the current window dimensions.
+    pub fn with_window_size(ctx: &mut Context) -> GameResult<Canvas> {
+        use crate::graphics;
+        let (w, h) = graphics::drawable_size(ctx);
+        // Default to no multisampling
+        // TODO: Use winit's into() to translate f64's more accurately
+        // ...where the heck IS winit's into()?  wth was I referring to?
+        Canvas::new(ctx, w as u16, h as u16, NumSamples::One)
+    }
+
+    /// Gets the backend `Image` that is being rendered to.
+    pub fn image(&self) -> &Image {
+        &self.image
+    }
+
+    /// Get the filter mode for the image.
+    pub fn filter(&self) -> FilterMode {
+        self.image.filter()
+    }
+
+    /// Set the filter mode for the canvas.
+    pub fn set_filter(&mut self, mode: FilterMode) {
+        self.image.set_filter(mode)
+    }
+
+    /// Destroys the `Canvas` and returns the `Image` it contains.
+    pub fn into_inner(self) -> Image {
+        // TODO: This texture is created with different settings
+        // than the default; does that matter?
+        self.image
     }
 
     fn dimensions(&self) -> Rect {

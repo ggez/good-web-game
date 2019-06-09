@@ -261,9 +261,8 @@ impl WebGlContext {
         let projection = cgmath::One::one();
         let screen_rect = Rect::new(-1., -1., 2., 2.);
 
-        gl_ctx.color_mask(true, true, true, false);
         gl_ctx.enable(gl::BLEND);
-        gl_ctx.blend_func(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        gl_ctx.blend_func_separate(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA, gl::ONE, gl::ONE_MINUS_SRC_ALPHA);
 
         gl_ctx.bind_buffer(gl::ARRAY_BUFFER, Some(&quad));
 

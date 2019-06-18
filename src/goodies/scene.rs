@@ -73,8 +73,8 @@ pub trait Scene<C> {
         _y: f32,
     ) {
     }
-    fn key_down_event(&mut self, _gameworld: &mut C, _ctx: &mut crate::Context, _key: &str) {}
-    fn key_up_event(&mut self, _gameworld: &mut C, _ctx: &mut crate::Context, _key: &str) {}
+    fn key_down_event(&mut self, _gameworld: &mut C, _ctx: &mut crate::Context, _key: crate::event::KeyCode) {}
+    fn key_up_event(&mut self, _gameworld: &mut C, _ctx: &mut crate::Context, _key: crate::event::KeyCode) {}
 
     /// Only used for human-readable convenience (or not at all, tbh)
     fn name(&self) -> &str;
@@ -266,21 +266,21 @@ impl<C> crate::event::EventHandler for SceneStack<C> {
         current_scene.mouse_button_up_event(&mut self.world, ctx, button, x, y);
     }
 
-    fn key_down_event(&mut self, ctx: &mut crate::Context, key: &str) {
+    fn key_down_event(&mut self, ctx: &mut crate::Context, keycode: crate::event::KeyCode, _keymods: crate::event::KeyMods, _repeat: bool) {
         let current_scene = &mut **self
             .scenes
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.key_down_event(&mut self.world, ctx, key);
+        current_scene.key_down_event(&mut self.world, ctx, keycode);
     }
 
-    fn key_up_event(&mut self, ctx: &mut crate::Context, key: &str) {
+    fn key_up_event(&mut self, ctx: &mut crate::Context, keycode: crate::event::KeyCode, _keymods: crate::event::KeyMods) {
         let current_scene = &mut **self
             .scenes
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.key_up_event(&mut self.world, ctx, key);
+        current_scene.key_up_event(&mut self.world, ctx, keycode);
     }
 }

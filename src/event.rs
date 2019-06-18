@@ -14,7 +14,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{context::Context, error::GameResult, input::input_handler::InputHandler};
 
+mod keycode;
+
+pub use keycode::KeyCode;
 pub use crate::input::MouseButton;
+pub use crate::input::keyboard::KeyMods;
 
 pub trait EventHandler {
     fn update(&mut self, _ctx: &mut Context) -> GameResult;
@@ -39,9 +43,9 @@ pub trait EventHandler {
     ) {
     }
 
-    fn key_down_event(&mut self, _ctx: &mut Context, _key: &str) {}
+    fn key_down_event(&mut self, _ctx: &mut Context, _keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {}
 
-    fn key_up_event(&mut self, _ctx: &mut Context, _key: &str) {}
+    fn key_up_event(&mut self, _ctx: &mut Context, _keycode: KeyCode, _keymods: KeyMods) {}
 }
 
 fn animate<S>(
@@ -247,15 +251,32 @@ where
         let ctx = ctx.clone();
 
         move |event: KeyDownEvent| {
-            if event.code() == "Space" {
-                event.prevent_default();
+            let code = KeyCode::from(event.code());
+            let repeat = event.repeat();
+            let mut keymods = KeyMods::NONE;
+
+            if event.shift_key() {
+                keymods |= KeyMods::SHIFT;
             }
-            if event.repeat() == false {
+            if event.ctrl_key() {
+                keymods |= KeyMods::CTRL;
+            }
+            if event.alt_key() {
+                keymods |= KeyMods::ALT;
+            }
+            if event.meta_key() {
+                keymods |= KeyMods::LOGO;
+            }
+
+            event.prevent_default();
+
+            if !repeat {
                 input_handler.borrow_mut().handle_key_down(event.code());
-                state
-                    .borrow_mut()
-                    .key_down_event(&mut *ctx.borrow_mut(), &event.code());
             }
+
+            state
+                .borrow_mut()
+                .key_down_event(&mut *ctx.borrow_mut(), code, keymods, repeat);
         }
     });
 
@@ -265,12 +286,30 @@ where
         let ctx = ctx.clone();
 
         move |event: KeyUpEvent| {
-            if event.repeat() == false {
-                input_handler.borrow_mut().handle_key_up(event.code());
-                state
-                    .borrow_mut()
-                    .key_up_event(&mut *ctx.borrow_mut(), &event.code());
+            let code = KeyCode::from(event.code());
+            let repeat = event.repeat();
+            let mut keymods = KeyMods::NONE;
+
+            if event.shift_key() {
+                keymods |= KeyMods::SHIFT;
             }
+            if event.ctrl_key() {
+                keymods |= KeyMods::CTRL;
+            }
+            if event.alt_key() {
+                keymods |= KeyMods::ALT;
+            }
+            if event.meta_key() {
+                keymods |= KeyMods::LOGO;
+            }
+
+            if !repeat {
+                input_handler.borrow_mut().handle_key_up(event.code());
+            }
+
+            state
+                .borrow_mut()
+                .key_up_event(&mut *ctx.borrow_mut(), code, keymods);
         }
     });
 

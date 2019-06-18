@@ -253,20 +253,7 @@ where
         move |event: KeyDownEvent| {
             let code = KeyCode::from(event.code());
             let repeat = event.repeat();
-            let mut keymods = KeyMods::NONE;
-
-            if event.shift_key() {
-                keymods |= KeyMods::SHIFT;
-            }
-            if event.ctrl_key() {
-                keymods |= KeyMods::CTRL;
-            }
-            if event.alt_key() {
-                keymods |= KeyMods::ALT;
-            }
-            if event.meta_key() {
-                keymods |= KeyMods::LOGO;
-            }
+            let keymods = KeyMods::from_event(&event);
 
             if code.prevent_default() {
                 event.prevent_default();
@@ -290,20 +277,7 @@ where
         move |event: KeyUpEvent| {
             let code = KeyCode::from(event.code());
             let repeat = event.repeat();
-            let mut keymods = KeyMods::NONE;
-
-            if event.shift_key() {
-                keymods |= KeyMods::SHIFT;
-            }
-            if event.ctrl_key() {
-                keymods |= KeyMods::CTRL;
-            }
-            if event.alt_key() {
-                keymods |= KeyMods::ALT;
-            }
-            if event.meta_key() {
-                keymods |= KeyMods::LOGO;
-            }
+            let keymods = KeyMods::from_event(&event);
 
             if !repeat {
                 input_handler.borrow_mut().handle_key_up(event.code());

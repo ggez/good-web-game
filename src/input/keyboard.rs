@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use bitflags::bitflags;
+use stdweb::web::event::IKeyboardEvent;
 
 use super::input_handler::InputHandler;
 use crate::Context;
@@ -40,5 +41,26 @@ bitflags! {
         const CTRL = 1 << 1;
         const ALT = 1 << 2;
         const LOGO = 1 << 3;
+    }
+}
+
+impl KeyMods {
+    pub(crate) fn from_event<E: IKeyboardEvent>(event: &E) -> Self {
+        let mut keymods = KeyMods::NONE;
+
+        if event.shift_key() {
+            keymods |= KeyMods::SHIFT;
+        }
+        if event.ctrl_key() {
+            keymods |= KeyMods::CTRL;
+        }
+        if event.alt_key() {
+            keymods |= KeyMods::ALT;
+        }
+        if event.meta_key() {
+            keymods |= KeyMods::LOGO;
+        }
+
+        keymods
     }
 }

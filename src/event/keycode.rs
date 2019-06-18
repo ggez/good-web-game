@@ -353,7 +353,7 @@ impl KeyCode {
     pub(crate) fn prevent_default(self) -> bool {
         use KeyCode::*;
         match self {
-            Space | PageUp | PageDown | Escape => true,
+            Space | PageUp | PageDown | Escape | Tab => true,
             _ => false,
         }
     }

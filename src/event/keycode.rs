@@ -348,3 +348,13 @@ impl<S: AsRef<str>> From<S> for KeyCode {
         }
     }
 }
+
+impl KeyCode {
+    pub(crate) fn prevent_default(self) -> bool {
+        use KeyCode::*;
+        match self {
+            Space | PageUp | PageDown | Escape => true,
+            _ => false,
+        }
+    }
+}

@@ -268,7 +268,9 @@ where
                 keymods |= KeyMods::LOGO;
             }
 
-            event.prevent_default();
+            if code.prevent_default() {
+                event.prevent_default();
+            }
 
             if !repeat {
                 input_handler.borrow_mut().handle_key_down(event.code());

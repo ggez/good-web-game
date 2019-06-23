@@ -4,7 +4,7 @@ use stdweb::{
         event::{
             ContextMenuEvent, KeyDownEvent, KeyUpEvent, MouseButton as WebMouseButton,
             MouseDownEvent, MouseMoveEvent, MouseUpEvent, MouseWheelEvent, ResizeEvent, TouchEnd,
-            TouchStart,
+            TouchMove, TouchStart,
         },
         window,
     },
@@ -169,6 +169,7 @@ where
             for touch in event.touches() {
                 let mut input_handler = input_handler.borrow_mut();
 
+                input_handler.handle_mouse_down(WebMouseButton::Left);
                 input_handler.handle_mouse_move(touch.page_x() as i32, touch.page_y() as i32);
 
                 state.borrow_mut().mouse_motion_event(
@@ -196,7 +197,9 @@ where
         move |event: TouchEnd| {
             event.prevent_default();
 
-            let input_handler = input_handler.borrow();
+            let mut input_handler = input_handler.borrow_mut();
+
+            input_handler.handle_mouse_up(WebMouseButton::Left);
 
             state.borrow_mut().mouse_button_up_event(
                 &mut *ctx.borrow_mut(),
@@ -204,6 +207,35 @@ where
                 input_handler.mouse_position.x as f32,
                 input_handler.mouse_position.y as f32,
             );
+        }
+    });
+
+    canvas.add_event_listener({
+        let input_handler = input_handler.clone();
+        let state = state.clone();
+        let ctx = ctx.clone();
+
+        move |event: TouchMove| {
+            event.prevent_default();
+
+            for touch in event.changed_touches() {
+                let mut input_handler = input_handler.borrow_mut();
+
+                let new_x = touch.page_x() as f32;
+                let new_y = touch.page_y() as f32;
+                let dx = new_x - input_handler.mouse_position.x as f32;
+                let dy = new_y - input_handler.mouse_position.y as f32;
+
+                input_handler.handle_mouse_move(new_x as i32, new_y as i32);
+
+                state.borrow_mut().mouse_motion_event(
+                    &mut *ctx.borrow_mut(),
+                    new_x,
+                    new_y,
+                    dx,
+                    dy,
+                );
+            }
         }
     });
 

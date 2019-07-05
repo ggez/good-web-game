@@ -292,7 +292,7 @@ where
             }
 
             if !repeat {
-                input_handler.borrow_mut().handle_key_down(event.code());
+                input_handler.borrow_mut().handle_key_down(code);
             }
 
             state
@@ -312,7 +312,7 @@ where
             let keymods = KeyMods::from_event(&event);
 
             if !repeat {
-                input_handler.borrow_mut().handle_key_up(event.code());
+                input_handler.borrow_mut().handle_key_up(code);
             }
 
             state

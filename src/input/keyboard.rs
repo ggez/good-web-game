@@ -4,6 +4,7 @@ use bitflags::bitflags;
 use stdweb::web::event::IKeyboardEvent;
 
 use super::input_handler::InputHandler;
+use crate::event::KeyCode;
 use crate::Context;
 
 pub struct KeyboardContext {
@@ -15,23 +16,23 @@ impl KeyboardContext {
         KeyboardContext { input_handler }
     }
 
-    pub(crate) fn is_key_pressed(&self, key: &str) -> bool {
-        self.input_handler.borrow().is_key_pressed(key)
+    pub(crate) fn is_key_pressed(&self, keycode: KeyCode) -> bool {
+        self.input_handler.borrow().is_key_pressed(keycode)
     }
 
-    pub(crate) fn is_key_down(&self, key: &str) -> bool {
-        self.input_handler.borrow().is_key_down(key)
+    pub(crate) fn is_key_down(&self, keycode: KeyCode) -> bool {
+        self.input_handler.borrow().is_key_down(keycode)
     }
 }
 
 /// Checks if a key is currently pressed down.
-pub fn is_key_pressed(ctx: &Context, key: &str) -> bool {
-    ctx.keyboard_context.is_key_pressed(key)
+pub fn is_key_pressed(ctx: &Context, keycode: KeyCode) -> bool {
+    ctx.keyboard_context.is_key_pressed(keycode)
 }
 
 /// Checks if a key was pressed down on exectly this frame.
-pub fn is_key_down(ctx: &Context, key: &str) -> bool {
-    ctx.keyboard_context.is_key_down(key)
+pub fn is_key_down(ctx: &Context, keycode: KeyCode) -> bool {
+    ctx.keyboard_context.is_key_down(keycode)
 }
 
 bitflags! {

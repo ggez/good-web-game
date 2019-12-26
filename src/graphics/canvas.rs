@@ -1,14 +1,16 @@
 use crate::{
-    Context,
-    GameResult,
     conf::NumSamples,
     error::GameError,
-    graphics::{Drawable, DrawParam, Rect, BlendMode, FilterMode, Image, context::webgl::{Texture, Framebuffer}},
+    graphics::{BlendMode, DrawParam, Drawable, FilterMode, Image, Rect},
+    Context, GameResult,
 };
 
+use miniquad::{PixelFormat, RenderPass, RenderTextureParams, Texture};
+
+#[derive(Clone, Debug)]
 pub struct Canvas {
     image: Image,
-    framebuffer: Framebuffer,
+    pub(crate) offscreen_pass: RenderPass,
 }
 
 impl Canvas {
@@ -16,16 +18,24 @@ impl Canvas {
         ctx: &mut Context,
         width: u16,
         height: u16,
-        samples: NumSamples
+        _samples: NumSamples,
     ) -> GameResult<Canvas> {
-        let texture = Texture::from_rgba8(ctx, width, height, None);
-        let framebuffer = Framebuffer::new(ctx, &texture)
-                            .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
-        let image = Image::from_texture(width, height, Some(texture));
+        let texture = Texture::new_render_texture(RenderTextureParams {
+            width: width as u32,
+            height: height as u32,
+            format: PixelFormat::RGBA8,
+            ..Default::default()
+        });
+
+        // let framebuffer = Framebuffer::new(ctx, &texture)
+        //     .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
+        let image = Image::from_texture(ctx, texture)?;
+
+        let offscreen_pass = RenderPass::new(ctx.quad_ctx, texture, None);
 
         Ok(Canvas {
             image,
-            framebuffer,
+            offscreen_pass,
         })
     }
 
@@ -88,20 +98,5 @@ impl Drawable for Canvas {
 /// Set the `Canvas` to render to. Specifying `Option::None` will cause all
 /// rendering to be done directly to the screen.
 pub fn set_canvas(ctx: &mut Context, target: Option<&Canvas>) {
-    let (width, height) = target.map(|canvas| {
-        // Use dimensions of the image bound to framebuffer
-        let rect = canvas.image().dimensions();
-
-        (rect.w as u32, rect.h as u32)
-    }).unwrap_or_else(|| {
-        // Use original dimensions of the webgl canvas context
-        let (width, height) = ctx.gfx_context.canvas_context.size();
-
-        (width as u32, height as u32)
-    });
-
-    let webgl = &mut ctx.gfx_context.webgl_context;
-
-    webgl.set_framebuffer(target.map(|canvas| &canvas.framebuffer));
-    webgl.resize(width, height);
+    ctx.internal.gfx_context.canvas = target.cloned();
 }

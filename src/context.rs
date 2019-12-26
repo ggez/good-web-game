@@ -1,21 +1,17 @@
-use stdweb::traits::*;
-
-use stdweb::{
-    unstable::TryInto,
-    web::{document, html_element::CanvasElement},
-};
-
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::{
+    conf::{Cache, Conf},
     filesystem::Filesystem,
     graphics,
+    graphics::GpuText,
     input::{input_handler::InputHandler, KeyboardContext, MouseContext},
     timer::TimeContext,
 };
 
-pub struct Context {
+pub struct ContextInternal {
     pub filesystem: Filesystem,
     pub gfx_context: graphics::GraphicsContext,
     pub mouse_context: MouseContext,
@@ -23,41 +19,39 @@ pub struct Context {
     pub timer_context: TimeContext,
 }
 
-impl Context {
-    pub(crate) fn build(filesystem: Filesystem) -> Context {
-        let canvas: CanvasElement = document()
-            .query_selector("#canvas")
-            .expect("Can't find #canvas tagged element!")
-            .expect("Can't find #canvas tagged element!")
-            .try_into()
-            .expect("#canvas element is not a canvas");
-        let glcanvas: CanvasElement = document()
-            .query_selector("#glcanvas")
-            .expect("Can't find #glcanvas tagged element!")
-            .expect("Can't find #glcanvas tagged element!")
-            .try_into()
-            .expect("#glcanvas element is not a canvas");
+pub struct Context<'a, 'b> {
+    pub internal: &'a mut ContextInternal,
+    pub quad_ctx: &'b mut miniquad::Context,
+}
 
-        let gfx_context = graphics::GraphicsContext::new(canvas, glcanvas);
+impl<'a, 'b> Context<'a, 'b> {
+    pub(crate) fn text_cache(&mut self) -> &mut HashMap<String, GpuText> {
+        &mut self.internal.gfx_context.text_cache
+    }
+
+    pub(crate) fn framebuffer(&mut self) -> Option<miniquad::RenderPass> {
+        self.internal
+            .gfx_context
+            .canvas
+            .as_ref()
+            .map(|canvas| canvas.offscreen_pass.clone())
+    }
+}
+impl ContextInternal {
+    pub(crate) fn new(conf: Conf) -> ContextInternal {
+        let tar = if let Cache::Tar(tar) = conf.cache {
+            tar
+        } else {
+            unimplemented!("Only tar archive filesystem supported")
+        };
         let input_handler = Rc::new(RefCell::new(InputHandler::new()));
 
-        Context {
-            filesystem,
-            gfx_context,
+        ContextInternal {
+            filesystem: Filesystem::new(&tar),
+            gfx_context: graphics::GraphicsContext::new(),
             mouse_context: MouseContext::new(input_handler.clone()),
             keyboard_context: KeyboardContext::new(input_handler.clone()),
             timer_context: TimeContext::new(),
         }
-    }
-
-    pub fn canvas_context(&self) -> &graphics::CanvasContext {
-        &self.gfx_context.canvas_context
-    }
-
-    pub fn webgl_context(&self) -> &graphics::WebGlContext {
-        &self.gfx_context.webgl_context
-    }
-    pub fn webgl_context_mut(&mut self) -> &mut graphics::WebGlContext {
-        &mut self.gfx_context.webgl_context
     }
 }

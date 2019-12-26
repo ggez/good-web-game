@@ -1,59 +1,54 @@
-use crate::graphics::types::{Rect, *};
-use stdweb::{web::html_element::*, web::*};
+use crate::graphics::{
+    types::{Rect, *},
+    Canvas,
+};
 
-use cgmath::Matrix3;
+use miniquad::Context;
 
-pub(crate) mod canvas;
-pub(crate) mod webgl;
+use cgmath::{Matrix3, Matrix4};
 
-use self::{canvas::CanvasContext, webgl::WebGlContext};
+use std::collections::HashMap;
+
+const FONT_TEXTURE_BYTES: &'static [u8] = include_bytes!("font.png");
+
+pub struct GpuText {
+    pub bindings: miniquad::Bindings,
+    pub pipeline: miniquad::Pipeline,
+}
 
 pub struct GraphicsContext {
-    pub canvas_context: CanvasContext,
-    pub webgl_context: WebGlContext,
+    pub(crate) screen_rect: Rect,
+    pub(crate) projection: Matrix4<f32>,
+    pub(crate) font_texture: miniquad::Texture,
+    pub(crate) text_cache: HashMap<String, GpuText>,
+    pub(crate) canvas: Option<Canvas>,
 }
 
 impl GraphicsContext {
-    pub fn new(canvas: CanvasElement, glcanvas: CanvasElement) -> GraphicsContext {
-        let canvas_context: CanvasRenderingContext2d = canvas.get_context().unwrap();
+    pub fn new() -> GraphicsContext {
+        let projection = cgmath::One::one();
+        let screen_rect = Rect::new(-1., -1., 2., 2.);
 
-        let mut gfx = GraphicsContext {
-            canvas_context: CanvasContext::new(canvas_context),
-            webgl_context: WebGlContext::new(glcanvas),
-        };
-        let size = gfx.canvas_context.size();
+        let img = image::load_from_memory(FONT_TEXTURE_BYTES)
+            .unwrap_or_else(|e| panic!(e))
+            .to_rgba();
+        let width = img.width() as u16;
+        let height = img.height() as u16;
+        let bytes = img.into_raw();
 
-        gfx.webgl_context
-            .set_projection_rect(Rect::new(0., 0., size.0 as f32, size.1 as f32));
-        gfx.update_size();
+        let font_texture = miniquad::Texture::from_rgba8(width, height, &bytes);
 
-        gfx
+        GraphicsContext {
+            projection,
+            screen_rect,
+            font_texture,
+            text_cache: HashMap::new(),
+            canvas: None,
+        }
     }
 }
 
 impl GraphicsContext {
-    pub(crate) fn update_size(&self) -> (u32, u32) {
-        let canvas = self.canvas().get_canvas();
-
-        let (width, height) = self.canvas_context.size();
-
-        resize_canvas(&canvas, width, height);
-        resize_canvas(&self.webgl_context.canvas, width, height);
-
-        self.webgl_context.resize(width as u32, height as u32);
-
-        (width as u32, height as u32)
-    }
-
-    pub fn clear(&mut self, color: Color) {
-        self.webgl_context.clear(color);
-        self.canvas_context.clear();
-    }
-
-    pub fn canvas(&self) -> &CanvasRenderingContext2d {
-        &self.canvas_context.canvas
-    }
-
     pub fn set_transform(&mut self, _transform: &Matrix3<f32>) {
         unimplemented!();
     }
@@ -66,17 +61,9 @@ impl GraphicsContext {
         unimplemented!();
     }
 
-    pub fn size(&self) -> (f64, f64) {
-        self.canvas_context.size()
-    }
-
     pub fn set_screen_coordinates(&mut self, rect: crate::graphics::types::Rect) {
-        self.canvas_context.set_screen_coordinates(rect);
-        self.webgl_context.set_projection_rect(rect);
+        self.screen_rect = rect;
+        self.projection =
+            cgmath::ortho(rect.x, rect.x + rect.w, rect.y + rect.h, rect.y, -1.0, 1.0);
     }
-}
-
-fn resize_canvas(canvas: &CanvasElement, w: f64, h: f64) {
-    canvas.set_width(w as u32);
-    canvas.set_height(h as u32);
 }

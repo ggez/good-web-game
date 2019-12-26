@@ -2,22 +2,14 @@ use std::{collections::HashMap, io, path};
 
 use crate::{Context, GameResult};
 
-mod preload;
-
-pub(crate) use self::preload::mount;
-
 #[derive(Debug, Clone)]
-pub enum File {
-    Image(stdweb::web::html_element::ImageElement),
-    Bytes(io::Cursor<Vec<u8>>),
+pub struct File {
+    pub bytes: io::Cursor<Vec<u8>>,
 }
 
 impl io::Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match self {
-            File::Image(_) => unimplemented!("read for images is not implemented yet!"),
-            File::Bytes(b) => b.read(buf),
-        }
+        self.bytes.read(buf)
     }
 }
 
@@ -28,19 +20,41 @@ pub struct Filesystem {
 }
 
 impl Filesystem {
-    pub(crate) fn new() -> Self {
-        Filesystem {
-            files: HashMap::new(),
+    pub(crate) fn new(tar_file: &[u8]) -> Filesystem {
+        let mut archive = tar::Archive::new(tar_file);
+
+        let mut files = HashMap::new();
+        for file in archive.entries().unwrap_or_else(|e| panic!(e)) {
+            use std::io::Read;
+
+            let mut file = file.unwrap_or_else(|e| panic!(e));
+            let filename = std::path::PathBuf::from(file.path().unwrap_or_else(|e| panic!(e)));
+            let mut buf = vec![];
+
+            file.read_to_end(&mut buf).unwrap_or_else(|e| panic!(e));
+            if buf.len() != 0 {
+                files.insert(
+                    filename,
+                    File {
+                        bytes: io::Cursor::new(buf),
+                    },
+                );
+            }
         }
+
+        Filesystem { files }
     }
 
     /// Opens the given `path` and returns the resulting `File`
     /// in read-only mode.
     pub fn open<P: AsRef<path::Path>>(&mut self, path: P) -> GameResult<File> {
+        if self.files.contains_key(path.as_ref()) == false {
+            panic!("No such file: {:?}", path.as_ref());
+        }
         Ok(self.files[path.as_ref()].clone())
     }
 }
 
 pub fn open<P: AsRef<path::Path>>(ctx: &mut Context, path: P) -> GameResult<File> {
-    ctx.filesystem.open(path)
+    ctx.internal.filesystem.open(path)
 }

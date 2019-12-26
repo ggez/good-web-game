@@ -1,6 +1,3 @@
-use stdweb::{_js_impl, js};
-use stdweb::{traits::*, web::document};
-
 use std::rc::Rc;
 
 use crate::conf::Loading;
@@ -38,23 +35,15 @@ impl EmbeddedProgressBar {
 }
 impl LoadingPage for EmbeddedProgressBar {
     fn show(&self) {
-        let overlay = document().get_element_by_id("overlay").unwrap();
-        let loading = document().get_element_by_id("loading").unwrap();
-
-        js!(@{&loading}.textContent = @{EmbeddedProgressBar::progress_string(0.)});
-
-        js!(@{&overlay}.style.display = "block");
+        unimplemented!()
     }
 
     fn hide(&self) {
-        let overlay = document().get_element_by_id("overlay").unwrap();
-
-        js!(@{&overlay}.style.display = "none");
+        unimplemented!()
     }
 
     fn update_progress(&self, progress: f32) {
-        let loading = document().get_element_by_id("loading").unwrap();
-        js!(@{&loading}.textContent = @{EmbeddedProgressBar::progress_string(progress)});
+        unimplemented!()
     }
 }
 

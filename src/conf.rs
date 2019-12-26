@@ -1,5 +1,3 @@
-use smart_default::SmartDefault;
-
 use crate::goodies::loading_page::LoadingPage;
 
 #[derive(Debug)]
@@ -11,6 +9,8 @@ pub enum Cache {
     Index,
     /// Same as Index, but with the files list instead of index.txt
     List(Vec<&'static str>),
+    /// All the files in one tar archive
+    Tar(Vec<u8>),
 }
 
 #[derive(Debug)]
@@ -23,13 +23,19 @@ pub enum Loading {
     Custom(Box<dyn LoadingPage>),
 }
 
-#[derive(SmartDefault, Debug)]
+#[derive(Debug)]
 pub struct Conf {
-    #[default(Cache::No)]
     pub cache: Cache,
-
-    #[default(Loading::No)]
     pub loading: Loading,
+}
+
+impl Default for Conf {
+    fn default() -> Conf {
+        Conf {
+            cache: Cache::No,
+            loading: Loading::No,
+        }
+    }
 }
 
 /// The possible number of samples for multisample anti-aliasing.

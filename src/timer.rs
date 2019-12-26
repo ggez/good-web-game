@@ -20,12 +20,13 @@ use std::cmp;
 use std::f64;
 use std::time;
 use std::time::Duration;
-use stdweb::web::Date;
+
+use miniquad;
 
 type Instant = f64;
 
 pub fn time() -> f64 {
-    Date::now() / 1000.
+    miniquad::date::now()
 }
 
 /// A simple buffer that fills
@@ -146,14 +147,14 @@ impl Default for TimeContext {
 /// Get the time between the start of the last frame and the current one;
 /// in other words, the length of the last frame.
 pub fn delta(ctx: &Context) -> Duration {
-    let tc = &ctx.timer_context;
+    let tc = &ctx.internal.timer_context;
     tc.frame_durations.latest()
 }
 
 /// Gets the average time of a frame, averaged
 /// over the last 200 frames.
 pub fn average_delta(ctx: &Context) -> Duration {
-    let tc = &ctx.timer_context;
+    let tc = &ctx.internal.timer_context;
     let sum: Duration = tc.frame_durations.contents().iter().sum();
     // If our buffer is actually full, divide by its size.
     // Otherwise divide by the number of samples we've added
@@ -204,13 +205,13 @@ pub fn fps(ctx: &Context) -> f64 {
 /// Returns the time since the game was initialized,
 /// as reported by the system clock.
 pub fn time_since_start(ctx: &Context) -> Duration {
-    let tc = &ctx.timer_context;
+    let tc = &ctx.internal.timer_context;
     f64_to_duration(time() - tc.init_instant)
 }
 
 /// same as time_since_start, but without f64_to_duration inside
 pub fn time_since_start_f64(ctx: &Context) -> f64 {
-    let tc = &ctx.timer_context;
+    let tc = &ctx.internal.timer_context;
     time() - tc.init_instant
 }
 
@@ -242,7 +243,7 @@ pub fn time_since_start_f64(ctx: &Context) -> f64 {
 /// # }
 /// ```
 pub fn check_update_time(ctx: &mut Context, target_fps: u32) -> bool {
-    let timedata = &mut ctx.timer_context;
+    let timedata = &mut ctx.internal.timer_context;
 
     let target_dt = fps_as_duration(target_fps);
     if timedata.residual_update_dt > target_dt {
@@ -267,7 +268,7 @@ pub fn check_update_time(ctx: &mut Context, target_fps: u32) -> bool {
 /// to interpolate physics states for smooth rendering.
 /// (see <http://gafferongames.com/game-physics/fix-your-timestep/>)
 pub fn remaining_update_time(ctx: &mut Context) -> Duration {
-    ctx.timer_context.residual_update_dt
+    ctx.internal.timer_context.residual_update_dt
 }
 
 /// Gets the number of times the game has gone through its event loop.
@@ -275,5 +276,5 @@ pub fn remaining_update_time(ctx: &mut Context) -> Duration {
 /// Specifically, the number of times that [`TimeContext::tick()`](struct.TimeContext.html#method.tick)
 /// has been called by it.
 pub fn ticks(ctx: &Context) -> usize {
-    ctx.timer_context.frame_count
+    ctx.internal.timer_context.frame_count
 }

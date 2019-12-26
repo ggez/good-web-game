@@ -4,7 +4,7 @@ use crate::{
     Context,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SpriteBatch {
     image: graphics::Image,
     sprites: Vec<graphics::DrawParam>,

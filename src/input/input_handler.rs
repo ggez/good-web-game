@@ -1,11 +1,9 @@
 #![allow(dead_code)]
 
-use stdweb::web::event::MouseButton as WebMouseButton;
-
 use cgmath::Point2;
 use std::collections::HashSet;
 
-use crate::event::KeyCode;
+use miniquad::MouseButton as QuadMouseButton;
 
 #[derive(Hash, Debug, Eq, PartialEq)]
 pub enum MouseButton {
@@ -16,21 +14,18 @@ pub enum MouseButton {
     Button5,
 }
 
-impl From<&WebMouseButton> for MouseButton {
-    fn from(button: &WebMouseButton) -> MouseButton {
+impl From<QuadMouseButton> for MouseButton {
+    fn from(button: QuadMouseButton) -> MouseButton {
         match button {
-            WebMouseButton::Left => MouseButton::Left,
-            WebMouseButton::Right => MouseButton::Right,
-            WebMouseButton::Wheel => MouseButton::Middle,
-            WebMouseButton::Button4 => MouseButton::Button4,
-            WebMouseButton::Button5 => MouseButton::Button5,
+            QuadMouseButton::Left => MouseButton::Left,
+            QuadMouseButton::Right => MouseButton::Right,
         }
     }
 }
 
 pub struct InputHandler {
-    pub keys: HashSet<KeyCode>,
-    pub frame_keys: HashSet<KeyCode>,
+    pub keys: HashSet<String>,
+    pub frame_keys: HashSet<String>,
     pub mouse_position: Point2<f64>,
     pub mouse_keys: HashSet<MouseButton>,
     pub wheel: f32,
@@ -53,17 +48,17 @@ impl InputHandler {
         self.mouse_position = mouse;
     }
 
-    pub fn handle_mouse_down(&mut self, button: WebMouseButton) {
-        self.mouse_keys.insert(MouseButton::from(&button));
-    }
+    // pub fn handle_mouse_down(&mut self, button: WebMouseButton) {
+    //     self.mouse_keys.insert(MouseButton::from(&button));
+    // }
 
-    pub fn handle_mouse_up(&mut self, button: WebMouseButton) {
-        self.mouse_keys.remove(&MouseButton::from(&button));
-    }
+    // pub fn handle_mouse_up(&mut self, button: WebMouseButton) {
+    //     self.mouse_keys.remove(&MouseButton::from(&button));
+    // }
 
-    pub fn handle_key_down(&mut self, keycode: KeyCode) {
-        self.keys.insert(keycode);
-        self.frame_keys.insert(keycode);
+    pub fn handle_key_down(&mut self, key: String) {
+        self.keys.insert(key.clone());
+        self.frame_keys.insert(key.clone());
     }
 
     pub fn handle_end_frame(&mut self) {
@@ -71,20 +66,20 @@ impl InputHandler {
         self.wheel = 0.;
     }
 
-    pub fn handle_key_up(&mut self, keycode: KeyCode) {
-        self.keys.remove(&keycode);
+    pub fn handle_key_up(&mut self, key: String) {
+        self.keys.remove(&key);
     }
 
     pub fn handle_mouse_wheel(&mut self, delta_y: f64) {
         self.wheel = delta_y as f32;
     }
 
-    pub fn is_key_pressed(&self, keycode: KeyCode) -> bool {
-        self.keys.contains(&keycode)
+    pub fn is_key_pressed(&self, key: &str) -> bool {
+        self.keys.contains(key)
     }
 
-    pub fn is_key_down(&self, keycode: KeyCode) -> bool {
-        self.frame_keys.contains(&keycode)
+    pub fn is_key_down(&self, key: &str) -> bool {
+        self.frame_keys.contains(key)
     }
 
     pub fn is_mouse_key_down(&self, key: &MouseButton) -> bool {

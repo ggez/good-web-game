@@ -1,37 +1,40 @@
+mod canvas;
 mod context;
 mod drawparam;
 mod image;
 mod shader;
 mod text;
 mod types;
-mod canvas;
 
 pub mod spritebatch;
 
 use crate::error::GameResult;
 use crate::Context;
+pub(crate) use context::GpuText;
 
 pub use self::{
-    context::{
-        canvas::CanvasContext,
-        canvas::*,
-        webgl::{ShaderObject, Uniform, WebGlContext},
-        GraphicsContext,
-    },
-    canvas::{
-        Canvas,
-        set_canvas,
-    },
+    canvas::{set_canvas, Canvas},
+    context::GraphicsContext,
     drawparam::DrawParam,
     image::*,
     shader::*,
     text::*,
     types::*,
 };
+use miniquad::PassAction;
 
 /// Clear the screen to the background color.
 pub fn clear(ctx: &mut Context, color: Color) {
-    ctx.gfx_context.clear(color);
+    let action = PassAction::Clear {
+        color: Some((color.r, color.g, color.b, color.a)),
+        depth: None,
+        stencil: None,
+    };
+
+    let pass = ctx.framebuffer();
+    ctx.quad_ctx.begin_pass(pass, action);
+    ctx.quad_ctx
+        .clear(Some((color.r, color.g, color.b, color.a)), None, None);
 }
 
 /// Draws the given `Drawable` object to the screen by calling its
@@ -46,12 +49,12 @@ where
 }
 
 pub fn set_transform(context: &mut Context, transform: &cgmath::Matrix3<f32>) {
-    let gfx = &mut context.gfx_context;
+    let gfx = &mut context.internal.gfx_context;
     gfx.set_transform(transform);
 }
 
 pub fn push_transform(context: &mut Context, transform: &cgmath::Matrix3<f32>) {
-    let gfx = &mut context.gfx_context;
+    let gfx = &mut context.internal.gfx_context;
     gfx.push_transform(transform);
 }
 
@@ -60,14 +63,15 @@ pub fn push_transform(context: &mut Context, transform: &cgmath::Matrix3<f32>) {
 /// Returns zeros if the window doesn't exist.
 /// TODO: Rename, since get_drawable_size is usually what we
 /// actually want. Maybe get_entire_size or get_window_border_size?
-pub fn size(ctx: &Context) -> (f64, f64) {
-    ctx.gfx_context.size()
+pub fn size(ctx: &Context) -> (f32, f32) {
+    let size = ctx.quad_ctx.screen_size();
+    (size.0, size.1)
 }
 
 /// Returns the size of the window's underlying drawable in pixels as (width, height).
 /// This may return a different value than `get_size()` when run on a platform with high-DPI support
 pub fn drawable_size(ctx: &Context) -> (u32, u32) {
-    let size = ctx.gfx_context.size();
+    let size = ctx.quad_ctx.screen_size();
     (size.0 as u32, size.1 as u32)
 }
 
@@ -82,7 +86,7 @@ pub fn drawable_size(ctx: &Context) -> (u32, u32) {
 /// The `Rect`'s x and y will define the top-left corner of the screen,
 /// and that plus its w and h will define the bottom-right corner.
 pub fn set_screen_coordinates(context: &mut Context, rect: Rect) -> GameResult {
-    context.gfx_context.set_screen_coordinates(rect);
+    context.internal.gfx_context.set_screen_coordinates(rect);
     Ok(())
 }
 
@@ -92,7 +96,7 @@ pub fn set_screen_coordinates(context: &mut Context, rect: Rect) -> GameResult {
 /// If the Y axis increases downwards, the `height` of the `Rect`
 /// will be negative.
 pub fn screen_coordinates(ctx: &Context) -> Rect {
-    ctx.gfx_context.webgl_context.screen_rect
+    ctx.internal.gfx_context.screen_rect
 }
 
 /// Tells the graphics system to actually put everything on the screen.

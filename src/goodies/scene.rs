@@ -18,8 +18,8 @@
 /// popping one or replacing the current scene (pop and then push).
 pub enum SceneSwitch<C> {
     None,
-    Push(Box<Scene<C>>),
-    Replace(Box<Scene<C>>),
+    Push(Box<dyn Scene<C>>),
+    Replace(Box<dyn Scene<C>>),
     Pop,
 }
 
@@ -110,7 +110,7 @@ impl<C> SceneSwitch<C> {
 /// A stack of `Scene`'s, together with a context object.
 pub struct SceneStack<C> {
     pub world: C,
-    scenes: Vec<Box<Scene<C>>>,
+    scenes: Vec<Box<dyn Scene<C>>>,
 }
 
 impl<C> SceneStack<C> {
@@ -122,20 +122,20 @@ impl<C> SceneStack<C> {
     }
 
     /// Add a new scene to the top of the stack.
-    pub fn push(&mut self, scene: Box<Scene<C>>) {
+    pub fn push(&mut self, scene: Box<dyn Scene<C>>) {
         self.scenes.push(scene)
     }
 
     /// Remove the top scene from the stack and returns it;
     /// panics if there is none.
-    pub fn pop(&mut self) -> Box<Scene<C>> {
+    pub fn pop(&mut self) -> Box<dyn Scene<C>> {
         self.scenes
             .pop()
             .expect("ERROR: Popped an empty scene stack.")
     }
 
     /// Returns the current scene; panics if there is none.
-    pub fn current(&self) -> &Scene<C> {
+    pub fn current(&self) -> &dyn Scene<C> {
         &**self
             .scenes
             .last()
@@ -144,7 +144,7 @@ impl<C> SceneStack<C> {
 
     /// Executes the given SceneSwitch command; if it is a pop or replace
     /// it returns `Some(old_scene)`, otherwise `None`
-    pub fn switch(&mut self, next_scene: SceneSwitch<C>) -> Option<Box<Scene<C>>> {
+    pub fn switch(&mut self, next_scene: SceneSwitch<C>) -> Option<Box<dyn Scene<C>>> {
         match next_scene {
             SceneSwitch::None => None,
             SceneSwitch::Pop => {

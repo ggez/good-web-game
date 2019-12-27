@@ -11,16 +11,14 @@ In action: <https://ozkriff.itch.io/zemeroth>
 1) To build and run an example as a native binary that uses ggez:
 
     ```rust
-    cd examples/simple
-    cargo run
+    cargo run --example astroblasto
     ```
 
 2) To build and run a web version of an example:
 
     ```rust
-    cargo install cargo-web
-    cd examples/simple
-    cargo web start
+    rustup target add wasm32-unknown-unknown
+    cargo build --example astroblasto --target wasm32-unknown-unknown
+    cp target/wasm32-unknown-unknown/debug/examples/astroblsato.wasm js
+    cd js/ #  and launch http server with wasm MIME, maybe check index.html to match>
     ```
-
-    Then open `http://localhost:8000` in your browser.

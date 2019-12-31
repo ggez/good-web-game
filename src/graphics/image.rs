@@ -10,18 +10,37 @@ use crate::{
 };
 
 use miniquad::{
-    Bindings, BlendFactor, BlendValue, Buffer, BufferType, Equation, PassAction, Pipeline,
-    PipelineParams, Shader, Texture, Usage, VertexAttribute, VertexFormat, VertexLayout,
+    Bindings, BlendFactor, BlendValue, Buffer, BufferLayout, BufferType, Equation, PassAction,
+    Pipeline, PipelineParams, Shader, Texture, Usage, VertexAttribute, VertexFormat, VertexStep,
 };
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub(crate) struct InstanceAttributes {
+    pub source: Vector4<f32>,
+    pub color: Vector4<f32>,
+    pub model: Matrix4<f32>,
+}
+
+impl Default for InstanceAttributes {
+    fn default() -> InstanceAttributes {
+        use cgmath::Transform;
+        InstanceAttributes {
+            source: Vector4::new(0., 0., 0., 0.),
+            color: Vector4::new(0., 0., 0., 0.),
+            model: Matrix4::one(),
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Image {
-    texture: Texture,
-    width: u16,
-    height: u16,
+    pub(crate) texture: Texture,
+    pub(crate) width: u16,
+    pub(crate) height: u16,
     filter: FilterMode,
-    bindings: Bindings,
-    pipeline: Pipeline,
+    pub(crate) bindings: Bindings,
+    pub(crate) pipeline: Pipeline,
     dirty_filter: Cell<bool>,
 }
 
@@ -68,41 +87,47 @@ impl Image {
     pub fn from_texture(ctx: &mut Context, texture: Texture) -> GameResult<Image> {
         #[rustfmt::skip]
         let vertices: [f32; 8] = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
-        let vertex_buffer = unsafe {
-            Buffer::new(
-                &mut ctx.quad_ctx,
-                BufferType::VertexBuffer,
-                Usage::Immutable,
-                &vertices,
-            )
-        };
+        let vertex_buffer =
+            unsafe { Buffer::immutable(&mut ctx.quad_ctx, BufferType::VertexBuffer, &vertices) };
 
         let indices: [u16; 6] = [0, 1, 2, 0, 2, 3];
-        let index_buffer = unsafe {
-            Buffer::new(
-                &mut ctx.quad_ctx,
-                BufferType::IndexBuffer,
-                Usage::Immutable,
-                &indices,
-            )
-        };
+        let index_buffer =
+            unsafe { Buffer::immutable(&mut ctx.quad_ctx, BufferType::IndexBuffer, &indices) };
+
+        let instances_buffer = Buffer::stream(
+            &mut ctx.quad_ctx,
+            BufferType::VertexBuffer,
+            std::mem::size_of::<InstanceAttributes>(),
+        );
 
         let bindings = Bindings {
-            vertex_buffer: vertex_buffer,
+            vertex_buffers: vec![vertex_buffer, instances_buffer],
             index_buffer: index_buffer,
             images: vec![texture],
         };
 
         let shader = Shader::new(
             &mut ctx.quad_ctx,
-            image_shader::VERTEX,
-            image_shader::FRAGMENT,
-            image_shader::META,
+            batch_shader::VERTEX,
+            batch_shader::FRAGMENT,
+            batch_shader::META,
         );
 
         let pipeline = Pipeline::with_params(
             &mut ctx.quad_ctx,
-            VertexLayout::new(&[(VertexAttribute::Custom("position"), VertexFormat::Float2)]),
+            &[
+                BufferLayout::default(),
+                BufferLayout {
+                    step_func: VertexStep::PerInstance,
+                    ..Default::default()
+                },
+            ],
+            &[
+                VertexAttribute::with_buffer("position", VertexFormat::Float2, 0),
+                VertexAttribute::with_buffer("Source", VertexFormat::Float4, 1),
+                VertexAttribute::with_buffer("Color", VertexFormat::Float4, 1),
+                VertexAttribute::with_buffer("Model", VertexFormat::Mat4, 1),
+            ],
             shader,
             PipelineParams {
                 color_blend: Some((
@@ -148,26 +173,32 @@ impl Image {
     }
 }
 
+pub(crate) fn param_to_instance_transform(
+    param: &DrawParam,
+    width: u16,
+    height: u16,
+) -> Matrix4<f32> {
+    let real_size = Vector2::new(param.src.w * width as f32, param.src.h * height as f32);
+    let size_vec = Vector2::new(real_size.x * param.scale.x, real_size.y * param.scale.y);
+    let size = Matrix4::from_nonuniform_scale(size_vec.x, size_vec.y, 0.);
+    let dest = Point2::new(
+        param.dest.x - real_size.x * param.offset.x * param.scale.x,
+        param.dest.y - real_size.y * param.offset.y * param.scale.y,
+    );
+    let pos = Matrix4::from_translation(Vector3::new(
+        dest.x + size_vec.x / 2.,
+        dest.y + size_vec.y / 2.,
+        0.,
+    ));
+    let rot = Matrix4::from_angle_z(cgmath::Rad(param.rotation));
+    let pos0 = Matrix4::from_translation(Vector3::new(-size_vec.x / 2., -size_vec.y / 2., 0.));
+
+    pos * rot * pos0 * size
+}
+
 impl Drawable for Image {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        let real_size = Vector2::new(
-            param.src.w * self.width as f32,
-            param.src.h * self.height as f32,
-        );
-        let size_vec = Vector2::new(real_size.x * param.scale.x, real_size.y * param.scale.y);
-        let size = Matrix4::from_nonuniform_scale(size_vec.x, size_vec.y, 0.);
-        let dest = Point2::new(
-            param.dest.x - real_size.x * param.offset.x * param.scale.x,
-            param.dest.y - real_size.y * param.offset.y * param.scale.y,
-        );
-        let pos = Matrix4::from_translation(Vector3::new(
-            dest.x + size_vec.x / 2.,
-            dest.y + size_vec.y / 2.,
-            0.,
-        ));
-        let rot = Matrix4::from_angle_z(cgmath::Rad(param.rotation));
-        let pos0 = Matrix4::from_translation(Vector3::new(-size_vec.x / 2., -size_vec.y / 2., 0.));
-        let transform = pos * rot * pos0 * size;
+        let transform = param_to_instance_transform(&param, self.width, self.height);
 
         if self.dirty_filter.get() {
             self.dirty_filter.set(false);
@@ -175,21 +206,25 @@ impl Drawable for Image {
             self.texture.set_filter(self.filter as i32);
         }
 
+        let instances = &[InstanceAttributes {
+            model: transform,
+            source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
+            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
+        }];
+        unsafe { self.bindings.vertex_buffers[1].update(ctx.quad_ctx, instances) };
+
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
         ctx.quad_ctx.apply_pipeline(&self.pipeline);
         ctx.quad_ctx.apply_bindings(&self.bindings);
 
-        let uniforms = image_shader::Uniforms {
+        let uniforms = batch_shader::Uniforms {
             projection: ctx.internal.gfx_context.projection,
-            model: transform,
-            source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
-            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
         };
         unsafe {
             ctx.quad_ctx.apply_uniforms(&uniforms);
         }
-        ctx.quad_ctx.draw(6);
+        ctx.quad_ctx.draw(0, 6, 1);
 
         ctx.quad_ctx.end_render_pass();
 
@@ -207,20 +242,20 @@ impl Drawable for Image {
         Some(self.dimensions())
     }
 }
-
-mod image_shader {
+pub(crate) mod batch_shader {
     use miniquad::{ShaderMeta, UniformBlockLayout, UniformType};
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;
+    attribute vec4 Source;
+    attribute vec4 Color;
+    attribute mat4 Model;
+
     varying lowp vec4 color;
     varying lowp vec2 uv;
 
     uniform mat4 Projection;
-    uniform mat4 Model;
-    uniform vec4 Source;
-    uniform vec4 Color;
-
+    
     uniform float depth;
 
     void main() {
@@ -244,12 +279,7 @@ mod image_shader {
     pub const META: ShaderMeta = ShaderMeta {
         images: &["Texture"],
         uniforms: UniformBlockLayout {
-            uniforms: &[
-                ("Projection", UniformType::Mat4),
-                ("Model", UniformType::Mat4),
-                ("Source", UniformType::Float4),
-                ("Color", UniformType::Float4),
-            ],
+            uniforms: &[("Projection", UniformType::Mat4)],
         },
     };
 
@@ -257,8 +287,5 @@ mod image_shader {
     #[derive(Debug)]
     pub struct Uniforms {
         pub projection: cgmath::Matrix4<f32>,
-        pub model: cgmath::Matrix4<f32>,
-        pub source: cgmath::Vector4<f32>,
-        pub color: cgmath::Vector4<f32>,
     }
 }

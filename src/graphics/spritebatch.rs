@@ -1,13 +1,23 @@
 use crate::{
     error::GameResult,
-    graphics::{self, transform_rect, BlendMode, Rect, DrawParam},
+    graphics::{
+        self,
+        image::{batch_shader, param_to_instance_transform},
+        transform_rect, BlendMode, DrawParam, InstanceAttributes, Rect,
+    },
     Context,
 };
 
+use std::cell::RefCell;
+
+use cgmath::{Matrix4, Vector4};
+use miniquad::{Buffer, BufferType, PassAction};
+
 #[derive(Debug)]
 pub struct SpriteBatch {
-    image: graphics::Image,
-    sprites: Vec<graphics::DrawParam>,
+    image: RefCell<graphics::Image>,
+    sprites: Vec<DrawParam>,
+    gpu_sprites: RefCell<Vec<InstanceAttributes>>,
     blend_mode: Option<BlendMode>,
 }
 
@@ -23,9 +33,10 @@ impl SpriteBatch {
     /// image data.
     pub fn new(image: graphics::Image) -> Self {
         Self {
-            image,
+            image: RefCell::new(image),
             sprites: vec![],
             blend_mode: None,
+            gpu_sprites: RefCell::new(vec![InstanceAttributes::default()]),
         }
     }
 
@@ -37,7 +48,10 @@ impl SpriteBatch {
     where
         P: Into<graphics::DrawParam>,
     {
-        self.sprites.push(param.into());
+        let image = self.image.borrow();
+
+        let param = param.into();
+        self.sprites.push(param);
         SpriteIdx(self.sprites.len() - 1)
     }
 
@@ -48,14 +62,26 @@ impl SpriteBatch {
 
     /// Unwraps and returns the contained `Image`
     pub fn into_inner(self) -> graphics::Image {
-        self.image
+        self.image.into_inner()
     }
 }
 
 impl graphics::Drawable for SpriteBatch {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        // TODO: This is really nasty and doesn't really do the batching
-        for &sprite_param in self.sprites.iter() {
+        let mut image = self.image.borrow_mut();
+        let mut gpu_sprites = self.gpu_sprites.borrow_mut();
+
+        if self.sprites.len() != gpu_sprites.len() {
+            gpu_sprites.resize(self.sprites.len(), InstanceAttributes::default());
+
+            image.bindings.vertex_buffers[1] = Buffer::stream(
+                &mut ctx.quad_ctx,
+                BufferType::VertexBuffer,
+                std::mem::size_of::<InstanceAttributes>() * gpu_sprites.len(),
+            );
+        }
+        // // TODO: This is really nasty and doesn't really do the batching
+        for (n, sprite_param) in self.sprites.iter().enumerate() {
             let mut new_param = sprite_param.clone();
 
             new_param.dest.x = new_param.dest.x * param.scale.x + param.dest.x;
@@ -63,8 +89,40 @@ impl graphics::Drawable for SpriteBatch {
             new_param.scale.x *= param.scale.x;
             new_param.scale.y *= param.scale.y;
 
-            graphics::draw(ctx, &self.image, new_param)?;
+            let instance = InstanceAttributes {
+                model: param_to_instance_transform(&new_param, image.width, image.height),
+                source: Vector4::new(
+                    new_param.src.x,
+                    new_param.src.y,
+                    new_param.src.w,
+                    new_param.src.h,
+                ),
+                color: Vector4::new(
+                    new_param.color.r,
+                    new_param.color.g,
+                    new_param.color.b,
+                    new_param.color.a,
+                ),
+            };
+            gpu_sprites[n] = instance;
         }
+
+        unsafe { image.bindings.vertex_buffers[1].update(ctx.quad_ctx, &*gpu_sprites) };
+
+        let pass = ctx.framebuffer();
+        ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
+        ctx.quad_ctx.apply_pipeline(&image.pipeline);
+        ctx.quad_ctx.apply_bindings(&image.bindings);
+
+        let uniforms = batch_shader::Uniforms {
+            projection: ctx.internal.gfx_context.projection,
+        };
+        unsafe {
+            ctx.quad_ctx.apply_uniforms(&uniforms);
+        }
+        ctx.quad_ctx.draw(0, 6, gpu_sprites.len() as i32);
+
+        ctx.quad_ctx.end_render_pass();
 
         Ok(())
     }
@@ -73,7 +131,7 @@ impl graphics::Drawable for SpriteBatch {
         if self.sprites.is_empty() {
             return None;
         }
-        let dimensions = self.image.dimensions();
+        let dimensions = self.image.borrow().dimensions();
         self.sprites
             .iter()
             .map(|&param| transform_rect(dimensions, param))

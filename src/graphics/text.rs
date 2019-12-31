@@ -207,35 +207,34 @@ fn load_gpu_text(ctx: &mut crate::Context, label: &str) -> GpuText {
     }
 
     let vertex_buffer = unsafe {
-        Buffer::new(
+        Buffer::immutable(
             &mut ctx.quad_ctx,
             BufferType::VertexBuffer,
-            Usage::Immutable,
             &vertices,
         )
     };
 
     let index_buffer = unsafe {
-        Buffer::new(
+        Buffer::immutable(
             &mut ctx.quad_ctx,
             BufferType::IndexBuffer,
-            Usage::Immutable,
             &indices,
         )
     };
 
     let bindings = Bindings {
-        vertex_buffer: vertex_buffer,
+        vertex_buffers: vec![vertex_buffer],
         index_buffer: index_buffer,
         images: vec![ctx.internal.gfx_context.font_texture.clone()],
     };
 
     let pipeline = Pipeline::with_params(
         &mut ctx.quad_ctx,
-        VertexLayout::new(&[
-            (VertexAttribute::Custom("position"), VertexFormat::Float2),
-            (VertexAttribute::Custom("texcoord"), VertexFormat::Float2),
-        ]),
+        &[BufferLayout::default()],
+        &[
+            VertexAttribute::new("position", VertexFormat::Float2),
+            VertexAttribute::new("texcoord", VertexFormat::Float2),
+        ],
         shader,
         PipelineParams {
             color_blend: Some((
@@ -292,7 +291,7 @@ impl Drawable for Text {
         }
 
         // TODO: buffer len from miniquad?
-        ctx.quad_ctx.draw(self.fragment.text.len() as i32 * 6);
+        ctx.quad_ctx.draw(0, self.fragment.text.len() as i32 * 6, 1);
 
         ctx.quad_ctx.end_render_pass();
 

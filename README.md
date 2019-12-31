@@ -1,6 +1,6 @@
 # Good Web Game
 
-good-web-game is a native wasm32-unknown-unknown implementation of some mininimal [ggez](https://github.com/ggez/ggez) subset using WebGL1 and 2d canvas. Built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
+good-web-game is a native wasm32-unknown-unknown implementation of some mininimal [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
 
 In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
 

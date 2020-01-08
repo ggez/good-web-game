@@ -1,9 +1,4 @@
-use crate::graphics::{
-    types::{Rect, *},
-    Canvas,
-};
-
-use miniquad::Context;
+use crate::graphics::{types::Rect, Canvas};
 
 use cgmath::{Matrix3, Matrix4};
 

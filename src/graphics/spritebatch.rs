@@ -10,7 +10,7 @@ use crate::{
 
 use std::cell::RefCell;
 
-use cgmath::{Matrix4, Vector4};
+use cgmath::Vector4;
 use miniquad::{Buffer, BufferType, PassAction};
 
 #[derive(Debug)]
@@ -48,8 +48,6 @@ impl SpriteBatch {
     where
         P: Into<graphics::DrawParam>,
     {
-        let image = self.image.borrow();
-
         let param = param.into();
         self.sprites.push(param);
         SpriteIdx(self.sprites.len() - 1)
@@ -107,7 +105,7 @@ impl graphics::Drawable for SpriteBatch {
             gpu_sprites[n] = instance;
         }
 
-        unsafe { image.bindings.vertex_buffers[1].update(ctx.quad_ctx, &*gpu_sprites) };
+        image.bindings.vertex_buffers[1].update(ctx.quad_ctx, &*gpu_sprites);
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
@@ -117,9 +115,7 @@ impl graphics::Drawable for SpriteBatch {
         let uniforms = batch_shader::Uniforms {
             projection: ctx.internal.gfx_context.projection,
         };
-        unsafe {
-            ctx.quad_ctx.apply_uniforms(&uniforms);
-        }
+        ctx.quad_ctx.apply_uniforms(&uniforms);
         ctx.quad_ctx.draw(0, 6, gpu_sprites.len() as i32);
 
         ctx.quad_ctx.end_render_pass();

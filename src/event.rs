@@ -1,4 +1,4 @@
-use crate::{context::Context, error::GameResult, input::input_handler::InputHandler};
+use crate::{context::Context, error::GameResult};
 
 pub use crate::input::keyboard::KeyMods;
 pub use crate::input::MouseButton;

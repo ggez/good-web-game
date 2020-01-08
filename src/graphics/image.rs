@@ -2,16 +2,15 @@ use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4};
 use std::{cell::Cell, path};
 
 use crate::{
-    error::{GameError, GameResult},
+    error::GameResult,
     filesystem,
-    filesystem::File,
     graphics::{BlendMode, DrawParam, Drawable, Rect},
     Context,
 };
 
 use miniquad::{
     Bindings, BlendFactor, BlendValue, Buffer, BufferLayout, BufferType, Equation, PassAction,
-    Pipeline, PipelineParams, Shader, Texture, Usage, VertexAttribute, VertexFormat, VertexStep,
+    Pipeline, PipelineParams, Shader, Texture, VertexAttribute, VertexFormat, VertexStep,
 };
 
 #[derive(Debug, Clone)]
@@ -57,7 +56,7 @@ impl Image {
         let mut file = filesystem::open(ctx, path)?;
 
         let mut bytes = vec![];
-        file.bytes.read_to_end(&mut bytes);
+        file.bytes.read_to_end(&mut bytes)?;
 
         Self::from_png_bytes(ctx, &bytes)
     }
@@ -88,11 +87,10 @@ impl Image {
         #[rustfmt::skip]
         let vertices: [f32; 8] = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
         let vertex_buffer =
-            unsafe { Buffer::immutable(&mut ctx.quad_ctx, BufferType::VertexBuffer, &vertices) };
+            Buffer::immutable(&mut ctx.quad_ctx, BufferType::VertexBuffer, &vertices);
 
         let indices: [u16; 6] = [0, 1, 2, 0, 2, 3];
-        let index_buffer =
-            unsafe { Buffer::immutable(&mut ctx.quad_ctx, BufferType::IndexBuffer, &indices) };
+        let index_buffer = Buffer::immutable(&mut ctx.quad_ctx, BufferType::IndexBuffer, &indices);
 
         let instances_buffer = Buffer::stream(
             &mut ctx.quad_ctx,
@@ -211,7 +209,7 @@ impl Drawable for Image {
             source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
             color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
         }];
-        unsafe { self.bindings.vertex_buffers[1].update(ctx.quad_ctx, instances) };
+        self.bindings.vertex_buffers[1].update(ctx.quad_ctx, instances);
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
@@ -221,9 +219,8 @@ impl Drawable for Image {
         let uniforms = batch_shader::Uniforms {
             projection: ctx.internal.gfx_context.projection,
         };
-        unsafe {
-            ctx.quad_ctx.apply_uniforms(&uniforms);
-        }
+
+        ctx.quad_ctx.apply_uniforms(&uniforms);
         ctx.quad_ctx.draw(0, 6, 1);
 
         ctx.quad_ctx.end_render_pass();

@@ -1,5 +1,3 @@
-use crate::goodies::loading_page::LoadingPage;
-
 #[derive(Debug)]
 pub enum Cache {
     /// No preloading at all, filesystem::open will always panic.
@@ -19,8 +17,6 @@ pub enum Loading {
     No,
     /// Will look for some specific html elements and show default progress bar
     Embedded,
-    /// All the html work deligated to custom LoadingPage
-    Custom(Box<dyn LoadingPage>),
 }
 
 #[derive(Debug)]

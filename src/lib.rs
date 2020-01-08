@@ -1,5 +1,3 @@
-#![allow(warnings)]
-
 pub mod conf;
 pub mod error;
 pub mod event;
@@ -68,24 +66,28 @@ pub mod rand {
 }
 
 struct EventHandlderWrapper {
-    event_handler: Box<event::EventHandler>,
+    event_handler: Box<dyn event::EventHandler>,
     context_internal: ContextInternal,
 }
 
 impl miniquad::EventHandler for EventHandlderWrapper {
     fn update(&mut self, ctx: &mut miniquad::Context) {
-        self.event_handler.update(&mut Context {
-            internal: &mut self.context_internal,
-            quad_ctx: ctx,
-        });
+        self.event_handler
+            .update(&mut Context {
+                internal: &mut self.context_internal,
+                quad_ctx: ctx,
+            })
+            .unwrap();
         self.context_internal.timer_context.tick();
     }
 
     fn draw(&mut self, ctx: &mut miniquad::Context) {
-        self.event_handler.draw(&mut Context {
-            internal: &mut self.context_internal,
-            quad_ctx: ctx,
-        });
+        self.event_handler
+            .draw(&mut Context {
+                internal: &mut self.context_internal,
+                quad_ctx: ctx,
+            })
+            .unwrap();
     }
 
     fn resize_event(&mut self, ctx: &mut miniquad::Context, width: f32, height: f32) {
@@ -103,7 +105,7 @@ impl miniquad::EventHandler for EventHandlderWrapper {
         &mut self,
         ctx: &mut miniquad::Context,
         keycode: miniquad::KeyCode,
-        keymods: miniquad::KeyMods,
+        _keymods: miniquad::KeyMods,
         repeat: bool,
     ) {
         self.event_handler.key_down_event(

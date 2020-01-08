@@ -1,6 +1,5 @@
 use crate::{
     conf::NumSamples,
-    error::GameError,
     graphics::{BlendMode, DrawParam, Drawable, FilterMode, Image, Rect},
     Context, GameResult,
 };

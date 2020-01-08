@@ -155,7 +155,7 @@ impl Text {
         }
     }
 
-    fn measure_dimensions(&self, ctx: &mut crate::Context) -> Rect {
+    fn measure_dimensions(&self, _ctx: &mut crate::Context) -> Rect {
         // let dimensions = ctx
         //     .gfx_context
         //     .canvas_context
@@ -206,21 +206,9 @@ fn load_gpu_text(ctx: &mut crate::Context, label: &str) -> GpuText {
         );
     }
 
-    let vertex_buffer = unsafe {
-        Buffer::immutable(
-            &mut ctx.quad_ctx,
-            BufferType::VertexBuffer,
-            &vertices,
-        )
-    };
+    let vertex_buffer = Buffer::immutable(&mut ctx.quad_ctx, BufferType::VertexBuffer, &vertices);
 
-    let index_buffer = unsafe {
-        Buffer::immutable(
-            &mut ctx.quad_ctx,
-            BufferType::IndexBuffer,
-            &indices,
-        )
-    };
+    let index_buffer = Buffer::immutable(&mut ctx.quad_ctx, BufferType::IndexBuffer, &indices);
 
     let bindings = Bindings {
         vertex_buffers: vec![vertex_buffer],
@@ -286,9 +274,8 @@ impl Drawable for Text {
             model: transform,
             color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
         };
-        unsafe {
-            ctx.quad_ctx.apply_uniforms(&uniforms);
-        }
+
+        ctx.quad_ctx.apply_uniforms(&uniforms);
 
         // TODO: buffer len from miniquad?
         ctx.quad_ctx.draw(0, self.fragment.text.len() as i32 * 6, 1);

@@ -8,17 +8,10 @@ In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
 
 ## Example
 
-1) To build and run an example as a native binary that uses ggez:
+To build and run an example as a native binary:
 
-    ```rust
-    cargo run --example astroblasto
-    ```
+```rust
+cargo run --example astroblasto
+```
 
-2) To build and run a web version of an example:
-
-    ```rust
-    rustup target add wasm32-unknown-unknown
-    cargo build --example astroblasto --target wasm32-unknown-unknown
-    cp target/wasm32-unknown-unknown/debug/examples/astroblsato.wasm js
-    cd js/ #  and launch http server with wasm MIME, maybe check index.html to match>
-    ```
+To build and run a web version follow [miniquad instructions](https://github.com/not-fl3/miniquad/#wasm)

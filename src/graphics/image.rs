@@ -1,5 +1,7 @@
 use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4};
-use std::{cell::Cell, path};
+use std::{path};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc};
 
 use crate::{
     error::GameResult,
@@ -40,7 +42,7 @@ pub struct Image {
     filter: FilterMode,
     pub(crate) bindings: Bindings,
     pub(crate) pipeline: Pipeline,
-    dirty_filter: Cell<bool>,
+    dirty_filter: Arc<AtomicBool>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -143,7 +145,7 @@ impl Image {
             texture,
             bindings,
             pipeline,
-            dirty_filter: Cell::new(false),
+            dirty_filter: Arc::new(AtomicBool::new(false)),
             filter: FilterMode::Linear,
         })
     }
@@ -162,7 +164,7 @@ impl Image {
     }
 
     pub fn set_filter(&mut self, filter: FilterMode) {
-        self.dirty_filter.set(true);
+        self.dirty_filter.store(true, Ordering::Release);
         self.filter = filter;
     }
 
@@ -198,9 +200,8 @@ impl Drawable for Image {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
         let transform = param_to_instance_transform(&param, self.width, self.height);
 
-        if self.dirty_filter.get() {
-            self.dirty_filter.set(false);
-
+        if self.dirty_filter.load(Ordering::Acquire) {
+            self.dirty_filter.store(false, Ordering::Release);
             self.texture.set_filter(self.filter as i32);
         }
 

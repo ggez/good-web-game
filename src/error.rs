@@ -1,6 +1,7 @@
 //! Error types and conversion functions.
 
 use std::error::Error;
+use log::SetLoggerError;
 use std::fmt;
 
 /// An enum containing all kinds of game framework errors.
@@ -8,6 +9,7 @@ use std::fmt;
 pub enum GameError {
     /// Something went wrong trying to read from a file
     IOError(std::io::Error),
+    LoggerError(SetLoggerError),
     UnknownError(&'static str),
 }
 
@@ -34,5 +36,11 @@ pub type GameResult<T = ()> = Result<T, GameError>;
 impl From<std::io::Error> for GameError {
     fn from(e: std::io::Error) -> GameError {
         GameError::IOError(e)
+    }
+}
+
+impl From<SetLoggerError> for GameError {
+    fn from(error: SetLoggerError) -> Self {
+        GameError::LoggerError(error)
     }
 }

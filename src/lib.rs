@@ -18,6 +18,9 @@ pub use crate::{
 };
 pub use cgmath;
 
+#[cfg(target_arch = "wasm32")]
+pub use miniquad::console_log;
+
 pub mod rand {
     use miniquad::rand;
 

@@ -15,3 +15,9 @@ cargo run --example astroblasto
 ```
 
 To build and run a web version follow [miniquad instructions](https://github.com/not-fl3/miniquad/#wasm)
+
+## Architecture
+
+Here is how `good-web-game` fits into your rust-based game:
+
+![software stack](about/gwg-stack.png?raw=true "good-web-game software stack")

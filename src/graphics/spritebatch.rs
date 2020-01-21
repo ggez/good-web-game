@@ -1,9 +1,8 @@
 use crate::{
     error::GameResult,
     graphics::{
-        self,
-        image::{batch_shader, param_to_instance_transform},
-        transform_rect, BlendMode, DrawParam, InstanceAttributes, Rect,
+        self, context::batch_shader, image::param_to_instance_transform, transform_rect, BlendMode,
+        DrawParam, InstanceAttributes, Rect,
     },
     Context,
 };
@@ -109,7 +108,8 @@ impl graphics::Drawable for SpriteBatch {
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx.apply_pipeline(&image.pipeline);
+        ctx.quad_ctx
+            .apply_pipeline(&ctx.internal.gfx_context.sprite_pipeline);
         ctx.quad_ctx.apply_bindings(&image.bindings);
 
         let uniforms = batch_shader::Uniforms {

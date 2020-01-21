@@ -1,19 +1,16 @@
 use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4};
-use std::{path};
+use std::path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc};
+use std::sync::Arc;
 
 use crate::{
     error::GameResult,
     filesystem,
-    graphics::{BlendMode, DrawParam, Drawable, Rect},
+    graphics::{context::batch_shader, BlendMode, DrawParam, Drawable, Rect},
     Context,
 };
 
-use miniquad::{
-    Bindings, BlendFactor, BlendValue, Buffer, BufferLayout, BufferType, Equation, PassAction,
-    Pipeline, PipelineParams, Shader, Texture, VertexAttribute, VertexFormat, VertexStep,
-};
+use miniquad::{Bindings, Buffer, BufferType, PassAction, Texture};
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -41,7 +38,6 @@ pub struct Image {
     pub(crate) height: u16,
     filter: FilterMode,
     pub(crate) bindings: Bindings,
-    pub(crate) pipeline: Pipeline,
     dirty_filter: Arc<AtomicBool>,
 }
 
@@ -106,45 +102,11 @@ impl Image {
             images: vec![texture],
         };
 
-        let shader = Shader::new(
-            &mut ctx.quad_ctx,
-            batch_shader::VERTEX,
-            batch_shader::FRAGMENT,
-            batch_shader::META,
-        );
-
-        let pipeline = Pipeline::with_params(
-            &mut ctx.quad_ctx,
-            &[
-                BufferLayout::default(),
-                BufferLayout {
-                    step_func: VertexStep::PerInstance,
-                    ..Default::default()
-                },
-            ],
-            &[
-                VertexAttribute::with_buffer("position", VertexFormat::Float2, 0),
-                VertexAttribute::with_buffer("Source", VertexFormat::Float4, 1),
-                VertexAttribute::with_buffer("Color", VertexFormat::Float4, 1),
-                VertexAttribute::with_buffer("Model", VertexFormat::Mat4, 1),
-            ],
-            shader,
-            PipelineParams {
-                color_blend: Some((
-                    Equation::Add,
-                    BlendFactor::Value(BlendValue::SourceAlpha),
-                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-                )),
-                ..Default::default()
-            },
-        );
-
         Ok(Image {
             width: texture.width as u16,
             height: texture.height as u16,
             texture,
             bindings,
-            pipeline,
             dirty_filter: Arc::new(AtomicBool::new(false)),
             filter: FilterMode::Linear,
         })
@@ -214,7 +176,8 @@ impl Drawable for Image {
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx.apply_pipeline(&self.pipeline);
+        ctx.quad_ctx
+            .apply_pipeline(&ctx.internal.gfx_context.sprite_pipeline);
         ctx.quad_ctx.apply_bindings(&self.bindings);
 
         let uniforms = batch_shader::Uniforms {
@@ -238,52 +201,5 @@ impl Drawable for Image {
 
     fn dimensions(&self, _ctx: &mut Context) -> Option<Rect> {
         Some(self.dimensions())
-    }
-}
-pub(crate) mod batch_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType};
-
-    pub const VERTEX: &str = r#"#version 100
-    attribute vec2 position;
-    attribute vec4 Source;
-    attribute vec4 Color;
-    attribute mat4 Model;
-
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform mat4 Projection;
-    
-    uniform float depth;
-
-    void main() {
-        gl_Position = Projection * Model * vec4(position, 0, 1);
-        gl_Position.z = depth;
-        color = Color;
-        uv = position * Source.zw + Source.xy;
-    }"#;
-
-    pub const FRAGMENT: &str = r#"#version 100
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform sampler2D Texture;
-
-
-    void main() {
-        gl_FragColor = texture2D(Texture, uv) * color;
-    }"#;
-
-    pub const META: ShaderMeta = ShaderMeta {
-        images: &["Texture"],
-        uniforms: UniformBlockLayout {
-            uniforms: &[("Projection", UniformType::Mat4)],
-        },
-    };
-
-    #[repr(C)]
-    #[derive(Debug)]
-    pub struct Uniforms {
-        pub projection: cgmath::Matrix4<f32>,
     }
 }

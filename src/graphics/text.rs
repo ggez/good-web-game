@@ -1,6 +1,6 @@
 use super::{BlendMode, Color, DrawParam, Drawable, GameResult, Rect};
 
-use crate::graphics::context::GpuText;
+use crate::graphics::context::{GpuText, text_shader};
 
 use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4};
 
@@ -166,13 +166,6 @@ impl Text {
 }
 
 fn load_gpu_text(ctx: &mut crate::Context, label: &str) -> GpuText {
-    let shader = Shader::new(
-        &mut ctx.quad_ctx,
-        text_shader::VERTEX,
-        text_shader::FRAGMENT,
-        text_shader::META,
-    );
-
     let mut vertices = Vec::<f32>::new();
     let mut indices = Vec::<u16>::new();
     for (n, ch) in label.chars().enumerate() {
@@ -216,25 +209,7 @@ fn load_gpu_text(ctx: &mut crate::Context, label: &str) -> GpuText {
         images: vec![ctx.internal.gfx_context.font_texture.clone()],
     };
 
-    let pipeline = Pipeline::with_params(
-        &mut ctx.quad_ctx,
-        &[BufferLayout::default()],
-        &[
-            VertexAttribute::new("position", VertexFormat::Float2),
-            VertexAttribute::new("texcoord", VertexFormat::Float2),
-        ],
-        shader,
-        PipelineParams {
-            color_blend: Some((
-                Equation::Add,
-                BlendFactor::Value(BlendValue::SourceAlpha),
-                BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-            )),
-            ..Default::default()
-        },
-    );
-
-    GpuText { bindings, pipeline }
+    GpuText { bindings }
 }
 
 impl Drawable for Text {
@@ -266,7 +241,7 @@ impl Drawable for Text {
             .get(&self.fragment.text.clone())
             .unwrap();
 
-        ctx.quad_ctx.apply_pipeline(&text.pipeline);
+        ctx.quad_ctx.apply_pipeline(&ctx.internal.gfx_context.text_pipeline);
         ctx.quad_ctx.apply_bindings(&text.bindings);
 
         let uniforms = text_shader::Uniforms {
@@ -298,55 +273,3 @@ impl Drawable for Text {
     }
 }
 
-mod text_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType};
-
-    pub const VERTEX: &str = r#"#version 100
-    attribute vec2 position;
-    attribute vec2 texcoord;
-
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform mat4 Projection;
-    uniform mat4 Model;
-    uniform vec4 Color;
-
-    uniform float depth;
-
-    void main() {
-        gl_Position = Projection * Model * vec4(position, 0, 1);
-        gl_Position.z = depth;
-        color = Color;
-        uv = texcoord;
-    }"#;
-
-    pub const FRAGMENT: &str = r#"#version 100
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform sampler2D Texture;
-
-    void main() {
-        gl_FragColor = texture2D(Texture, uv) * color;
-    }"#;
-
-    pub const META: ShaderMeta = ShaderMeta {
-        images: &["Texture"],
-        uniforms: UniformBlockLayout {
-            uniforms: &[
-                ("Projection", UniformType::Mat4),
-                ("Model", UniformType::Mat4),
-                ("Color", UniformType::Float4),
-            ],
-        },
-    };
-
-    #[repr(C)]
-    #[derive(Debug)]
-    pub struct Uniforms {
-        pub projection: cgmath::Matrix4<f32>,
-        pub model: cgmath::Matrix4<f32>,
-        pub color: cgmath::Vector4<f32>,
-    }
-}

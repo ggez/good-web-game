@@ -1,3 +1,5 @@
+use crate::graphics::{FillOptions, StrokeOptions};
+
 pub type Point2 = cgmath::Point2<f32>;
 pub type Vector2 = cgmath::Vector2<f32>;
 
@@ -351,5 +353,27 @@ impl Into<String> for Color {
             (self.b * 255.) as i32,
             (self.a * 255.) as i32
         )
+    }
+}
+
+/// Specifies whether a shape should be drawn
+/// filled or as an outline.
+#[derive(Debug, Copy, Clone)]
+pub enum DrawMode {
+    /// A stroked line with given parameters, see `StrokeOptions` documentation.
+    Stroke(StrokeOptions),
+    /// A filled shape with given parameters, see `FillOptions` documentation.
+    Fill(FillOptions),
+}
+
+impl DrawMode {
+    /// Constructs a DrawMode that draws a stroke with the given width
+    pub fn stroke(width: f32) -> DrawMode {
+        DrawMode::Stroke(StrokeOptions::default().with_line_width(width))
+    }
+
+    /// Constructs a DrawMode that fills shapes
+    pub fn fill() -> DrawMode {
+        DrawMode::Fill(FillOptions::default())
     }
 }

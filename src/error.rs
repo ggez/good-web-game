@@ -1,7 +1,6 @@
 //! Error types and conversion functions.
 
 use std::error::Error;
-use log::SetLoggerError;
 use std::fmt;
 
 /// An enum containing all kinds of game framework errors.
@@ -9,7 +8,8 @@ use std::fmt;
 pub enum GameError {
     /// Something went wrong trying to read from a file
     IOError(std::io::Error),
-    LoggerError(SetLoggerError),
+    /// Something went wrong with the `lyon` shape-tesselation library
+    LyonError(String),
     UnknownError(&'static str),
 }
 
@@ -39,8 +39,12 @@ impl From<std::io::Error> for GameError {
     }
 }
 
-impl From<SetLoggerError> for GameError {
-    fn from(error: SetLoggerError) -> Self {
-        GameError::LoggerError(error)
+impl From<lyon::lyon_tessellation::FillError> for GameError {
+    fn from(s: lyon::lyon_tessellation::FillError) -> GameError {
+        let errstr = format!(
+            "Error while tesselating shape (did you give it an infinity or NaN?): {:?}",
+            s
+        );
+        GameError::LyonError(errstr)
     }
 }

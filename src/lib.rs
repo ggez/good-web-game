@@ -38,6 +38,14 @@ pub mod rand {
             r as i32
         }
     }
+    impl RandomRange for i16 {
+        fn gen_range(low: i16, high: i16) -> Self {
+            let r = unsafe { rand() } as f32 / miniquad::RAND_MAX as f32;
+            let r = low as f32 + (high as f32 - low as f32) * r;
+            r as i16
+        }
+    }
+
     impl RandomRange for usize {
         fn gen_range(low: usize, high: usize) -> Self {
             let r = unsafe { rand() } as f32 / miniquad::RAND_MAX as f32;
@@ -179,7 +187,7 @@ where
     F: 'static + FnOnce(&mut Context) -> Box<dyn EventHandler>,
 {
     miniquad::start(miniquad::conf::Conf::default(), |ctx| {
-        let mut context_internal = ContextInternal::new(conf);
+        let mut context_internal = ContextInternal::new(ctx, conf);
 
         let (w, h) = ctx.screen_size();
         context_internal

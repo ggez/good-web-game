@@ -2,6 +2,7 @@ mod canvas;
 mod context;
 mod drawparam;
 mod image;
+mod mesh;
 mod shader;
 mod text;
 mod types;
@@ -17,6 +18,7 @@ pub use self::{
     context::GraphicsContext,
     drawparam::DrawParam,
     image::*,
+    mesh::*,
     shader::*,
     text::*,
     types::*,

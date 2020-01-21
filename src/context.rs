@@ -38,7 +38,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 }
 impl ContextInternal {
-    pub(crate) fn new(conf: Conf) -> ContextInternal {
+    pub(crate) fn new(quad_ctx: &mut miniquad::Context, conf: Conf) -> ContextInternal {
         let tar = if let Cache::Tar(tar) = conf.cache {
             tar
         } else {
@@ -48,7 +48,7 @@ impl ContextInternal {
 
         ContextInternal {
             filesystem: Filesystem::new(&tar),
-            gfx_context: graphics::GraphicsContext::new(),
+            gfx_context: graphics::GraphicsContext::new(quad_ctx),
             mouse_context: MouseContext::new(input_handler.clone()),
             keyboard_context: KeyboardContext::new(input_handler.clone()),
             timer_context: TimeContext::new(),

@@ -19,6 +19,8 @@ impl From<QuadMouseButton> for MouseButton {
         match button {
             QuadMouseButton::Left => MouseButton::Left,
             QuadMouseButton::Right => MouseButton::Right,
+            QuadMouseButton::Middle => MouseButton::Middle,
+            QuadMouseButton::Unknown => MouseButton::Button4,
         }
     }
 }

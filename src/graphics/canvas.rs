@@ -19,7 +19,7 @@ impl Canvas {
         height: u16,
         _samples: NumSamples,
     ) -> GameResult<Canvas> {
-        let texture = Texture::new_render_texture(RenderTextureParams {
+        let texture = Texture::new_render_texture(&mut ctx.quad_ctx, RenderTextureParams {
             width: width as u32,
             height: height as u32,
             format: PixelFormat::RGBA8,

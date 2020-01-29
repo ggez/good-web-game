@@ -76,7 +76,7 @@ impl Image {
         height: u16,
         bytes: &[u8],
     ) -> GameResult<Image> {
-        let texture = Texture::from_rgba8(width, height, bytes);
+        let texture = Texture::from_rgba8(&mut ctx.quad_ctx, width, height, bytes);
 
         Self::from_texture(ctx, texture)
     }
@@ -164,7 +164,7 @@ impl Drawable for Image {
 
         if self.dirty_filter.load(Ordering::Acquire) {
             self.dirty_filter.store(false, Ordering::Release);
-            self.texture.set_filter(self.filter as i32);
+            self.texture.set_filter(&mut ctx.quad_ctx, self.filter as i32);
         }
 
         let instances = &[InstanceAttributes {

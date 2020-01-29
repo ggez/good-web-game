@@ -36,8 +36,8 @@ impl GraphicsContext {
         let height = img.height() as u16;
         let bytes = img.into_raw();
 
-        let font_texture = miniquad::Texture::from_rgba8(width, height, &bytes);
-        let white_texture = Texture::from_rgba8(1, 1, &[255, 255, 255, 255]);
+        let font_texture = miniquad::Texture::from_rgba8(ctx, width, height, &bytes);
+        let white_texture = Texture::from_rgba8(ctx, 1, 1, &[255, 255, 255, 255]);
 
         let sprite_shader = Shader::new(
             ctx,

@@ -10,6 +10,7 @@ pub enum GameError {
     IOError(std::io::Error),
     /// Something went wrong with the `lyon` shape-tesselation library
     LyonError(String),
+    TTFError(miniquad_text_rusttype::Error),
     UnknownError(&'static str),
 }
 
@@ -36,6 +37,12 @@ pub type GameResult<T = ()> = Result<T, GameError>;
 impl From<std::io::Error> for GameError {
     fn from(e: std::io::Error) -> GameError {
         GameError::IOError(e)
+    }
+}
+
+impl From<miniquad_text_rusttype::Error> for GameError {
+    fn from(e: miniquad_text_rusttype::Error) -> GameError {
+        GameError::TTFError(e)
     }
 }
 

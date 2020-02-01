@@ -1,23 +1,28 @@
-use crate::graphics::{spritebatch, text::Font, types::Rect, Canvas, DrawParam, Image};
+use crate::{
+    graphics::{types::Rect, Canvas},
+    GameResult,
+};
+use miniquad_text_rusttype::FontTexture;
+use std::rc::Rc;
 
 use cgmath::{Matrix3, Matrix4};
-use glyph_brush::{GlyphBrush, GlyphBrushBuilder};
 
-use std::cell::RefCell;
-use std::rc::Rc;
+const DEFAULT_FONT_BYTES: &'static [u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/resources/DejaVuSerif.ttf"
+));
 
 pub struct GraphicsContext {
     pub(crate) screen_rect: Rect,
     pub(crate) projection: Matrix4<f32>,
     pub(crate) white_texture: miniquad::Texture,
+    //pub(crate) text_cache: HashMap<String, GpuText>,
     pub(crate) canvas: Option<Canvas>,
     pub(crate) sprite_pipeline: miniquad::Pipeline,
     pub(crate) mesh_pipeline: miniquad::Pipeline,
     pub(crate) image_pipeline: miniquad::Pipeline,
-
-    pub(crate) glyph_brush: GlyphBrush<'static, DrawParam>,
-    pub(crate) glyph_cache: Image,
-    pub(crate) glyph_state: Rc<RefCell<spritebatch::SpriteBatch>>,
+    pub(crate) text_system: miniquad_text_rusttype::TextSystem,
+    pub(crate) fonts_cache: Vec<Rc<miniquad_text_rusttype::FontTexture>>,
 }
 
 impl GraphicsContext {
@@ -94,6 +99,7 @@ impl GraphicsContext {
             mesh_shader::FRAGMENT,
             mesh_shader::META,
         );
+
         let mesh_pipeline = Pipeline::with_params(
             ctx,
             &[BufferLayout::default()],
@@ -113,41 +119,40 @@ impl GraphicsContext {
             },
         );
 
-        // Glyph cache stuff.
-        let glyph_brush =
-            GlyphBrushBuilder::using_font_bytes(Font::default_font_bytes().to_vec()).build();
-        let (glyph_cache_width, glyph_cache_height) = glyph_brush.texture_dimensions();
-        let initial_contents =
-            vec![255; 4 * glyph_cache_width as usize * glyph_cache_height as usize];
-        let glyph_cache = Texture::from_rgba8(
-            ctx,
-            glyph_cache_width as u16,
-            glyph_cache_height as u16,
-            &initial_contents,
-        );
+        let text_system = miniquad_text_rusttype::TextSystem::new(ctx);
 
-        let glyph_cache = Image::from_texture(ctx, glyph_cache).unwrap();
-
-        let glyph_state = Rc::new(RefCell::new(spritebatch::SpriteBatch::new(
-            glyph_cache.clone(),
-        )));
+        // load default font, will be available by FontId::default()
+        let fonts_cache = vec![Rc::new(load_font(ctx, DEFAULT_FONT_BYTES, 70).unwrap())];
 
         GraphicsContext {
             projection,
             screen_rect,
             white_texture,
+            //text_cache: HashMap::new(),
             canvas: None,
             sprite_pipeline,
             mesh_pipeline,
             image_pipeline,
-            glyph_brush,
-            glyph_cache,
-            glyph_state,
+            text_system,
+            fonts_cache,
         }
     }
 }
 
 impl GraphicsContext {
+    pub(crate) fn load_font(
+        &mut self,
+        ctx: &mut miniquad::Context,
+        font_bytes: &[u8],
+        font_size: u32,
+    ) -> GameResult<usize> {
+        let font = load_font(ctx, &font_bytes, font_size)?;
+
+        self.fonts_cache.push(Rc::new(font));
+
+        Ok(self.fonts_cache.len() - 1)
+    }
+
     pub fn set_transform(&mut self, _transform: &Matrix3<f32>) {
         unimplemented!();
     }
@@ -165,6 +170,19 @@ impl GraphicsContext {
         self.projection =
             cgmath::ortho(rect.x, rect.x + rect.w, rect.y + rect.h, rect.y, -1.0, 1.0);
     }
+}
+
+fn load_font(
+    ctx: &mut miniquad::Context,
+    font_data: &[u8],
+    font_size: u32,
+) -> GameResult<FontTexture> {
+    Ok(FontTexture::new(
+        ctx,
+        font_data,
+        font_size,
+        FontTexture::ascii_character_list(),
+    )?)
 }
 
 pub(crate) mod batch_shader {

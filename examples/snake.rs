@@ -1,4 +1,4 @@
-//! https://github.com/ggez/ggez/blob/master/examples/04_snake.rs 
+//! https://github.com/ggez/ggez/blob/master/examples/04_snake.rs
 //!
 //! A small snake game done after watching
 //! <https://www.youtube.com/watch?v=HCwMb0KslX8>
@@ -83,14 +83,9 @@ impl GridPosition {
     /// As well as a helper function that will give us a random `GridPosition` from
     /// `(0, 0)` to `(max_x, max_y)`
     pub fn random(max_x: i16, max_y: i16) -> Self {
-        
         // We can use `.into()` to convert from `(i16, i16)` to a `GridPosition` since
         // we implement `From<(i16, i16)>` for `GridPosition` below.
-        (
-            rand::gen_range(0, max_x),
-            rand::gen_range(0, max_y),
-        )
-            .into()
+        (rand::gen_range(0, max_x), rand::gen_range(0, max_y)).into()
     }
 
     /// We'll make another helper function that takes one grid position and returns a new one after

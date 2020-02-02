@@ -1,5 +1,5 @@
 #![allow(warnings)]
-use crate::graphics::{*, context::mesh_shader};
+use crate::graphics::{context::mesh_shader, *};
 use lyon;
 use lyon::tessellation as t;
 
@@ -368,7 +368,11 @@ impl MeshBuilder {
         let bindings = miniquad::Bindings {
             vertex_buffers: vec![vertex_buffer],
             index_buffer: index_buffer,
-            images: self.texture.map_or(vec![ctx.internal.gfx_context.white_texture], |texture| vec![texture]),
+            images: self
+                .texture
+                .map_or(vec![ctx.internal.gfx_context.white_texture], |texture| {
+                    vec![texture]
+                }),
         };
 
         Ok(Mesh {
@@ -588,18 +592,19 @@ impl Mesh {
 
 impl Drawable for Mesh {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        let transform = param_to_instance_transform(&param, 1, 1);
+        let transform = param_to_instance_transform(&param);
 
         let pass = ctx.framebuffer();
-        
+
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx.apply_pipeline(&ctx.internal.gfx_context.mesh_pipeline);
+        ctx.quad_ctx
+            .apply_pipeline(&ctx.internal.gfx_context.mesh_pipeline);
         ctx.quad_ctx.apply_bindings(&self.bindings);
 
         let uniforms = mesh_shader::Uniforms {
             projection: ctx.internal.gfx_context.projection,
             model: transform,
-            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a)
+            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
         };
 
         ctx.quad_ctx.apply_uniforms(&uniforms);
@@ -618,4 +623,3 @@ impl Drawable for Mesh {
         self.blend_mode
     }
 }
-

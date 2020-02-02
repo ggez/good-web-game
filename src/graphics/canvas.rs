@@ -19,16 +19,19 @@ impl Canvas {
         height: u16,
         _samples: NumSamples,
     ) -> GameResult<Canvas> {
-        let texture = Texture::new_render_texture(&mut ctx.quad_ctx, RenderTextureParams {
-            width: width as u32,
-            height: height as u32,
-            format: PixelFormat::RGBA8,
-            ..Default::default()
-        });
+        let texture = Texture::new_render_texture(
+            &mut ctx.quad_ctx,
+            RenderTextureParams {
+                width: width as u32,
+                height: height as u32,
+                format: PixelFormat::RGBA8,
+                ..Default::default()
+            },
+        );
 
         // let framebuffer = Framebuffer::new(ctx, &texture)
         //     .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
-        let image = Image::from_texture(ctx, texture)?;
+        let image = Image::from_texture(&mut ctx.quad_ctx, texture)?;
 
         let offscreen_pass = RenderPass::new(ctx.quad_ctx, texture, None);
 

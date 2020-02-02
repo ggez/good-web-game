@@ -59,7 +59,7 @@ impl GraphicsContext {
                 VertexAttribute::with_buffer("position", VertexFormat::Float2, 0),
                 VertexAttribute::with_buffer("Source", VertexFormat::Float4, 1),
                 VertexAttribute::with_buffer("Color", VertexFormat::Float4, 1),
-                VertexAttribute::with_buffer("Model", VertexFormat::Mat4, 1),
+                VertexAttribute::with_buffer("InstanceModel", VertexFormat::Mat4, 1),
             ],
             sprite_shader,
             PipelineParams {

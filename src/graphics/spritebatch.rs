@@ -63,9 +63,12 @@ impl SpriteBatch {
     }
 
     /// Replaces the contained `Image`, returning the old one.
-    /// Not actually returning anything, but leaking memory instead \0/
     pub fn set_image(&mut self, texture: graphics::Image) {
+        self.image.borrow().texture.delete();
+        self.image.borrow().bindings.vertex_buffers[0].delete();
+        self.image.borrow().bindings.index_buffer.delete();
         self.image = RefCell::new(texture);
+        self.gpu_sprites = RefCell::new(vec![InstanceAttributes::default()]);
     }
 
     /// Set the filter mode for the SpriteBatch.
@@ -79,15 +82,18 @@ impl graphics::Drawable for SpriteBatch {
         let mut image = self.image.borrow_mut();
         let mut gpu_sprites = self.gpu_sprites.borrow_mut();
 
-        if self.sprites.len() != gpu_sprites.len() {
+        if self.sprites.len() > gpu_sprites.len() {
             gpu_sprites.resize(self.sprites.len(), InstanceAttributes::default());
+
+            image.bindings.vertex_buffers[1].delete();
 
             image.bindings.vertex_buffers[1] = Buffer::stream(
                 &mut ctx.quad_ctx,
                 BufferType::VertexBuffer,
-                std::mem::size_of::<InstanceAttributes>() * gpu_sprites.len(),
+                std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
             );
         }
+
         for (n, param) in self.sprites.iter().enumerate() {
             let mut new_param = param.clone();
             let src_width = param.src.w;
@@ -106,7 +112,7 @@ impl graphics::Drawable for SpriteBatch {
             gpu_sprites[n] = instance;
         }
 
-        image.bindings.vertex_buffers[1].update(ctx.quad_ctx, &*gpu_sprites);
+        image.bindings.vertex_buffers[1].update(ctx.quad_ctx, &gpu_sprites[0..self.sprites.len()]);
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
@@ -119,7 +125,7 @@ impl graphics::Drawable for SpriteBatch {
             model: param_to_instance_transform(&param),
         };
         ctx.quad_ctx.apply_uniforms(&uniforms);
-        ctx.quad_ctx.draw(0, 6, gpu_sprites.len() as i32);
+        ctx.quad_ctx.draw(0, 6, self.sprites.len() as i32);
 
         ctx.quad_ctx.end_render_pass();
 

@@ -11,7 +11,6 @@ pub mod spritebatch;
 
 use crate::error::GameResult;
 use crate::Context;
-pub(crate) use context::GpuText;
 
 pub use self::{
     canvas::{set_canvas, Canvas},

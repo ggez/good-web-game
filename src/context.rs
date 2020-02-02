@@ -1,12 +1,10 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::{
     conf::{Cache, Conf},
     filesystem::Filesystem,
     graphics,
-    graphics::GpuText,
     input::{input_handler::InputHandler, KeyboardContext, MouseContext},
     timer::TimeContext,
 };
@@ -25,10 +23,6 @@ pub struct Context<'a, 'b> {
 }
 
 impl<'a, 'b> Context<'a, 'b> {
-    pub(crate) fn text_cache(&mut self) -> &mut HashMap<String, GpuText> {
-        &mut self.internal.gfx_context.text_cache
-    }
-
     pub(crate) fn framebuffer(&mut self) -> Option<miniquad::RenderPass> {
         self.internal
             .gfx_context

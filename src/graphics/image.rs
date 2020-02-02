@@ -219,3 +219,11 @@ impl Drawable for Image {
         Some(self.dimensions())
     }
 }
+
+impl Drop for Image {
+    fn drop(&mut self) {
+        self.texture.delete();
+        self.bindings.index_buffer.delete();
+        self.bindings.vertex_buffers[0].delete();
+    }
+}

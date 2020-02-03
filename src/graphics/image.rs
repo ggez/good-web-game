@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::{
     error::GameResult,
     filesystem,
-    graphics::{context::batch_shader, BlendMode, DrawParam, Drawable, Rect},
+    graphics::{context::image_shader, BlendMode, DrawParam, Drawable, Rect},
     Context,
 };
 
@@ -38,6 +38,8 @@ pub struct Image {
     filter: FilterMode,
     pub(crate) bindings: Bindings,
     dirty_filter: Arc<AtomicBool>,
+
+    clones_hack: Arc<()>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -88,14 +90,8 @@ impl Image {
         let indices: [u16; 6] = [0, 1, 2, 0, 2, 3];
         let index_buffer = Buffer::immutable(ctx, BufferType::IndexBuffer, &indices);
 
-        let instances_buffer = Buffer::stream(
-            ctx,
-            BufferType::VertexBuffer,
-            std::mem::size_of::<InstanceAttributes>(),
-        );
-
         let bindings = Bindings {
-            vertex_buffers: vec![vertex_buffer, instances_buffer],
+            vertex_buffers: vec![vertex_buffer],
             index_buffer: index_buffer,
             images: vec![texture],
         };
@@ -107,6 +103,7 @@ impl Image {
             bindings,
             dirty_filter: Arc::new(AtomicBool::new(false)),
             filter: FilterMode::Linear,
+            clones_hack: Arc::new(()),
         })
     }
 
@@ -182,22 +179,17 @@ impl Drawable for Image {
                 .set_filter(&mut ctx.quad_ctx, self.filter as i32);
         }
 
-        let instances = &[InstanceAttributes {
-            model: transform,
-            source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
-            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
-        }];
-        self.bindings.vertex_buffers[1].update(ctx.quad_ctx, instances);
-
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
         ctx.quad_ctx
-            .apply_pipeline(&ctx.internal.gfx_context.sprite_pipeline);
+            .apply_pipeline(&ctx.internal.gfx_context.image_pipeline);
         ctx.quad_ctx.apply_bindings(&self.bindings);
 
-        let uniforms = batch_shader::Uniforms {
+        let uniforms = image_shader::Uniforms {
             projection: ctx.internal.gfx_context.projection,
-            model: cgmath::Matrix4::one(),
+            model: transform,
+            source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
+            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
         };
 
         ctx.quad_ctx.apply_uniforms(&uniforms);
@@ -222,8 +214,10 @@ impl Drawable for Image {
 
 impl Drop for Image {
     fn drop(&mut self) {
-        self.texture.delete();
-        self.bindings.index_buffer.delete();
-        self.bindings.vertex_buffers[0].delete();
+        if Arc::strong_count(&self.clones_hack) == 1 {
+            self.texture.delete();
+            self.bindings.index_buffer.delete();
+            self.bindings.vertex_buffers[0].delete();
+        }
     }
 }

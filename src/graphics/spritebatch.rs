@@ -63,12 +63,12 @@ impl SpriteBatch {
     }
 
     /// Replaces the contained `Image`, returning the old one.
-    pub fn set_image(&mut self, texture: graphics::Image) {
-        self.image.borrow().texture.delete();
-        self.image.borrow().bindings.vertex_buffers[0].delete();
-        self.image.borrow().bindings.index_buffer.delete();
-        self.image = RefCell::new(texture);
-        self.gpu_sprites = RefCell::new(vec![InstanceAttributes::default()]);
+    pub fn set_image(&mut self, image: graphics::Image) -> graphics::Image {
+        use std::mem;
+
+        self.gpu_sprites = RefCell::new(vec![]);
+        let mut self_image = self.image.borrow_mut();
+        mem::replace(&mut *self_image, image)
     }
 
     /// Set the filter mode for the SpriteBatch.
@@ -85,13 +85,19 @@ impl graphics::Drawable for SpriteBatch {
         if self.sprites.len() > gpu_sprites.len() {
             gpu_sprites.resize(self.sprites.len(), InstanceAttributes::default());
 
-            image.bindings.vertex_buffers[1].delete();
-
-            image.bindings.vertex_buffers[1] = Buffer::stream(
+            let buffer = Buffer::stream(
                 &mut ctx.quad_ctx,
                 BufferType::VertexBuffer,
                 std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
             );
+
+            if image.bindings.vertex_buffers.len() <= 1 {
+                image.bindings.vertex_buffers.push(buffer);
+            } else {
+                image.bindings.vertex_buffers[1].delete();
+
+                image.bindings.vertex_buffers[1] = buffer;
+            }
         }
 
         for (n, param) in self.sprites.iter().enumerate() {

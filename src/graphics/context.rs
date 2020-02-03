@@ -13,6 +13,7 @@ pub struct GraphicsContext {
     pub(crate) canvas: Option<Canvas>,
     pub(crate) sprite_pipeline: miniquad::Pipeline,
     pub(crate) mesh_pipeline: miniquad::Pipeline,
+    pub(crate) image_pipeline: miniquad::Pipeline,
 
     pub(crate) glyph_brush: GlyphBrush<'static, DrawParam>,
     pub(crate) glyph_cache: Image,
@@ -51,6 +52,32 @@ impl GraphicsContext {
                 VertexAttribute::with_buffer("InstanceModel", VertexFormat::Mat4, 1),
             ],
             sprite_shader,
+            PipelineParams {
+                color_blend: Some((
+                    Equation::Add,
+                    BlendFactor::Value(BlendValue::SourceAlpha),
+                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
+                )),
+                ..Default::default()
+            },
+        );
+
+        let image_shader = Shader::new(
+            ctx,
+            image_shader::VERTEX,
+            image_shader::FRAGMENT,
+            image_shader::META,
+        );
+
+        let image_pipeline = miniquad::Pipeline::with_params(
+            ctx,
+            &[BufferLayout::default()],
+            &[VertexAttribute::with_buffer(
+                "position",
+                VertexFormat::Float2,
+                0,
+            )],
+            image_shader,
             PipelineParams {
                 color_blend: Some((
                     Equation::Add,
@@ -112,6 +139,7 @@ impl GraphicsContext {
             canvas: None,
             sprite_pipeline,
             mesh_pipeline,
+            image_pipeline,
             glyph_brush,
             glyph_cache,
             glyph_state,
@@ -187,6 +215,61 @@ pub(crate) mod batch_shader {
     #[derive(Debug)]
     pub struct Uniforms {
         pub projection: cgmath::Matrix4<f32>,
+        pub model: cgmath::Matrix4<f32>,
+    }
+}
+
+pub(crate) mod image_shader {
+    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType};
+
+    pub const VERTEX: &str = r#"#version 100
+    attribute vec2 position;
+
+    varying lowp vec4 color;
+    varying lowp vec2 uv;
+
+    uniform mat4 Projection;
+    uniform vec4 Source;
+    uniform vec4 Color;
+    uniform mat4 Model;
+
+    uniform float depth;
+
+    void main() {
+        gl_Position = Projection * Model * vec4(position, 0, 1);
+        gl_Position.z = depth;
+        color = Color;
+        uv = position * Source.zw + Source.xy;
+    }"#;
+
+    pub const FRAGMENT: &str = r#"#version 100
+    varying lowp vec4 color;
+    varying lowp vec2 uv;
+
+    uniform sampler2D Texture;
+
+    void main() {
+        gl_FragColor = texture2D(Texture, uv) * color;
+    }"#;
+
+    pub const META: ShaderMeta = ShaderMeta {
+        images: &["Texture"],
+        uniforms: UniformBlockLayout {
+            uniforms: &[
+                ("Projection", UniformType::Mat4),
+                ("Source", UniformType::Float4),
+                ("Color", UniformType::Float4),
+                ("Model", UniformType::Mat4),
+            ],
+        },
+    };
+
+    #[repr(C)]
+    #[derive(Debug)]
+    pub struct Uniforms {
+        pub projection: cgmath::Matrix4<f32>,
+        pub source: cgmath::Vector4<f32>,
+        pub color: cgmath::Vector4<f32>,
         pub model: cgmath::Matrix4<f32>,
     }
 }

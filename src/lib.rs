@@ -18,6 +18,9 @@ pub use crate::{
 };
 pub use cgmath;
 
+#[cfg(feature = "log-impl")]
+pub use miniquad::{debug, info, log, warn};
+
 pub mod rand {
     use miniquad::rand;
 

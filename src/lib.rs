@@ -76,12 +76,12 @@ pub mod rand {
     }
 }
 
-struct EventHandlderWrapper {
+struct EventHandlerWrapper {
     event_handler: Box<dyn event::EventHandler>,
     context_internal: ContextInternal,
 }
 
-impl miniquad::EventHandler for EventHandlderWrapper {
+impl miniquad::EventHandler for EventHandlerWrapper {
     fn update(&mut self, ctx: &mut miniquad::Context) {
         self.event_handler
             .update(&mut Context {
@@ -202,7 +202,7 @@ where
             quad_ctx: ctx,
         });
 
-        Box::new(EventHandlderWrapper {
+        Box::new(EventHandlerWrapper {
             event_handler: event_handler,
             context_internal,
         })

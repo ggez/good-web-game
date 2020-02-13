@@ -50,12 +50,12 @@ where
 }
 
 pub fn set_transform(context: &mut Context, transform: &cgmath::Matrix3<f32>) {
-    let gfx = &mut context.internal.gfx_context;
+    let gfx = &mut context.gfx_context;
     gfx.set_transform(transform);
 }
 
 pub fn push_transform(context: &mut Context, transform: &cgmath::Matrix3<f32>) {
-    let gfx = &mut context.internal.gfx_context;
+    let gfx = &mut context.gfx_context;
     gfx.push_transform(transform);
 }
 
@@ -87,7 +87,7 @@ pub fn drawable_size(ctx: &Context) -> (u32, u32) {
 /// The `Rect`'s x and y will define the top-left corner of the screen,
 /// and that plus its w and h will define the bottom-right corner.
 pub fn set_screen_coordinates(context: &mut Context, rect: Rect) -> GameResult {
-    context.internal.gfx_context.set_screen_coordinates(rect);
+    context.gfx_context.set_screen_coordinates(rect);
     Ok(())
 }
 
@@ -97,7 +97,7 @@ pub fn set_screen_coordinates(context: &mut Context, rect: Rect) -> GameResult {
 /// If the Y axis increases downwards, the `height` of the `Rect`
 /// will be negative.
 pub fn screen_coordinates(ctx: &Context) -> Rect {
-    ctx.internal.gfx_context.screen_rect
+    ctx.gfx_context.screen_rect
 }
 
 /// Tells the graphics system to actually put everything on the screen.

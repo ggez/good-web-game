@@ -181,12 +181,11 @@ impl Drawable for Image {
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx
-            .apply_pipeline(&ctx.internal.gfx_context.image_pipeline);
+        ctx.quad_ctx.apply_pipeline(&ctx.gfx_context.image_pipeline);
         ctx.quad_ctx.apply_bindings(&self.bindings);
 
         let uniforms = image_shader::Uniforms {
-            projection: ctx.internal.gfx_context.projection,
+            projection: ctx.gfx_context.projection,
             model: transform,
             source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
             color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),

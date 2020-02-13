@@ -56,5 +56,5 @@ impl Filesystem {
 }
 
 pub fn open<P: AsRef<path::Path>>(ctx: &mut Context, path: P) -> GameResult<File> {
-    ctx.internal.filesystem.open(path)
+    ctx.filesystem.open(path)
 }

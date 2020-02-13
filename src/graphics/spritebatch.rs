@@ -118,16 +118,17 @@ impl graphics::Drawable for SpriteBatch {
             gpu_sprites[n] = instance;
         }
 
-        image.bindings.vertex_buffers[1].update(ctx.quad_ctx, &gpu_sprites[0..self.sprites.len()]);
+        image.bindings.vertex_buffers[1]
+            .update(&mut ctx.quad_ctx, &gpu_sprites[0..self.sprites.len()]);
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
         ctx.quad_ctx
-            .apply_pipeline(&ctx.internal.gfx_context.sprite_pipeline);
+            .apply_pipeline(&ctx.gfx_context.sprite_pipeline);
         ctx.quad_ctx.apply_bindings(&image.bindings);
 
         let uniforms = batch_shader::Uniforms {
-            projection: ctx.internal.gfx_context.projection,
+            projection: ctx.gfx_context.projection,
             model: param_to_instance_transform(&param),
         };
         ctx.quad_ctx.apply_uniforms(&uniforms);

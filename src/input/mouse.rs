@@ -33,13 +33,13 @@ impl MouseContext {
 }
 
 pub fn position(ctx: &Context) -> cgmath::Point2<f32> {
-    ctx.internal.mouse_context.mouse_position()
+    ctx.mouse_context.mouse_position()
 }
 
 pub fn button_pressed(ctx: &Context, button: MouseButton) -> bool {
-    ctx.internal.mouse_context.button_pressed(button)
+    ctx.mouse_context.button_pressed(button)
 }
 
 pub fn wheel(ctx: &Context) -> f32 {
-    ctx.internal.mouse_context.wheel()
+    ctx.mouse_context.wheel()
 }

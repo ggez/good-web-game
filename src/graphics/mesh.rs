@@ -370,9 +370,7 @@ impl MeshBuilder {
             index_buffer: index_buffer,
             images: self
                 .texture
-                .map_or(vec![ctx.internal.gfx_context.white_texture], |texture| {
-                    vec![texture]
-                }),
+                .map_or(vec![ctx.gfx_context.white_texture], |texture| vec![texture]),
         };
 
         Ok(Mesh {
@@ -597,12 +595,11 @@ impl Drawable for Mesh {
         let pass = ctx.framebuffer();
 
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx
-            .apply_pipeline(&ctx.internal.gfx_context.mesh_pipeline);
+        ctx.quad_ctx.apply_pipeline(&ctx.gfx_context.mesh_pipeline);
         ctx.quad_ctx.apply_bindings(&self.bindings);
 
         let uniforms = mesh_shader::Uniforms {
-            projection: ctx.internal.gfx_context.projection,
+            projection: ctx.gfx_context.projection,
             model: transform,
             color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
         };

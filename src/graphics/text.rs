@@ -32,7 +32,6 @@ impl Font {
         file.bytes.read_to_end(&mut bytes)?;
 
         let font = ctx
-            .internal
             .gfx_context
             .load_font(&mut ctx.quad_ctx, &bytes[..], 50)?;
         Ok(Font(FontId(font)))
@@ -174,13 +173,12 @@ impl Text {
         &'a self,
         ctx: &mut crate::Context,
     ) -> impl Deref<Target = TextDisplay<Rc<FontTexture>>> + 'a {
-        let font = ctx.internal.gfx_context.fonts_cache
-            [self.fragment.font.map_or(self.font_id, |f| f.0).0]
-            .clone();
+        let font =
+            ctx.gfx_context.fonts_cache[self.fragment.font.map_or(self.font_id, |f| f.0).0].clone();
         if self.gpu_text.borrow().is_none() {
             let text = miniquad_text_rusttype::TextDisplay::new(
                 &mut ctx.quad_ctx,
-                &ctx.internal.gfx_context.text_system,
+                &ctx.gfx_context.text_system,
                 font,
                 &self.fragment.text,
             );
@@ -214,14 +212,14 @@ impl Drawable for Text {
         new_param.dest.y += text.get_height() * scale.y * param.scale.y;
 
         let transform = param_to_instance_transform(&new_param);
-        let projection = ctx.internal.gfx_context.projection;
+        let projection = ctx.gfx_context.projection;
 
         let mvp = projection * transform;
 
         miniquad_text_rusttype::draw(
             &mut ctx.quad_ctx,
             &text,
-            &ctx.internal.gfx_context.text_system,
+            &ctx.gfx_context.text_system,
             mvp,
             (param.color.r, param.color.g, param.color.b, param.color.a),
         );

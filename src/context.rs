@@ -9,30 +9,17 @@ use crate::{
     timer::TimeContext,
 };
 
-pub struct ContextInternal {
+pub struct Context {
     pub filesystem: Filesystem,
     pub gfx_context: graphics::GraphicsContext,
     pub mouse_context: MouseContext,
     pub keyboard_context: KeyboardContext,
     pub timer_context: TimeContext,
+    pub quad_ctx: miniquad::Context,
 }
 
-pub struct Context<'a, 'b> {
-    pub internal: &'a mut ContextInternal,
-    pub quad_ctx: &'b mut miniquad::Context,
-}
-
-impl<'a, 'b> Context<'a, 'b> {
-    pub(crate) fn framebuffer(&mut self) -> Option<miniquad::RenderPass> {
-        self.internal
-            .gfx_context
-            .canvas
-            .as_ref()
-            .map(|canvas| canvas.offscreen_pass.clone())
-    }
-}
-impl ContextInternal {
-    pub(crate) fn new(quad_ctx: &mut miniquad::Context, conf: Conf) -> ContextInternal {
+impl Context {
+    pub(crate) fn new(mut quad_ctx: miniquad::Context, conf: Conf) -> Context {
         let tar = if let Cache::Tar(tar) = conf.cache {
             tar
         } else {
@@ -40,12 +27,20 @@ impl ContextInternal {
         };
         let input_handler = Rc::new(RefCell::new(InputHandler::new()));
 
-        ContextInternal {
+        Context {
             filesystem: Filesystem::new(&tar),
-            gfx_context: graphics::GraphicsContext::new(quad_ctx),
+            gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
             mouse_context: MouseContext::new(input_handler.clone()),
             keyboard_context: KeyboardContext::new(input_handler.clone()),
             timer_context: TimeContext::new(),
+            quad_ctx,
         }
+    }
+
+    pub(crate) fn framebuffer(&mut self) -> Option<miniquad::RenderPass> {
+        self.gfx_context
+            .canvas
+            .as_ref()
+            .map(|canvas| canvas.offscreen_pass.clone())
     }
 }

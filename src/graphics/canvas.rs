@@ -33,7 +33,7 @@ impl Canvas {
         //     .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
         let image = Image::from_texture(&mut ctx.quad_ctx, texture)?;
 
-        let offscreen_pass = RenderPass::new(ctx.quad_ctx, texture, None);
+        let offscreen_pass = RenderPass::new(&mut ctx.quad_ctx, texture, None);
 
         Ok(Canvas {
             image,
@@ -100,5 +100,5 @@ impl Drawable for Canvas {
 /// Set the `Canvas` to render to. Specifying `Option::None` will cause all
 /// rendering to be done directly to the screen.
 pub fn set_canvas(ctx: &mut Context, target: Option<&Canvas>) {
-    ctx.internal.gfx_context.canvas = target.cloned();
+    ctx.gfx_context.canvas = target.cloned();
 }

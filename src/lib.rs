@@ -120,9 +120,9 @@ impl miniquad::EventHandlerFree for EventHandlerWrapper {
             .mouse_button_up_event(&mut self.context, button.into(), x, y);
     }
 
-    fn mouse_motion_event(&mut self, x: f32, y: f32, dx: f32, dy: f32) {
+    fn mouse_motion_event(&mut self, x: f32, y: f32) {
         self.event_handler
-            .mouse_motion_event(&mut self.context, x, y, dx, dy);
+            .mouse_motion_event(&mut self.context, x, y, 0., 0.);
     }
 }
 

@@ -46,6 +46,7 @@ impl From<miniquad_text_rusttype::Error> for GameError {
     }
 }
 
+#[cfg(feature="mesh")]
 impl From<lyon::lyon_tessellation::FillError> for GameError {
     fn from(s: lyon::lyon_tessellation::FillError) -> GameError {
         let errstr = format!(

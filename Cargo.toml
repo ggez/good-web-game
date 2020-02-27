@@ -1,6 +1,6 @@
 [package]
 name = "good-web-game"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["not-fl3 <not.fl3@gmail.com>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -15,10 +15,11 @@ miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rustt
 miniquad = "0.2.32"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
 tar = { version = "0.4", default-features = false }
-lyon = "0.11"
+lyon = { version = "0.11", optional = true }
 
 [features]
-default = []
+default = [ "mesh" ]
+mesh = [ "lyon" ]
 log-impl = ["miniquad/log-impl"]
 jpeg = [ "image/jpeg" ]
 

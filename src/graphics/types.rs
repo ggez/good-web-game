@@ -1,5 +1,3 @@
-use crate::graphics::{FillOptions, StrokeOptions};
-
 pub type Point2 = cgmath::Point2<f32>;
 pub type Vector2 = cgmath::Vector2<f32>;
 
@@ -356,24 +354,32 @@ impl Into<String> for Color {
     }
 }
 
-/// Specifies whether a shape should be drawn
-/// filled or as an outline.
-#[derive(Debug, Copy, Clone)]
-pub enum DrawMode {
-    /// A stroked line with given parameters, see `StrokeOptions` documentation.
-    Stroke(StrokeOptions),
-    /// A filled shape with given parameters, see `FillOptions` documentation.
-    Fill(FillOptions),
-}
+#[cfg(feature="mesh")]
+mod draw_mode {
+    use crate::graphics::{FillOptions, StrokeOptions};
 
-impl DrawMode {
-    /// Constructs a DrawMode that draws a stroke with the given width
-    pub fn stroke(width: f32) -> DrawMode {
-        DrawMode::Stroke(StrokeOptions::default().with_line_width(width))
+    /// Specifies whether a shape should be drawn
+    /// filled or as an outline.
+    #[derive(Debug, Copy, Clone)]
+    pub enum DrawMode {
+        /// A stroked line with given parameters, see `StrokeOptions` documentation.
+        Stroke(crate::graphics::StrokeOptions),
+        /// A filled shape with given parameters, see `FillOptions` documentation.
+        Fill(crate::graphics::FillOptions),
     }
 
-    /// Constructs a DrawMode that fills shapes
-    pub fn fill() -> DrawMode {
-        DrawMode::Fill(FillOptions::default())
+    impl DrawMode {
+        /// Constructs a DrawMode that draws a stroke with the given width
+        pub fn stroke(width: f32) -> DrawMode {
+            DrawMode::Stroke(StrokeOptions::default().with_line_width(width))
+        }
+
+        /// Constructs a DrawMode that fills shapes
+        pub fn fill() -> DrawMode {
+            DrawMode::Fill(FillOptions::default())
+        }
     }
 }
+
+#[cfg(feature="mesh")]
+pub use draw_mode::*;

@@ -2,6 +2,7 @@ mod canvas;
 mod context;
 mod drawparam;
 mod image;
+#[cfg(feature = "mesh")]
 mod mesh;
 mod shader;
 mod text;
@@ -16,12 +17,15 @@ pub use self::{
     canvas::{set_canvas, Canvas},
     context::GraphicsContext,
     drawparam::DrawParam,
-    image::*,
-    mesh::*,
+    image::*,    
     shader::*,
     text::*,
     types::*,
 };
+
+#[cfg(feature = "mesh")]
+pub use self::mesh::*;
+
 use miniquad::PassAction;
 
 /// Clear the screen to the background color.

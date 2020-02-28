@@ -115,6 +115,11 @@ impl miniquad::EventHandlerFree for EventHandlerWrapper {
         );
     }
 
+    fn mouse_button_down_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
+        self.event_handler
+            .mouse_button_down_event(&mut self.context, button.into(), x, y);
+    }
+
     fn mouse_button_up_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
         self.event_handler
             .mouse_button_up_event(&mut self.context, button.into(), x, y);

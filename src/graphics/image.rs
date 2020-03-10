@@ -12,6 +12,8 @@ use crate::{
 
 use miniquad::{Bindings, Buffer, BufferType, PassAction, Texture};
 
+pub use miniquad::graphics::FilterMode;
+
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct InstanceAttributes {
@@ -40,12 +42,6 @@ pub struct Image {
     dirty_filter: Arc<AtomicBool>,
 
     clones_hack: Arc<()>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum FilterMode {
-    Linear,  // = 0LINEAR_FILTER as isize,
-    Nearest, // = NEAREST_FILTER as isize,
 }
 
 impl Image {
@@ -175,8 +171,7 @@ impl Drawable for Image {
 
         if self.dirty_filter.load(Ordering::Acquire) {
             self.dirty_filter.store(false, Ordering::Release);
-            self.texture
-                .set_filter(&mut ctx.quad_ctx, self.filter as i32);
+            self.texture.set_filter(&mut ctx.quad_ctx, self.filter);
         }
 
         let pass = ctx.framebuffer();

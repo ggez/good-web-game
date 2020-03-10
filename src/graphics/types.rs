@@ -19,7 +19,7 @@ pub struct Rect {
 
 impl Rect {
     /// Create a new `Rect`.
-    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+    pub const fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
         Rect { x, y, w, h }
     }
 
@@ -35,7 +35,7 @@ impl Rect {
     }
 
     /// Create a new rect from `i32` coordinates.
-    pub fn new_i32(x: i32, y: i32, w: i32, h: i32) -> Self {
+    pub const fn new_i32(x: i32, y: i32, w: i32, h: i32) -> Self {
         Rect {
             x: x as f32,
             y: y as f32,
@@ -45,12 +45,12 @@ impl Rect {
     }
 
     /// Create a new `Rect` with all values zero.
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self::new(0.0, 0.0, 0.0, 0.0)
     }
 
     /// Creates a new `Rect` at `0,0` with width and height 1.
-    pub fn one() -> Self {
+    pub const fn one() -> Self {
         Self::new(0.0, 0.0, 1.0, 1.0)
     }
 
@@ -354,7 +354,7 @@ impl Into<String> for Color {
     }
 }
 
-#[cfg(feature="mesh")]
+#[cfg(feature = "mesh")]
 mod draw_mode {
     use crate::graphics::{FillOptions, StrokeOptions};
 
@@ -381,5 +381,5 @@ mod draw_mode {
     }
 }
 
-#[cfg(feature="mesh")]
+#[cfg(feature = "mesh")]
 pub use draw_mode::*;

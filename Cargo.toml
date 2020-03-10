@@ -25,3 +25,7 @@ jpeg = [ "image/jpeg" ]
 
 [dev-dependencies]
 nalgebra = { version = "0.19", features = ["mint"] }
+
+# for emigui example
+emigui-miniquad = { git = "https://github.com/not-fl3/emigui-miniquad" }
+emigui = { git = "https://github.com/emilk/emigui.git", package = "emigui" }

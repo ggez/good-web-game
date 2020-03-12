@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use miniquad::MouseButton as QuadMouseButton;
 
-#[derive(Hash, Debug, Eq, PartialEq)]
+#[derive(Hash, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum MouseButton {
     Left,
     Middle,

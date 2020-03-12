@@ -48,10 +48,18 @@ impl Filesystem {
     /// Opens the given `path` and returns the resulting `File`
     /// in read-only mode.
     pub fn open<P: AsRef<path::Path>>(&mut self, path: P) -> GameResult<File> {
-        if self.files.contains_key(path.as_ref()) == false {
-            panic!("No such file: {:?}", path.as_ref());
+        let mut path = path::PathBuf::from(path.as_ref());
+
+        // workaround for ggez-style pathes: in ggez pathes starts with "/", while in the cache
+        // dictionary they are presented without "/"
+        if let Ok(stripped) = path.strip_prefix("/") {
+            path = path::PathBuf::from(stripped);
         }
-        Ok(self.files[path.as_ref()].clone())
+
+        if self.files.contains_key(&path) == false {
+            panic!("No such file: {:?}", &path);
+        }
+        Ok(self.files[&path].clone())
     }
 }
 

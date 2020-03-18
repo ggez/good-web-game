@@ -194,7 +194,7 @@ impl Text {
 
         (
             text.get_width() * scale.x,
-            (text.get_height() - text.get_bottom()) * scale.y,
+            scale.y,
         )
     }
 }
@@ -209,7 +209,8 @@ impl Drawable for Text {
         new_param.scale =
             cgmath::Vector2::new(scale.x * param.scale.x * 1., -scale.y * param.scale.y * 1.)
                 .into();
-        new_param.dest.y += text.get_height() * scale.y * param.scale.y;
+        // 0.7 comes from usual difference between ascender line and cap line, whatever it means
+        new_param.dest.y += scale.y * param.scale.y * 0.7;
 
         let transform = param_to_instance_transform(&new_param);
         let projection = ctx.gfx_context.projection;

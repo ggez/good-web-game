@@ -372,10 +372,12 @@ impl MeshBuilder {
                 .texture
                 .map_or(vec![ctx.gfx_context.white_texture], |texture| vec![texture]),
         };
+        let rect = bbox_for_vertices(&self.buffer.vertices).expect("No vertices in MeshBuilder");
 
         Ok(Mesh {
             bindings: bindings,
             blend_mode: None,
+            rect,
         })
     }
 }
@@ -413,6 +415,7 @@ impl t::VertexConstructor<t::StrokeVertex, Vertex> for VertexBuilder {
 pub struct Mesh {
     bindings: miniquad::Bindings,
     blend_mode: Option<BlendMode>,
+    rect: Rect,
 }
 
 impl Drop for Mesh {
@@ -613,10 +616,38 @@ impl Drawable for Mesh {
 
         Ok(())
     }
+    fn dimensions(&self, _ctx: &mut Context) -> Option<Rect> {
+        Some(self.rect)
+    }
     fn set_blend_mode(&mut self, mode: Option<BlendMode>) {
         self.blend_mode = mode;
     }
     fn blend_mode(&self) -> Option<BlendMode> {
         self.blend_mode
     }
+}
+
+fn bbox_for_vertices(verts: &[Vertex]) -> Option<Rect> {
+    if verts.is_empty() {
+        return None;
+    }
+    let [x0, y0] = verts[0].pos;
+    let mut x_max = x0;
+    let mut x_min = x0;
+    let mut y_max = y0;
+    let mut y_min = y0;
+    for v in verts {
+        let x = v.pos[0];
+        let y = v.pos[1];
+        x_max = f32::max(x_max, x);
+        x_min = f32::min(x_min, x);
+        y_max = f32::max(y_max, y);
+        y_min = f32::min(y_min, y);
+    }
+    Some(Rect {
+        w: x_max - x_min,
+        h: y_max - y_min,
+        x: x_min,
+        y: y_min,
+    })
 }

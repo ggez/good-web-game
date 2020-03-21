@@ -212,7 +212,7 @@ pub const BLACK: Color = Color {
 
 impl Color {
     /// Create a new `Color` from four `f32`'s in the range `[0.0-1.0]`
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Color { r, g, b, a }
     }
 

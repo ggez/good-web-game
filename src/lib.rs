@@ -129,6 +129,11 @@ impl miniquad::EventHandlerFree for EventHandlerWrapper {
         self.event_handler
             .mouse_motion_event(&mut self.context, x, y, 0., 0.);
     }
+
+    fn touch_event(&mut self, phase: miniquad::TouchPhase, id: u64, x: f32, y: f32) {
+        self.event_handler
+            .touch_event(&mut self.context, phase, id, x, y);
+    }
 }
 
 pub fn start<F>(conf: conf::Conf, f: F) -> GameResult

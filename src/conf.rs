@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(Debug)]
 pub enum Cache {
     /// No preloading at all, filesystem::open will always panic.
@@ -23,6 +25,9 @@ pub enum Loading {
 pub struct Conf {
     pub cache: Cache,
     pub loading: Loading,
+
+    /// `Filesystem::open` will try to read from this dir if there's no such file in the cache.
+    pub physical_root_dir: Option<PathBuf>,
 }
 
 impl Default for Conf {
@@ -30,6 +35,7 @@ impl Default for Conf {
         Conf {
             cache: Cache::No,
             loading: Loading::No,
+            physical_root_dir: None,
         }
     }
 }

@@ -37,7 +37,7 @@ impl event::EventHandler for App {
         let strings = [("AAija", 86.), ("jjjjj", 100.), ("i", 50.)];
         let vertical_spacing = 150.;
 
-        for (i, (string, scale)) in strings.into_iter().enumerate() {
+        for (i, (string, scale)) in strings.iter().enumerate() {
             let text_y = 50. + (*scale + vertical_spacing) * i as f32;
             let text = Text::new((*string, self.fancy_font, *scale));
             let dimensions = text.dimensions(ctx);

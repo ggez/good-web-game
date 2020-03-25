@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::{
-    conf::{Cache, Conf},
+    conf::Conf,
     filesystem::Filesystem,
     graphics,
     input::{input_handler::InputHandler, KeyboardContext, MouseContext},
@@ -20,15 +20,10 @@ pub struct Context {
 
 impl Context {
     pub(crate) fn new(mut quad_ctx: miniquad::Context, conf: Conf) -> Context {
-        let tar = if let Cache::Tar(tar) = conf.cache {
-            tar
-        } else {
-            unimplemented!("Only tar archive filesystem supported")
-        };
         let input_handler = Rc::new(RefCell::new(InputHandler::new()));
 
         Context {
-            filesystem: Filesystem::new(&tar),
+            filesystem: Filesystem::new(&conf),
             gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
             mouse_context: MouseContext::new(input_handler.clone()),
             keyboard_context: KeyboardContext::new(input_handler.clone()),

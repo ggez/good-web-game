@@ -64,6 +64,7 @@ impl Filesystem {
             path = path::PathBuf::from(stripped);
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(ref root_path) = self.root {
             if let Ok(buf) = std::fs::read(root_path.join(&path)) {
                 let bytes = io::Cursor::new(buf);

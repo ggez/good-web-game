@@ -25,8 +25,9 @@ pub enum Loading {
 pub struct Conf {
     pub cache: Cache,
     pub loading: Loading,
-
     /// `Filesystem::open` will try to read from this dir if there's no such file in the cache.
+    ///
+    /// Note that this won't work on platforms where `std::fs` is unavailable, like WASM.
     pub physical_root_dir: Option<PathBuf>,
 }
 

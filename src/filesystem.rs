@@ -65,11 +65,13 @@ impl Filesystem {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        if let Some(ref root_path) = self.root {
-            if let Ok(buf) = std::fs::read(root_path.join(&path)) {
-                let bytes = io::Cursor::new(buf);
-                return Ok(File { bytes });
-            };
+        {
+            if let Some(ref root_path) = self.root {
+                if let Ok(buf) = std::fs::read(root_path.join(&path)) {
+                    let bytes = io::Cursor::new(buf);
+                    return Ok(File { bytes });
+                }
+            }
         }
 
         if !self.files.contains_key(&path) {

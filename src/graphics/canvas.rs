@@ -4,7 +4,7 @@ use crate::{
     Context, GameResult,
 };
 
-use miniquad::{RenderPass, RenderTextureFormat, RenderTextureParams, Texture};
+use miniquad::{RenderPass, Texture, TextureFormat, TextureParams};
 
 #[derive(Clone, Debug)]
 pub struct Canvas {
@@ -21,10 +21,10 @@ impl Canvas {
     ) -> GameResult<Canvas> {
         let texture = Texture::new_render_texture(
             &mut ctx.quad_ctx,
-            RenderTextureParams {
+            TextureParams {
                 width: width as u32,
                 height: height as u32,
-                format: RenderTextureFormat::RGBA8,
+                format: TextureFormat::RGBA8,
                 ..Default::default()
             },
         );

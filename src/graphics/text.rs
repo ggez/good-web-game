@@ -134,6 +134,16 @@ impl From<String> for TextFragment {
     }
 }
 
+impl<T> From<(T, f32)> for TextFragment
+where
+    T: Into<TextFragment>,
+{
+    fn from((text, scale): (T, f32)) -> TextFragment {
+        text.into().scale(Scale::uniform(scale))
+    }
+}
+
+
 impl<T> From<(T, Font, f32)> for TextFragment
 where
     T: Into<TextFragment>,

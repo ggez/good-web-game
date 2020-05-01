@@ -10,6 +10,10 @@ pub enum GameError {
     IOError(std::io::Error),
     /// Something went wrong with the `lyon` shape-tesselation library
     LyonError(String),
+    /// SoundMixer in the context should be created explicitly from some of the interaction callbacks
+    /// Thats the only way to get audio to works on web :(
+    MixerNotCreated,
+    SoundError,
     TTFError(miniquad_text_rusttype::Error),
     UnknownError(&'static str),
 }
@@ -46,7 +50,7 @@ impl From<miniquad_text_rusttype::Error> for GameError {
     }
 }
 
-#[cfg(feature="mesh")]
+#[cfg(feature = "mesh")]
 impl From<lyon::lyon_tessellation::FillError> for GameError {
     fn from(s: lyon::lyon_tessellation::FillError) -> GameError {
         let errstr = format!(

@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::{
+    audio,
     conf::Conf,
     filesystem::Filesystem,
     graphics,
@@ -11,6 +12,7 @@ use crate::{
 
 pub struct Context {
     pub filesystem: Filesystem,
+    pub audio_context: audio::AudioContext,
     pub gfx_context: graphics::GraphicsContext,
     pub mouse_context: MouseContext,
     pub keyboard_context: KeyboardContext,
@@ -25,6 +27,7 @@ impl Context {
         Context {
             filesystem: Filesystem::new(&conf),
             gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
+            audio_context: audio::AudioContext::new(),
             mouse_context: MouseContext::new(input_handler.clone()),
             keyboard_context: KeyboardContext::new(input_handler.clone()),
             timer_context: TimeContext::new(),

@@ -1,3 +1,4 @@
+pub mod audio;
 pub mod conf;
 pub mod error;
 pub mod event;
@@ -81,6 +82,9 @@ struct EventHandlerWrapper {
 impl miniquad::EventHandlerFree for EventHandlerWrapper {
     fn update(&mut self) {
         self.event_handler.update(&mut self.context).unwrap();
+        if let Some(ref mut mixer) = &mut *self.context.audio_context.mixer.borrow_mut() {
+            mixer.frame();
+        }
         self.context.timer_context.tick();
     }
 

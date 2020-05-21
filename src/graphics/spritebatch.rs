@@ -35,7 +35,7 @@ impl SpriteBatch {
             image: RefCell::new(image),
             sprites: vec![],
             blend_mode: None,
-            gpu_sprites: RefCell::new(vec![InstanceAttributes::default()]),
+            gpu_sprites: RefCell::new(vec![]),
         }
     }
 

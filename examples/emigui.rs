@@ -14,16 +14,20 @@ use graphics::{Point2, Rect};
 use {
     emigui::{
         label,
-        math::vec2,
+        math::{pos2, vec2},
         widgets::{Button, Label},
+	containers::Window,
         Align, Emigui,
+	example_app::ExampleApp
     },
+
     emigui_miniquad::Painter,
 };
 
 struct App {
     emigui: Emigui,
     raw_input: emigui::RawInput,
+    example_app: ExampleApp,
     painter: Painter,
 }
 
@@ -39,9 +43,12 @@ impl App {
             ..Default::default()
         };
 
+	let example_app = ExampleApp::default();
+
         Ok(App {
             emigui: Emigui::new(pixels_per_point),
             painter: Painter::new(&mut ctx.quad_ctx),
+	    example_app,
             raw_input,
         })
     }
@@ -79,7 +86,7 @@ impl event::EventHandler for App {
     }
 
     fn mouse_motion_event(&mut self, _ctx: &mut Context, x: f32, y: f32, _dx: f32, _dy: f32) {
-        self.raw_input.mouse_pos = Some(vec2(x as f32, y as f32));
+        self.raw_input.mouse_pos = Some(pos2(x as f32, y as f32));
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
@@ -88,21 +95,28 @@ impl event::EventHandler for App {
         // here is an example of emigui usage
         // NOTE: it use raw miniquad handle, gwg's settings like coordinate_system are ignored
         {
-            self.emigui.new_frame(self.raw_input);
-            let mut region = self.emigui.whole_screen_region();
-            let mut region = region.left_column(region.width().min(480.0));
+            self.emigui.begin_frame(self.raw_input.clone());
+            let mut region = self.emigui.background_region();
+            let mut region = region.centered_column(region.available_width().min(480.0));
             region.set_align(Align::Min);
             region.add(
-                label!("Emigui running inside of Miniquad").text_style(emigui::TextStyle::Heading),
+                label!("Emigui running inside of miniquad").text_style(emigui::TextStyle::Heading),
             );
             if region.add(Button::new("Quit")).clicked {
-                // cant quit the web
             }
-            self.emigui.example(&mut region);
-            let mesh = self.emigui.paint();
+            Window::new("Examples")
+		.default_pos(pos2(50.0, 100.0))
+		.default_size(vec2(300.0, 600.0))
+		.show(region.ctx(), |region| {
+                    self.example_app.ui(region);
+		});
+
+            let (output, paint_batches) = self.emigui.end_frame();
             let texture = self.emigui.texture();
 
-            self.painter.paint(&mut ctx.quad_ctx, mesh, texture);
+	    for (_, mesh) in paint_batches {
+		self.painter.paint(&mut ctx.quad_ctx, mesh, texture);
+	    }
         }
 
         // drawing with gwg's "graphics"

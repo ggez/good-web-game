@@ -13,14 +13,13 @@ use std::f32;
 use graphics::{Point2, Rect};
 use {
     emigui::{
+        containers::Window,
+        example_app::ExampleApp,
         label,
         math::{pos2, vec2},
         widgets::{Button, Label},
-	containers::Window,
         Align, Emigui,
-	example_app::ExampleApp
     },
-
     emigui_miniquad::Painter,
 };
 
@@ -43,12 +42,12 @@ impl App {
             ..Default::default()
         };
 
-	let example_app = ExampleApp::default();
+        let example_app = ExampleApp::default();
 
         Ok(App {
             emigui: Emigui::new(pixels_per_point),
             painter: Painter::new(&mut ctx.quad_ctx),
-	    example_app,
+            example_app,
             raw_input,
         })
     }
@@ -102,21 +101,20 @@ impl event::EventHandler for App {
             region.add(
                 label!("Emigui running inside of miniquad").text_style(emigui::TextStyle::Heading),
             );
-            if region.add(Button::new("Quit")).clicked {
-            }
+            if region.add(Button::new("Quit")).clicked {}
             Window::new("Examples")
-		.default_pos(pos2(50.0, 100.0))
-		.default_size(vec2(300.0, 600.0))
-		.show(region.ctx(), |region| {
+                .default_pos(pos2(50.0, 100.0))
+                .default_size(vec2(300.0, 600.0))
+                .show(region.ctx(), |region| {
                     self.example_app.ui(region);
-		});
+                });
 
             let (output, paint_batches) = self.emigui.end_frame();
             let texture = self.emigui.texture();
 
-	    for (_, mesh) in paint_batches {
-		self.painter.paint(&mut ctx.quad_ctx, mesh, texture);
-	    }
+            for (_, mesh) in paint_batches {
+                self.painter.paint(&mut ctx.quad_ctx, mesh, texture);
+            }
         }
 
         // drawing with gwg's "graphics"

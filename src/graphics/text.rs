@@ -143,7 +143,6 @@ where
     }
 }
 
-
 impl<T> From<(T, Font, f32)> for TextFragment
 where
     T: Into<TextFragment>,
@@ -202,10 +201,7 @@ impl Text {
         let text = self.lazy_init_gpu_text(ctx);
         let scale = self.fragment.scale.unwrap_or(Scale { x: 1., y: 1. });
 
-        (
-            text.get_width() * scale.x,
-            scale.y,
-        )
+        (text.get_width() * scale.x, scale.y)
     }
 }
 

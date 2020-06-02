@@ -17,7 +17,7 @@ pub use self::{
     canvas::{set_canvas, Canvas},
     context::GraphicsContext,
     drawparam::DrawParam,
-    image::*,    
+    image::*,
     shader::*,
     text::*,
     types::*,

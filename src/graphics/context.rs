@@ -39,7 +39,7 @@ impl GraphicsContext {
             batch_shader::VERTEX,
             batch_shader::FRAGMENT,
             batch_shader::META,
-        );
+        ).unwrap();
 
         let sprite_pipeline = miniquad::Pipeline::with_params(
             ctx,
@@ -58,7 +58,7 @@ impl GraphicsContext {
             ],
             sprite_shader,
             PipelineParams {
-                color_blend: Some((
+                color_blend: Some(BlendState::new(
                     Equation::Add,
                     BlendFactor::Value(BlendValue::SourceAlpha),
                     BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
@@ -72,7 +72,7 @@ impl GraphicsContext {
             image_shader::VERTEX,
             image_shader::FRAGMENT,
             image_shader::META,
-        );
+        ).unwrap();
 
         let image_pipeline = miniquad::Pipeline::with_params(
             ctx,
@@ -84,7 +84,7 @@ impl GraphicsContext {
             )],
             image_shader,
             PipelineParams {
-                color_blend: Some((
+                color_blend: Some(BlendState::new(
                     Equation::Add,
                     BlendFactor::Value(BlendValue::SourceAlpha),
                     BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
@@ -98,7 +98,7 @@ impl GraphicsContext {
             mesh_shader::VERTEX,
             mesh_shader::FRAGMENT,
             mesh_shader::META,
-        );
+        ).unwrap();
 
         let mesh_pipeline = Pipeline::with_params(
             ctx,
@@ -110,7 +110,7 @@ impl GraphicsContext {
             ],
             mesh_shader,
             PipelineParams {
-                color_blend: Some((
+                color_blend: Some(BlendState::new(
                     Equation::Add,
                     BlendFactor::Value(BlendValue::SourceAlpha),
                     BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
@@ -186,7 +186,7 @@ fn load_font(
 }
 
 pub(crate) mod batch_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType};
+    use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;
@@ -223,8 +223,8 @@ pub(crate) mod batch_shader {
         images: &["Texture"],
         uniforms: UniformBlockLayout {
             uniforms: &[
-                ("Projection", UniformType::Mat4),
-                ("Model", UniformType::Mat4),
+                UniformDesc::new("Projection", UniformType::Mat4),
+                UniformDesc::new("Model", UniformType::Mat4),
             ],
         },
     };
@@ -238,7 +238,7 @@ pub(crate) mod batch_shader {
 }
 
 pub(crate) mod image_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType};
+    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType, UniformDesc};
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;
@@ -274,10 +274,10 @@ pub(crate) mod image_shader {
         images: &["Texture"],
         uniforms: UniformBlockLayout {
             uniforms: &[
-                ("Projection", UniformType::Mat4),
-                ("Source", UniformType::Float4),
-                ("Color", UniformType::Float4),
-                ("Model", UniformType::Mat4),
+                UniformDesc::new("Projection", UniformType::Mat4),
+                UniformDesc::new("Source", UniformType::Float4),
+                UniformDesc::new("Color", UniformType::Float4),
+                UniformDesc::new("Model", UniformType::Mat4),
             ],
         },
     };
@@ -293,7 +293,7 @@ pub(crate) mod image_shader {
 }
 
 pub(crate) mod mesh_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType};
+    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType, UniformDesc};
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;
@@ -330,9 +330,9 @@ pub(crate) mod mesh_shader {
         images: &["Texture"],
         uniforms: UniformBlockLayout {
             uniforms: &[
-                ("Projection", UniformType::Mat4),
-                ("Model", UniformType::Mat4),
-                ("Color", UniformType::Float4),
+                UniformDesc::new("Projection", UniformType::Mat4),
+                UniformDesc::new("Model", UniformType::Mat4),
+                UniformDesc::new("Color", UniformType::Float4),
             ],
         },
     };

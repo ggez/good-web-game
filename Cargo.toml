@@ -11,8 +11,8 @@ rustc-hash = "1.0.1"
 lazy_static = "1.3.0"
 mint = "0.5"
 cgmath = { version = "0.17", features = ["mint"] }
-miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rusttype" }
-miniquad = "=0.2.55"
+miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rusttype", branch = "0.3" }
+miniquad = "0.3.0-alpha"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
 tar = { version = "0.4", default-features = false }
 lyon = { version = "0.11", optional = true }
@@ -27,5 +27,5 @@ jpeg = [ "image/jpeg" ]
 nalgebra = { version = "0.19", features = ["mint"] }
 
 # for emigui example
-emigui-miniquad = { git = "https://github.com/not-fl3/emigui-miniquad" }
-emigui = { git = "https://github.com/emilk/emigui.git", rev="7cd8ac2bb", package = "emigui" }
+#emigui-miniquad = { git = "https://github.com/not-fl3/emigui-miniquad" }
+#emigui = { git = "https://github.com/emilk/emigui.git", rev="7cd8ac2bb", package = "emigui" }

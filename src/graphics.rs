@@ -113,6 +113,10 @@ pub fn present(_: &mut Context) -> GameResult<()> {
     Ok(())
 }
 
+pub fn set_font_size(ctx: &mut Context, font_size: u32) {
+    ctx.gfx_context.font_size = font_size;
+}
+
 /// All types that can be drawn on the screen implement the `Drawable` trait.
 pub trait Drawable {
     /// Draws the drawable onto the rendering target.

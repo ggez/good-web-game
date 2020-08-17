@@ -23,6 +23,7 @@ pub struct GraphicsContext {
     pub(crate) image_pipeline: miniquad::Pipeline,
     pub(crate) text_system: miniquad_text_rusttype::TextSystem,
     pub(crate) fonts_cache: Vec<Rc<miniquad_text_rusttype::FontTexture>>,
+    pub(crate) font_size: u32,
 }
 
 impl GraphicsContext {
@@ -135,6 +136,7 @@ impl GraphicsContext {
             image_pipeline,
             text_system,
             fonts_cache,
+            font_size: 50,
         }
     }
 }

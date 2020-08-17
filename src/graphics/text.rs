@@ -31,9 +31,9 @@ impl Font {
         let mut bytes = vec![];
         file.bytes.read_to_end(&mut bytes)?;
 
-        let font = ctx
-            .gfx_context
-            .load_font(&mut ctx.quad_ctx, &bytes[..], 50)?;
+        let font =
+            ctx.gfx_context
+                .load_font(&mut ctx.quad_ctx, &bytes[..], ctx.gfx_context.font_size)?;
         Ok(Font(FontId(font)))
     }
 }

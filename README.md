@@ -2,6 +2,14 @@
 
 good-web-game is a native wasm32-unknown-unknown implementation of some mininimal [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
 
+## Deprecation status
+
+"good-web-game" is a last-resort option to port big ggez project to web or mobiles. However it is pretty much unmaintained and is more of a code reference than a ready to use thing.
+
+If you are looking for maintained and supported minimal high-level engine on top of miniquad - check out [macroquad](https://github.com/not-fl3/macroquad/).
+ 
+## Demo 
+
 In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
 
 ![screen](https://i.imgur.com/TjvCNwa.jpg)

@@ -39,18 +39,24 @@ impl Font {
 }
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
-pub struct Scale {
+pub struct PxScale {
     /// Horizontal scale, in pixels.
     pub x: f32,
     /// Vertical scale, in pixels.
     pub y: f32,
 }
 
-impl Scale {
+impl PxScale {
     /// Uniform scaling, equivalent to `Scale { x: s, y: s }`.
     #[inline]
-    pub fn uniform(s: f32) -> Scale {
-        Scale { x: s, y: s }
+    pub fn uniform(s: f32) -> PxScale {
+        PxScale { x: s, y: s }
+    }
+}
+
+impl From<f32> for PxScale {
+    fn from(float: f32) -> Self {
+        Self::uniform(float)
     }
 }
 
@@ -68,7 +74,7 @@ pub struct TextFragment {
     /// Fragment's font, defaults to text's font.
     pub font: Option<Font>,
     /// Fragment's scale, defaults to text's scale.
-    pub scale: Option<Scale>,
+    pub scale: Option<PxScale>,
 }
 
 impl Default for TextFragment {
@@ -101,7 +107,7 @@ impl TextFragment {
     }
 
     /// Set fragment's scale, overrides text's scale.
-    pub fn scale(mut self, scale: Scale) -> TextFragment {
+    pub fn scale(mut self, scale: PxScale) -> TextFragment {
         self.scale = Some(scale);
         self
     }
@@ -139,7 +145,7 @@ where
     T: Into<TextFragment>,
 {
     fn from((text, scale): (T, f32)) -> TextFragment {
-        text.into().scale(Scale::uniform(scale))
+        text.into().scale(PxScale::uniform(scale))
     }
 }
 
@@ -148,7 +154,7 @@ where
     T: Into<TextFragment>,
 {
     fn from((text, font, scale): (T, Font, f32)) -> TextFragment {
-        text.into().font(font).scale(Scale::uniform(scale))
+        text.into().font(font).scale(PxScale::uniform(scale))
     }
 }
 
@@ -199,7 +205,7 @@ impl Text {
     }
     pub fn dimensions(&self, ctx: &mut crate::Context) -> (f32, f32) {
         let text = self.lazy_init_gpu_text(ctx);
-        let scale = self.fragment.scale.unwrap_or(Scale { x: 1., y: 1. });
+        let scale = self.fragment.scale.unwrap_or(PxScale { x: 1., y: 1. });
 
         (text.get_width() * scale.x, scale.y)
     }
@@ -209,7 +215,7 @@ impl Drawable for Text {
     fn draw(&self, ctx: &mut crate::Context, param: DrawParam) -> GameResult {
         let text = self.lazy_init_gpu_text(ctx);
 
-        let scale = self.fragment.scale.unwrap_or(Scale { x: 1., y: 1. });
+        let scale = self.fragment.scale.unwrap_or(PxScale { x: 1., y: 1. });
 
         let mut new_param = param;
         new_param.scale =

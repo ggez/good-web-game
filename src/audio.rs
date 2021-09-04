@@ -39,7 +39,7 @@ impl Source {
         } else if path.ends_with(".wav") {
             sound = decoder::read_wav(&bytes).map_err(|_| GameError::SoundError)?;
         } else {
-            panic!("Unsupported format. NOTE: gwg determines file format by path string, path should and with .wav or .ogg");
+            panic!("Unsupported format. NOTE: gwg determines file format by path string, path should end with .wav or .ogg");
         };
         Ok(Source {
             sound,
@@ -81,7 +81,7 @@ impl Source {
 
     pub fn set_fade_in(&mut self, _dur: std::time::Duration) {}
 
-    pub fn set_pitch(&mut self, ratio: f32) {}
+    pub fn set_pitch(&mut self, _ratio: f32) {}
 }
 
 /// This function should be called in one of the interaction event callbacks before any usages of audio

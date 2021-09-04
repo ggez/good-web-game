@@ -79,6 +79,19 @@ impl SpriteBatch {
 
 impl graphics::Drawable for SpriteBatch {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+        // scale the offset according to the dimensions of the spritebatch
+        // but only if there is an offset (it's too expensive to calculate the dimensions to always to this)
+        let mut param = param;
+        if param.offset != [0.0, 0.0].into() {
+            if let Some(dim) = self.dimensions(ctx) {
+                let new_offset = mint::Vector2 {
+                    x: param.offset.x * dim.w + dim.x,
+                    y: param.offset.y * dim.h + dim.y,
+                };
+                param = param.offset(new_offset);
+            }
+        }
+
         let mut image = self.image.borrow_mut();
         let mut gpu_sprites = self.gpu_sprites.borrow_mut();
 
@@ -157,7 +170,6 @@ impl graphics::Drawable for SpriteBatch {
     }
 
     fn set_blend_mode(&mut self, mode: Option<BlendMode>) {
-        // TODO
         self.blend_mode = mode;
     }
 

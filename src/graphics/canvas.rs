@@ -46,14 +46,27 @@ impl Canvas {
         use crate::graphics;
         let (w, h) = graphics::drawable_size(ctx);
         // Default to no multisampling
-        // TODO: Use winit's into() to translate f64's more accurately
-        // ...where the heck IS winit's into()?  wth was I referring to?
         Canvas::new(ctx, w as u16, h as u16, NumSamples::One)
     }
 
     /// Gets the backend `Image` that is being rendered to.
     pub fn image(&self) -> &Image {
         &self.image
+    }
+
+    /// Return the width of the canvas.
+    pub fn width(&self) -> u16 {
+        self.image.width
+    }
+
+    /// Return the height of the canvas.
+    pub fn height(&self) -> u16 {
+        self.image.height
+    }
+
+    /// Returns the dimensions of the canvas.
+    pub fn dimensions(&self) -> Rect {
+        Rect::new(0.0, 0.0, f32::from(self.width()), f32::from(self.height()))
     }
 
     /// Get the filter mode for the image.
@@ -76,12 +89,9 @@ impl Canvas {
 
 impl Drawable for Canvas {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        // Gotta flip the image on the Y axis here
-        // to account for OpenGL's origin being at the bottom-left.
-        let mut flipped_param = param;
-        flipped_param.scale.y *= -1.0;
-        flipped_param.dest.y += self.image.height() as f32 * param.scale.y;
-        self.image.draw(ctx, flipped_param)
+        // No need to flip here. The need for flipping here was just a workaround for canvases
+        // being flipped for some reason in ggez. But here they luckily aren't.
+        self.image.draw(ctx, param)
     }
 
     fn set_blend_mode(&mut self, blend_mode: Option<BlendMode>) {

@@ -7,11 +7,12 @@ use crate::{
     error::GameResult,
     filesystem,
     graphics::{context::image_shader, BlendMode, DrawParam, Drawable, Rect},
-    Context,
+    Context, GameError,
 };
 
 use miniquad::{Bindings, Buffer, BufferType, PassAction, Texture};
 
+use crate::graphics::Color;
 pub use miniquad::graphics::FilterMode;
 
 #[derive(Debug, Clone)]
@@ -57,14 +58,18 @@ impl Image {
     }
 
     pub fn from_png_bytes(ctx: &mut Context, bytes: &[u8]) -> GameResult<Self> {
-        let img = image::load_from_memory(&bytes)
-            .unwrap_or_else(|e| panic!(e))
-            .to_rgba();
-        let width = img.width() as u16;
-        let height = img.height() as u16;
-        let bytes = img.into_raw();
+        match image::load_from_memory(&bytes) {
+            Ok(img) => {
+                let rgba = img.to_rgba();
 
-        Image::from_rgba8(ctx, width, height, &bytes)
+                let width = rgba.width() as u16;
+                let height = rgba.height() as u16;
+                let bytes = rgba.into_raw();
+
+                Image::from_rgba8(ctx, width, height, &bytes)
+            }
+            Err(e) => Err(GameError::ResourceLoadError(e.to_string())),
+        }
     }
 
     pub fn from_rgba8(
@@ -101,6 +106,20 @@ impl Image {
             filter: FilterMode::Linear,
             clones_hack: Arc::new(()),
         })
+    }
+
+    /// A little helper function that creates a new `Image` that is just
+    /// a solid square of the given size and color.  Mainly useful for
+    /// debugging.
+    pub fn solid(context: &mut Context, size: u16, color: Color) -> GameResult<Self> {
+        let (r, g, b, a) = color.into();
+        let pixel_array: [u8; 4] = [r, g, b, a];
+        let size_squared = usize::from(size) * usize::from(size);
+        let mut buffer = Vec::with_capacity(size_squared);
+        for _i in 0..size_squared {
+            buffer.extend(&pixel_array[..]);
+        }
+        Image::from_rgba8(context, size, size, &buffer)
     }
 
     pub fn width(&self) -> u16 {

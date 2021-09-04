@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use crate::{
     audio,
     conf::Conf,
@@ -22,14 +19,14 @@ pub struct Context {
 
 impl Context {
     pub(crate) fn new(mut quad_ctx: miniquad::Context, conf: Conf) -> Context {
-        let input_handler = Rc::new(RefCell::new(InputHandler::new()));
+        let input_handler = InputHandler::new();
 
         Context {
             filesystem: Filesystem::new(&conf),
             gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
             audio_context: audio::AudioContext::new(),
-            mouse_context: MouseContext::new(input_handler.clone()),
-            keyboard_context: KeyboardContext::new(input_handler.clone()),
+            mouse_context: MouseContext::new(input_handler),
+            keyboard_context: KeyboardContext::new(),
             timer_context: TimeContext::new(),
             quad_ctx,
         }

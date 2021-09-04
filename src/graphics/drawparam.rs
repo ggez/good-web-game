@@ -1,6 +1,6 @@
 use mint::{Point2, Vector2};
 
-use crate::graphics::{Color, Rect, WHITE};
+use crate::graphics::{Color, Rect};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct DrawParam {
@@ -31,7 +31,7 @@ impl Default for DrawParam {
             rotation: 0.0,
             scale: [1.0, 1.0].into(),
             offset: [0.0, 0.0].into(),
-            color: WHITE,
+            color: Color::WHITE,
         }
     }
 }

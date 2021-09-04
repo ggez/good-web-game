@@ -1,14 +1,17 @@
 #![allow(warnings)]
 use crate::{
     graphics::{context::mesh_shader, *},
-    GameError,
+    Context, GameError, GameResult,
 };
-use lyon;
+use lyon::path::builder::PathBuilder;
+use lyon::path::Polygon;
 use lyon::tessellation as t;
+use lyon::{self, math::Point as LPoint};
 
 pub use self::t::{FillOptions, FillRule, LineCap, LineJoin, StrokeOptions};
 
 use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4};
+use std::convert::TryInto;
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
@@ -25,24 +28,27 @@ pub struct Vertex {
 /// have to be connected to each other, and will all be
 /// drawn at once.
 ///
+/// Note that this doesn't try very hard to handle degenerate cases.  It can easily break if you
+/// tell it to do things that result in a circle of radius 0, a line of width 0, an infintessimally
+/// skinny triangle, or other mathematically inconvenient things like that.
+///
 /// The following example shows how to build a mesh containing a line and a circle:
 ///
-/// ```rust
+/// ```rust,no_run
 /// # use ggez::*;
 /// # use ggez::graphics::*;
-/// # use ggez::nalgebra::Point2;
 /// # fn main() -> GameResult {
 /// # let ctx = &mut ContextBuilder::new("foo", "bar").build().unwrap().0;
 /// let mesh: Mesh = MeshBuilder::new()
-///     .line(&[Point2::new(20.0, 20.0), Point2::new(40.0, 20.0)], 4.0, (255, 0, 0).into())?
-///     .circle(DrawMode::fill(), Point2::new(60.0, 38.0), 40.0, 1.0, (0, 255, 0).into())
+///     .line(&[glam::vec2(20.0, 20.0), glam::vec2(40.0, 20.0)], 4.0, (255, 0, 0).into())?
+///     .circle(DrawMode::fill(), glam::vec2(60.0, 38.0), 40.0, 1.0, (0, 255, 0).into())?
 ///     .build(ctx)?;
 /// # Ok(()) }
 /// ```
 /// A more sophisticated example:
 ///
-/// ```rust
-/// use ggez::{Context, GameResult, nalgebra as na};
+/// ```rust,no_run
+/// use ggez::{Context, GameResult};
 /// use ggez::graphics::{self, DrawMode, MeshBuilder};
 ///
 /// fn draw_danger_signs(ctx: &mut Context) -> GameResult {
@@ -51,24 +57,24 @@ pub struct Vertex {
 ///         // Add vertices for 3 lines (in an approximate equilateral triangle).
 ///         .line(
 ///             &[
-///                 na::Point2::new(0.0, 0.0),
-///                 na::Point2::new(-30.0, 52.0),
-///                 na::Point2::new(30.0, 52.0),
-///                 na::Point2::new(0.0, 0.0),
+///                 glam::vec2(0.0, 0.0),
+///                 glam::vec2(-30.0, 52.0),
+///                 glam::vec2(30.0, 52.0),
+///                 glam::vec2(0.0, 0.0),
 ///             ],
 ///             1.0,
-///             graphics::WHITE,
+///             graphics::Color::WHITE,
 ///         )?
 ///         // Add vertices for an exclamation mark!
-///         .ellipse(DrawMode::fill(), na::Point2::new(0.0, 25.0), 2.0, 15.0, 2.0, graphics::WHITE,)
-///         .circle(DrawMode::fill(), na::Point2::new(0.0, 45.0), 2.0, 2.0, graphics::WHITE,)
+///         .ellipse(DrawMode::fill(), glam::vec2(0.0, 25.0), 2.0, 15.0, 2.0, graphics::Color::WHITE,)?
+///         .circle(DrawMode::fill(), glam::vec2(0.0, 45.0), 2.0, 2.0, graphics::Color::WHITE,)?
 ///         // Finalize then unwrap. Unwrapping via `?` operator either yields the final `Mesh`,
 ///         // or propagates the error (note return type).
 ///         .build(ctx)?;
 ///     // Draw 3 meshes in a line, 1st and 3rd tilted by 1 radian.
-///     graphics::draw(ctx, &mesh, (na::Point2::new(50.0, 50.0), -1.0, graphics::WHITE))?;
-///     graphics::draw(ctx, &mesh, (na::Point2::new(150.0, 50.0), 0.0, graphics::WHITE))?;
-///     graphics::draw(ctx, &mesh, (na::Point2::new(250.0, 50.0), 1.0, graphics::WHITE))?;
+///     graphics::draw(ctx, &mesh, (glam::vec2(50.0, 50.0), -1.0, graphics::Color::WHITE))?;
+///     graphics::draw(ctx, &mesh, (glam::vec2(150.0, 50.0), 0.0, graphics::Color::WHITE))?;
+///     graphics::draw(ctx, &mesh, (glam::vec2(250.0, 50.0), 1.0, graphics::Color::WHITE))?;
 ///     Ok(())
 /// }
 /// ```
@@ -111,36 +117,42 @@ impl MeshBuilder {
         radius: f32,
         tolerance: f32,
         color: Color,
-    ) -> &mut Self
+    ) -> GameResult<&mut Self>
     where
         P: Into<mint::Point2<f32>>,
     {
+        assert!(
+            tolerance > 0.0,
+            "Tolerances <= 0 are invalid, see https://github.com/ggez/ggez/issues/892"
+        );
         {
             let point = point.into();
             let buffers = &mut self.buffer;
-            let vb = VertexBuilder { color };
+            let vb = VertexBuilder {
+                color: LinearColor::from(color),
+            };
             match mode {
                 DrawMode::Fill(fill_options) => {
-                    let builder = &mut t::BuffersBuilder::new(buffers, vb);
-                    let _ = t::basic_shapes::fill_circle(
+                    let mut tessellator = t::FillTessellator::new();
+                    let _ = tessellator.tessellate_circle(
                         t::math::point(point.x, point.y),
                         radius,
                         &fill_options.with_tolerance(tolerance),
-                        builder,
+                        &mut t::BuffersBuilder::new(buffers, vb),
                     );
                 }
                 DrawMode::Stroke(options) => {
-                    let builder = &mut t::BuffersBuilder::new(buffers, vb);
-                    let _ = t::basic_shapes::stroke_circle(
+                    let mut tessellator = t::StrokeTessellator::new();
+                    let _ = tessellator.tessellate_circle(
                         t::math::point(point.x, point.y),
                         radius,
                         &options.with_tolerance(tolerance),
-                        builder,
+                        &mut t::BuffersBuilder::new(buffers, vb),
                     );
                 }
             };
         }
-        self
+        Ok(self)
     }
 
     /// Create a new mesh for an ellipse.
@@ -154,38 +166,48 @@ impl MeshBuilder {
         radius2: f32,
         tolerance: f32,
         color: Color,
-    ) -> &mut Self
+    ) -> GameResult<&mut Self>
     where
         P: Into<mint::Point2<f32>>,
     {
+        assert!(
+            tolerance > 0.0,
+            "Tolerances <= 0 are invalid, see https://github.com/ggez/ggez/issues/892"
+        );
         {
             let buffers = &mut self.buffer;
             let point = point.into();
-            let vb = VertexBuilder { color };
+            let vb = VertexBuilder {
+                color: LinearColor::from(color),
+            };
             match mode {
                 DrawMode::Fill(fill_options) => {
                     let builder = &mut t::BuffersBuilder::new(buffers, vb);
-                    let _ = t::basic_shapes::fill_ellipse(
+                    let mut tessellator = t::FillTessellator::new();
+                    let _ = tessellator.tessellate_ellipse(
                         t::math::point(point.x, point.y),
                         t::math::vector(radius1, radius2),
                         t::math::Angle { radians: 0.0 },
+                        t::path::Winding::Positive,
                         &fill_options.with_tolerance(tolerance),
                         builder,
                     );
                 }
                 DrawMode::Stroke(options) => {
                     let builder = &mut t::BuffersBuilder::new(buffers, vb);
-                    let _ = t::basic_shapes::stroke_ellipse(
+                    let mut tessellator = t::StrokeTessellator::new();
+                    let _ = tessellator.tessellate_ellipse(
                         t::math::point(point.x, point.y),
                         t::math::vector(radius1, radius2),
                         t::math::Angle { radians: 0.0 },
+                        t::path::Winding::Positive,
                         &options.with_tolerance(tolerance),
                         builder,
                     );
                 }
             };
         }
-        self
+        Ok(self)
     }
 
     /// Create a new mesh for a series of connected lines.
@@ -198,10 +220,18 @@ impl MeshBuilder {
     where
         P: Into<mint::Point2<f32>> + Clone,
     {
+        if points.len() < 2 {
+            return Err(GameError::LyonError(
+                "MeshBuilder::polyline() got a list of < 2 points".to_string(),
+            ));
+        }
+
         self.polyline_inner(mode, points, false, color)
     }
 
     /// Create a new mesh for a closed polygon.
+    /// The points given must be in clockwise order,
+    /// otherwise at best the polygon will not draw.
     pub fn polygon<P>(
         &mut self,
         mode: DrawMode,
@@ -211,6 +241,12 @@ impl MeshBuilder {
     where
         P: Into<mint::Point2<f32>> + Clone,
     {
+        if points.len() < 3 {
+            return Err(GameError::LyonError(
+                "MeshBuilder::polygon() got a list of < 3 points".to_string(),
+            ));
+        }
+
         self.polyline_inner(mode, points, true, color)
     }
 
@@ -224,23 +260,50 @@ impl MeshBuilder {
     where
         P: Into<mint::Point2<f32>> + Clone,
     {
+        let vb = VertexBuilder {
+            color: LinearColor::from(color),
+        };
+        self.polyline_with_vertex_builder(mode, points, is_closed, vb)
+    }
+
+    /// Create a new mesh for a given polyline using a custom vertex builder.
+    /// The points given must be in clockwise order.
+    pub fn polyline_with_vertex_builder<P, V>(
+        &mut self,
+        mode: DrawMode,
+        points: &[P],
+        is_closed: bool,
+        vb: V,
+    ) -> GameResult<&mut Self>
+    where
+        P: Into<mint::Point2<f32>> + Clone,
+        V: t::StrokeVertexConstructor<Vertex> + t::FillVertexConstructor<Vertex>,
+    {
         {
             assert!(points.len() > 1);
             let buffers = &mut self.buffer;
-            let points = points.into_iter().cloned().map(|p| {
-                let mint_point: mint::Point2<f32> = p.into();
-                t::math::point(mint_point.x, mint_point.y)
-            });
-            let vb = VertexBuilder { color };
+            let points: Vec<LPoint> = points
+                .iter()
+                .cloned()
+                .map(|p| {
+                    let mint_point: mint::Point2<f32> = p.into();
+                    t::math::point(mint_point.x, mint_point.y)
+                })
+                .collect();
+            let polygon = Polygon {
+                points: &points,
+                closed: is_closed,
+            };
             match mode {
                 DrawMode::Fill(options) => {
                     let builder = &mut t::BuffersBuilder::new(buffers, vb);
                     let tessellator = &mut t::FillTessellator::new();
-                    let _ = t::basic_shapes::fill_polyline(points, tessellator, &options, builder)?;
+                    let _ = tessellator.tessellate_polygon(polygon, &options, builder)?;
                 }
                 DrawMode::Stroke(options) => {
                     let builder = &mut t::BuffersBuilder::new(buffers, vb);
-                    let _ = t::basic_shapes::stroke_polyline(points, is_closed, &options, builder);
+                    let tessellator = &mut t::StrokeTessellator::new();
+                    let _ = tessellator.tessellate_polygon(polygon, &options, builder)?;
                 }
             };
         }
@@ -248,46 +311,90 @@ impl MeshBuilder {
     }
 
     /// Create a new mesh for a rectangle.
-    pub fn rectangle(&mut self, mode: DrawMode, bounds: Rect, color: Color) -> &mut Self {
+    pub fn rectangle(
+        &mut self,
+        mode: DrawMode,
+        bounds: Rect,
+        color: Color,
+    ) -> GameResult<&mut Self> {
         {
             let buffers = &mut self.buffer;
             let rect = t::math::rect(bounds.x, bounds.y, bounds.w, bounds.h);
-            let vb = VertexBuilder { color };
+            let vb = VertexBuilder {
+                color: LinearColor::from(color),
+            };
             match mode {
                 DrawMode::Fill(fill_options) => {
                     let builder = &mut t::BuffersBuilder::new(buffers, vb);
-                    let _ = t::basic_shapes::fill_rectangle(&rect, &fill_options, builder);
+                    let mut tessellator = t::FillTessellator::new();
+                    let _ = tessellator.tessellate_rectangle(&rect, &fill_options, builder);
                 }
                 DrawMode::Stroke(options) => {
                     let builder = &mut t::BuffersBuilder::new(buffers, vb);
-                    let _ = t::basic_shapes::stroke_rectangle(&rect, &options, builder);
+                    let mut tessellator = t::StrokeTessellator::new();
+                    let _ = tessellator.tessellate_rectangle(&rect, &options, builder);
                 }
             };
         }
-        self
+        Ok(self)
+    }
+
+    /// Create a new mesh for a rounded rectangle.
+    pub fn rounded_rectangle(
+        &mut self,
+        mode: DrawMode,
+        bounds: Rect,
+        radius: f32,
+        color: Color,
+    ) -> GameResult<&mut Self> {
+        {
+            let buffers = &mut self.buffer;
+            let rect = t::math::rect(bounds.x, bounds.y, bounds.w, bounds.h);
+            let radii = t::path::builder::BorderRadii::new(radius);
+            let vb = VertexBuilder {
+                color: LinearColor::from(color),
+            };
+            let mut path_builder = t::path::Path::builder();
+            path_builder.add_rounded_rectangle(&rect, &radii, t::path::Winding::Positive);
+            let path = path_builder.build();
+
+            match mode {
+                DrawMode::Fill(fill_options) => {
+                    let builder = &mut t::BuffersBuilder::new(buffers, vb);
+                    let mut tessellator = t::FillTessellator::new();
+                    let _ = tessellator.tessellate_path(&path, &fill_options, builder);
+                }
+                DrawMode::Stroke(options) => {
+                    let builder = &mut t::BuffersBuilder::new(buffers, vb);
+                    let mut tessellator = t::StrokeTessellator::new();
+                    let _ = tessellator.tessellate_path(&path, &options, builder);
+                }
+            };
+        }
+        Ok(self)
     }
 
     /// Create a new [`Mesh`](struct.Mesh.html) from a raw list of triangles.
+    /// The length of the list must be a multiple of 3.
     ///
     /// Currently does not support UV's or indices.
-    pub fn triangles<P>(&mut self, triangles: &[P], color: Color) -> &mut Self
+    pub fn triangles<P>(&mut self, triangles: &[P], color: Color) -> GameResult<&mut Self>
     where
         P: Into<mint::Point2<f32>> + Clone,
     {
         {
-            assert_eq!(triangles.len() % 3, 0);
+            if (triangles.len() % 3) != 0 {
+                return Err(GameError::LyonError(String::from(
+                    "Called Mesh::triangles() with points that have a length not a multiple of 3.",
+                )));
+            }
             let tris = triangles
                 .iter()
                 .cloned()
                 .map(|p| {
-                    // Gotta turn ggez Point2's into lyon FillVertex's
+                    // Gotta turn ggez Point2's into lyon points
                     let mint_point = p.into();
-                    let np = lyon::math::point(mint_point.x, mint_point.y);
-                    let nv = lyon::math::vector(mint_point.x, mint_point.y);
-                    t::FillVertex {
-                        position: np,
-                        normal: nv,
-                    }
+                    lyon::math::point(mint_point.x, mint_point.y)
                 })
                 // Removing this collect might be nice, but is not easy.
                 // We can chunk a slice, but can't chunk an arbitrary
@@ -296,31 +403,28 @@ impl MeshBuilder {
                 // nicer, so we'll just live with it.
                 .collect::<Vec<_>>();
             let tris = tris.chunks(3);
-            let vb = VertexBuilder { color };
-            let builder: &mut t::BuffersBuilder<_, _, _, _> =
-                &mut t::BuffersBuilder::new(&mut self.buffer, vb);
-            use lyon::tessellation::GeometryBuilder;
-            builder.begin_geometry();
+            let vb = VertexBuilder {
+                color: LinearColor::from(color),
+            };
             for tri in tris {
                 // Ideally this assert makes bounds-checks only happen once.
                 assert!(tri.len() == 3);
-                let fst = tri[0];
-                let snd = tri[1];
-                let thd = tri[2];
-                let i1 = builder.add_vertex(fst);
-                let i2 = builder.add_vertex(snd);
-                let i3 = builder.add_vertex(thd);
-                builder.add_triangle(i1, i2, i3);
+                let first_index: u16 = self.buffer.vertices.len().try_into().unwrap();
+                self.buffer.vertices.push(vb.new_vertex(tri[0]));
+                self.buffer.vertices.push(vb.new_vertex(tri[1]));
+                self.buffer.vertices.push(vb.new_vertex(tri[2]));
+                self.buffer.indices.push(first_index);
+                self.buffer.indices.push(first_index + 1);
+                self.buffer.indices.push(first_index + 2);
             }
-            let _ = builder.end_geometry();
         }
-        self
+        Ok(self)
     }
 
     /// Takes an `Image` to apply to the mesh.
-    pub fn texture(&mut self, texture: Image) -> &mut Self {
+    pub fn texture(&mut self, texture: Image) -> GameResult<&mut Self> {
         self.texture = Some(texture.texture);
-        self
+        Ok(self)
     }
 
     /// Creates a `Mesh` from a raw list of triangles defined from vertices
@@ -329,14 +433,14 @@ impl MeshBuilder {
     /// just use a pure white texture.
     ///
     /// This is the most primitive mesh-creation method, but allows you full
-    /// control over the tesselation and texturing.
-    /// As such it will panic or produce incorrect/invalid output (that may later
-    /// cause drawing to panic), if:
-    ///
-    ///  * `indices` contains a value out of bounds of `verts`
-    ///  * Adding the `indices` or `verts` would create a buffer too long
-    ///    to be indexed by a `u16`.
-    pub fn from_raw<V>(&mut self, verts: &[V], indices: &[u16], texture: Option<Image>) -> &mut Self
+    /// control over the tesselation and texturing.  It has the same constraints
+    /// as `Mesh::from_raw()`.
+    pub fn raw<V>(
+        &mut self,
+        verts: &[V],
+        indices: &[u16],
+        texture: Option<Image>,
+    ) -> GameResult<&mut Self>
     where
         V: Into<Vertex> + Clone,
     {
@@ -346,13 +450,14 @@ impl MeshBuilder {
         // Can we remove the clone here?
         // I can't find a way to, because `into()` consumes its source and
         // `Borrow` or `AsRef` aren't really right.
+        // EDIT: We can, but at a small cost to user-friendlyness, see:
+        //       https://github.com/ggez/ggez/issues/940
         let vertices = verts.iter().cloned().map(|v: V| -> Vertex { v.into() });
         let indices = indices.iter().map(|i| (*i) + next_idx);
         self.buffer.vertices.extend(vertices);
         self.buffer.indices.extend(indices);
         self.texture = texture.map(|texture| texture.texture);
-
-        self
+        Ok(self)
     }
 
     /// Takes the accumulated geometry and load it into GPU memory,
@@ -387,23 +492,35 @@ impl MeshBuilder {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct VertexBuilder {
-    color: Color,
+    color: LinearColor,
 }
 
-impl t::VertexConstructor<t::FillVertex, Vertex> for VertexBuilder {
-    fn new_vertex(&mut self, vertex: t::FillVertex) -> Vertex {
+impl VertexBuilder {
+    fn new_vertex(self, position: LPoint) -> Vertex {
         Vertex {
-            pos: [vertex.position.x, vertex.position.y],
-            uv: [vertex.position.x, vertex.position.y],
+            pos: [position.x, position.y],
+            uv: [position.x, position.y],
             color: self.color.into(),
         }
     }
 }
 
-impl t::VertexConstructor<t::StrokeVertex, Vertex> for VertexBuilder {
+impl t::StrokeVertexConstructor<Vertex> for VertexBuilder {
     fn new_vertex(&mut self, vertex: t::StrokeVertex) -> Vertex {
+        let position = vertex.position();
         Vertex {
-            pos: [vertex.position.x, vertex.position.y],
+            pos: [position.x, position.y],
+            uv: [0.0, 0.0],
+            color: self.color.into(),
+        }
+    }
+}
+
+impl t::FillVertexConstructor<Vertex> for VertexBuilder {
+    fn new_vertex(&mut self, vertex: t::FillVertex) -> Vertex {
+        let position = vertex.position();
+        Vertex {
+            pos: [position.x, position.y],
             uv: [0.0, 0.0],
             color: self.color.into(),
         }
@@ -495,6 +612,8 @@ impl Mesh {
     }
 
     /// Create a new mesh for closed polygon.
+    /// The points given must be in clockwise order,
+    /// otherwise at best the polygon will not draw.
     pub fn new_polygon<P>(
         ctx: &mut Context,
         mode: DrawMode,
@@ -504,6 +623,11 @@ impl Mesh {
     where
         P: Into<mint::Point2<f32>> + Clone,
     {
+        if points.len() < 3 {
+            return Err(GameError::LyonError(
+                "Mesh::new_polygon() got a list of < 3 points".to_string(),
+            ));
+        }
         let mut mb = MeshBuilder::new();
         let _ = mb.polygon(mode, points, color);
         mb.build(ctx)
@@ -518,6 +642,19 @@ impl Mesh {
     ) -> GameResult<Mesh> {
         let mut mb = MeshBuilder::new();
         let _ = mb.rectangle(mode, bounds, color);
+        mb.build(ctx)
+    }
+
+    /// Create a new mesh for a rounded rectangle
+    pub fn new_rounded_rectangle(
+        ctx: &mut Context,
+        mode: DrawMode,
+        bounds: Rect,
+        radius: f32,
+        color: Color,
+    ) -> GameResult<Mesh> {
+        let mut mb = MeshBuilder::new();
+        let _ = mb.rounded_rectangle(mode, bounds, radius, color);
         mb.build(ctx)
     }
 
@@ -553,16 +690,16 @@ impl Mesh {
         V: Into<Vertex> + Clone,
     {
         // Sanity checks to return early with helpful error messages.
-        if verts.len() > (std::u32::MAX as usize) {
+        if verts.len() > (std::u16::MAX as usize) {
             let msg = format!(
-                "Tried to build a mesh with {} vertices, max is u32::MAX",
+                "Tried to build a mesh with {} vertices, max is u16::MAX",
                 verts.len()
             );
             return Err(GameError::LyonError(msg));
         }
-        if indices.len() > (std::u32::MAX as usize) {
+        if indices.len() > (std::u16::MAX as usize) {
             let msg = format!(
-                "Tried to build a mesh with {} indices, max is u32::MAX",
+                "Tried to build a mesh with {} indices, max is u16::MAX",
                 indices.len()
             );
             return Err(GameError::LyonError(msg));
@@ -592,14 +729,16 @@ impl Mesh {
             &indices[..],
         );
 
+        let verts: Vec<Vertex> = verts.iter().cloned().map(Into::into).collect();
+        let rect = bbox_for_vertices(&verts).expect(
+            "No vertices in MeshBuilder; should never happen since we already checked this",
+        );
+
         let bindings = miniquad::Bindings {
             vertex_buffers: vec![vertex_buffer],
             index_buffer: index_buffer,
             images: texture.map_or(vec![ctx.gfx_context.white_texture], |texture| vec![texture]),
         };
-
-        let verts: Vec<Vertex> = verts.iter().cloned().map(Into::into).collect();
-        let rect = bbox_for_vertices(&verts).expect("No vertices in MeshBuilder");
 
         Ok(Mesh {
             bindings,
@@ -696,3 +835,5 @@ fn bbox_for_vertices(verts: &[Vertex]) -> Option<Rect> {
         y: y_min,
     })
 }
+
+// TODO: implement MeshBatch

@@ -5,13 +5,13 @@
 //! Powered by `miniquad_text_rusttype` crate.
 
 extern crate cgmath;
+extern crate glam;
 extern crate good_web_game as ggez;
-extern crate nalgebra;
 
 use ggez::event;
 use ggez::graphics::{self, Font, Text};
 use ggez::{Context, GameResult};
-use nalgebra::Point2;
+use glam::Vec2 as Point2;
 use std::f32;
 
 struct App {
@@ -26,7 +26,7 @@ impl App {
     }
 }
 
-impl event::EventHandler for App {
+impl event::EventHandler<ggez::GameError> for App {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         Ok(())
     }
@@ -73,7 +73,11 @@ impl event::EventHandler for App {
             //     (Point2::new(50.0, text_y), graphics::WHITE),
             // )?;
 
-            graphics::draw(ctx, &text, (Point2::new(200.0, text_y), graphics::WHITE))?;
+            graphics::draw(
+                ctx,
+                &text,
+                (Point2::new(200.0, text_y), graphics::Color::WHITE),
+            )?;
         }
 
         graphics::present(ctx)?;

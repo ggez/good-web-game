@@ -211,13 +211,13 @@ impl<C> SceneStack<C> {
     }
 }
 
-impl<C> crate::event::EventHandler for SceneStack<C> {
-    fn update(&mut self, ctx: &mut crate::Context) -> crate::error::GameResult {
+impl<C, E: std::error::Error> crate::event::EventHandler<E> for SceneStack<C> {
+    fn update(&mut self, ctx: &mut crate::Context) -> Result<(), E> {
         self.update(ctx);
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut crate::Context) -> crate::error::GameResult {
+    fn draw(&mut self, ctx: &mut crate::Context) -> Result<(), E> {
         self.draw(ctx);
         Ok(())
     }

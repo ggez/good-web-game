@@ -1,5 +1,5 @@
+extern crate glam;
 extern crate good_web_game as ggez;
-extern crate nalgebra as na;
 
 use ggez::audio;
 use ggez::event;
@@ -7,6 +7,7 @@ use ggez::graphics;
 use ggez::input;
 use ggez::{Context, GameResult};
 
+use ggez::graphics::DrawParam;
 use std::time::Duration;
 
 struct MainState {
@@ -64,7 +65,7 @@ impl MainState {
     }
 }
 
-impl event::EventHandler for MainState {
+impl event::EventHandler<ggez::GameError> for MainState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         Ok(())
     }
@@ -72,11 +73,25 @@ impl event::EventHandler for MainState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
 
+        // TODO: this enables us to draw the text without error for some reason
+        let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
+        let r1 = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            rect,
+            graphics::Color::WHITE,
+        )?;
+        graphics::draw(ctx, &r1, DrawParam::default())?;
+
         let text = graphics::Text::new((
             "Press number keys 1-6 to play a sound, or escape to quit.",
             30.,
         ));
-        graphics::draw(ctx, &text, (na::Point2::new(100.0, 100.), graphics::WHITE))?;
+        graphics::draw(
+            ctx,
+            &text,
+            (glam::Vec2::new(100.0, 100.), graphics::Color::WHITE),
+        )?;
 
         graphics::present(ctx)?;
         Ok(())

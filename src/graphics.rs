@@ -53,31 +53,36 @@ where
     drawable.draw(ctx, params)
 }
 
-pub fn set_transform(context: &mut Context, transform: &cgmath::Matrix3<f32>) {
+pub fn set_projection<M>(context: &mut Context, proj: M)
+where
+    M: Into<mint::ColumnMatrix4<f32>>,
+{
+    let proj = cgmath::Matrix4::from(proj.into());
     let gfx = &mut context.gfx_context;
-    gfx.set_transform(transform);
+    gfx.set_projection(proj);
 }
 
-pub fn push_transform(context: &mut Context, transform: &cgmath::Matrix3<f32>) {
+pub fn mul_projection<M>(context: &mut Context, proj: M)
+where
+    M: Into<mint::ColumnMatrix4<f32>>,
+{
+    let proj = cgmath::Matrix4::from(proj.into());
     let gfx = &mut context.gfx_context;
-    gfx.push_transform(transform);
+    let curr = gfx.projection();
+    gfx.set_projection(proj * curr);
 }
 
 /// Returns the size of the window in pixels as (width, height),
 /// including borders, titlebar, etc.
 /// Returns zeros if the window doesn't exist.
-/// TODO: Rename, since get_drawable_size is usually what we
-/// actually want. Maybe get_entire_size or get_window_border_size?
 pub fn size(ctx: &Context) -> (f32, f32) {
-    let size = ctx.quad_ctx.screen_size();
-    (size.0, size.1)
+    unimplemented!("use `drawable_size()` for getting the size of the underlying window's drawable")
 }
 
 /// Returns the size of the window's underlying drawable in pixels as (width, height).
 /// This may return a different value than `get_size()` when run on a platform with high-DPI support
-pub fn drawable_size(ctx: &Context) -> (u32, u32) {
-    let size = ctx.quad_ctx.screen_size();
-    (size.0 as u32, size.1 as u32)
+pub fn drawable_size(ctx: &Context) -> (f32, f32) {
+    ctx.quad_ctx.screen_size()
 }
 
 /// Sets the bounds of the screen viewport.
@@ -140,18 +145,182 @@ pub trait Drawable {
 
 /// Applies `DrawParam` to `Rect`.
 pub fn transform_rect(rect: Rect, param: DrawParam) -> Rect {
-    let w = param.src.w * param.scale.x * rect.w;
-    let h = param.src.h * param.scale.y * rect.h;
-    let offset_x = w * param.offset.x;
-    let offset_y = h * param.offset.y;
-    let dest_x = param.dest.x - offset_x;
-    let dest_y = param.dest.y - offset_y;
+    // first apply the offset
     let mut r = Rect {
-        w,
-        h,
-        x: dest_x + rect.x * param.scale.x,
-        y: dest_y + rect.y * param.scale.y,
+        w: rect.w,
+        h: rect.h,
+        x: rect.x - param.offset.x * rect.w,
+        y: rect.y - param.offset.y * rect.h,
     };
+    // apply the scale
+    let real_scale = (param.src.w * param.scale.x, param.src.h * param.scale.y);
+    r.w = real_scale.0 * rect.w;
+    r.h = real_scale.1 * rect.h;
+    r.x *= real_scale.0;
+    r.y *= real_scale.1;
+    // apply the rotation
     r.rotate(param.rotation);
+    // apply the destination translation
+    r.x += param.dest.x;
+    r.y += param.dest.y;
+
     r
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::graphics::{transform_rect, DrawParam, Rect};
+    use approx::assert_relative_eq;
+    use std::f32::consts::PI;
+
+    #[test]
+    fn headless_test_transform_rect() {
+        {
+            let r = Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 1.0,
+                h: 1.0,
+            };
+            let param = DrawParam::default();
+            let real = transform_rect(r, param);
+            let expected = r;
+            assert_relative_eq!(real, expected);
+        }
+        {
+            let r = Rect {
+                x: -1.0,
+                y: -1.0,
+                w: 2.0,
+                h: 1.0,
+            };
+            let param = DrawParam::new().scale([0.5, 0.5]);
+            let real = transform_rect(r, param);
+            let expected = Rect {
+                x: -0.5,
+                y: -0.5,
+                w: 1.0,
+                h: 0.5,
+            };
+            assert_relative_eq!(real, expected);
+        }
+        {
+            let r = Rect {
+                x: -1.0,
+                y: -1.0,
+                w: 1.0,
+                h: 1.0,
+            };
+            let param = DrawParam::new().offset([0.5, 0.5]);
+            let real = transform_rect(r, param);
+            let expected = Rect {
+                x: -1.5,
+                y: -1.5,
+                w: 1.0,
+                h: 1.0,
+            };
+            assert_relative_eq!(real, expected);
+        }
+        {
+            let r = Rect {
+                x: 1.0,
+                y: 0.0,
+                w: 2.0,
+                h: 1.0,
+            };
+            let param = DrawParam::new().rotation(PI * 0.5);
+            let real = transform_rect(r, param);
+            let expected = Rect {
+                x: -1.0,
+                y: 1.0,
+                w: 1.0,
+                h: 2.0,
+            };
+            assert_relative_eq!(real, expected);
+        }
+        {
+            let r = Rect {
+                x: -1.0,
+                y: -1.0,
+                w: 2.0,
+                h: 1.0,
+            };
+            let param = DrawParam::new()
+                .scale([0.5, 0.5])
+                .offset([0.0, 1.0])
+                .rotation(PI * 0.5);
+            let real = transform_rect(r, param);
+            let expected = Rect {
+                x: 0.5,
+                y: -0.5,
+                w: 0.5,
+                h: 1.0,
+            };
+            assert_relative_eq!(real, expected);
+        }
+        {
+            let r = Rect {
+                x: -1.0,
+                y: -1.0,
+                w: 2.0,
+                h: 1.0,
+            };
+            let param = DrawParam::new()
+                .scale([0.5, 0.5])
+                .offset([0.0, 1.0])
+                .rotation(PI * 0.5)
+                .dest([1.0, 0.0]);
+            let real = transform_rect(r, param);
+            let expected = Rect {
+                x: 1.5,
+                y: -0.5,
+                w: 0.5,
+                h: 1.0,
+            };
+            assert_relative_eq!(real, expected);
+        }
+        {
+            let r = Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 1.0,
+                h: 1.0,
+            };
+            let param = DrawParam::new()
+                .offset([0.5, 0.5])
+                .rotation(PI * 1.5)
+                .dest([1.0, 0.5]);
+            let real = transform_rect(r, param);
+            let expected = Rect {
+                x: 0.5,
+                y: 0.0,
+                w: 1.0,
+                h: 1.0,
+            };
+            assert_relative_eq!(real, expected);
+        }
+        {
+            let r = Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 1.0,
+                h: 1.0,
+            };
+            let param = DrawParam::new()
+                .offset([0.5, 0.5])
+                .rotation(PI * 0.25)
+                .scale([2.0, 1.0])
+                .dest([1.0, 2.0]);
+            let real = transform_rect(r, param);
+            let sqrt = (2f32).sqrt() / 2.;
+            let unit = sqrt + sqrt / 2.;
+            let expected = Rect {
+                x: -unit + 1.,
+                y: -unit + 2.,
+                w: 2. * unit,
+                h: 2. * unit,
+            };
+            assert_relative_eq!(real, expected);
+        }
+    }
 }

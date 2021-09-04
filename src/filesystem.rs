@@ -2,7 +2,7 @@ use std::{collections::HashMap, io, path};
 
 use crate::{
     conf::{Cache, Conf},
-    Context, GameResult,
+    Context, GameError, GameResult,
 };
 
 #[derive(Debug, Clone)]
@@ -33,7 +33,7 @@ impl Filesystem {
             for file in archive.entries().unwrap_or_else(|e| panic!(e)) {
                 use std::io::Read;
 
-                let mut file = file.unwrap_or_else(|e| panic!(e));
+                let mut file = file.unwrap_or_else(|e| panic!(e.to_string()));
                 let filename = std::path::PathBuf::from(file.path().unwrap_or_else(|e| panic!(e)));
                 let mut buf = vec![];
 
@@ -58,7 +58,7 @@ impl Filesystem {
     pub fn open<P: AsRef<path::Path>>(&mut self, path: P) -> GameResult<File> {
         let mut path = path::PathBuf::from(path.as_ref());
 
-        // workaround for ggez-style pathes: in ggez pathes starts with "/", while in the cache
+        // workaround for ggez-style pathes: in ggez paths starts with "/", while in the cache
         // dictionary they are presented without "/"
         if let Ok(stripped) = path.strip_prefix("/") {
             path = path::PathBuf::from(stripped);
@@ -75,12 +75,17 @@ impl Filesystem {
         }
 
         if !self.files.contains_key(&path) {
-            panic!("No such file: {:?}", &path)
+            return Err(GameError::FilesystemError(format!(
+                "No such file: {:?}",
+                &path
+            )));
         }
         Ok(self.files[&path].clone())
     }
 }
 
+/// Opens the given path and returns the resulting `File`
+/// in read-only mode.
 pub fn open<P: AsRef<path::Path>>(ctx: &mut Context, path: P) -> GameResult<File> {
     ctx.filesystem.open(path)
 }

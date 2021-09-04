@@ -14,10 +14,16 @@ cgmath = { version = "0.17", features = ["mint"] }
 miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rusttype" }
 miniquad = "=0.2.55"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
+serde = "1"
+serde_derive = "1"
+log = "0.4"
 tar = { version = "0.4", default-features = false }
-lyon = { version = "0.11", optional = true }
+lyon = { version = "0.17.5", optional = true }
+smart-default = "0.6"
 #quad-snd = { path = "../quad-snd" }
-quad-snd = { git = "https://github.com/not-fl3/quad-snd" }
+quad-snd = "0.1.0-alpha.1"
+zip = { version = "0.5", default-features = false }
+approx = "0.5"
 
 [features]
 default = [ "mesh" ]
@@ -26,4 +32,10 @@ log-impl = ["miniquad/log-impl"]
 jpeg = [ "image/jpeg" ]
 
 [dev-dependencies]
-nalgebra = { version = "0.19", features = ["mint"] }
+oorandom = "11"
+getrandom = { version = "0.2", features = ["js"] }
+glam = { version = "0.17.3", features = ["mint"]}
+keyframe = "1.0.4"
+keyframe_derive = "1.0.0"
+num-traits = "0.2"
+num-derive = "0.3"

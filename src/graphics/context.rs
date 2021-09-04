@@ -2,10 +2,10 @@ use crate::{
     graphics::{types::Rect, Canvas},
     GameResult,
 };
-use miniquad_text_rusttype::FontTexture;
+use miniquad_text_rusttype::{FontAtlas, FontTexture};
 use std::rc::Rc;
 
-use cgmath::{Matrix3, Matrix4};
+use cgmath::Matrix4;
 
 const DEFAULT_FONT_BYTES: &'static [u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -155,16 +155,16 @@ impl GraphicsContext {
         Ok(self.fonts_cache.len() - 1)
     }
 
-    pub fn set_transform(&mut self, _transform: &Matrix3<f32>) {
-        unimplemented!();
+    /// Sets the raw projection matrix to the given Matrix.
+    ///
+    /// Call `update_globals()` to apply after calling this.
+    pub(crate) fn set_projection(&mut self, mat: Matrix4<f32>) {
+        self.projection = mat;
     }
 
-    pub fn push_transform(&mut self, _transform: &Matrix3<f32>) {
-        unimplemented!();
-    }
-
-    pub fn pop_transform(&mut self) {
-        unimplemented!();
+    /// Gets a copy of the raw projection matrix.
+    pub(crate) fn projection(&self) -> Matrix4<f32> {
+        self.projection
     }
 
     pub fn set_screen_coordinates(&mut self, rect: crate::graphics::types::Rect) {
@@ -183,7 +183,8 @@ fn load_font(
         ctx,
         font_data,
         font_size,
-        FontTexture::ascii_character_list(),
+        FontAtlas::ascii_character_list(), // TODO: check whether `FontAtlas::ascii_character_list()`
+                                           //      is a proper drop in replacement for `FontTexture::ascii_character_list()`
     )?)
 }
 

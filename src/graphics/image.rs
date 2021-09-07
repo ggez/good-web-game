@@ -1,7 +1,6 @@
 use cgmath::{Matrix4, Transform, Vector2, Vector4};
 use std::path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 use crate::{
     error::GameResult,
@@ -39,8 +38,8 @@ pub struct Image {
     pub(crate) height: u16,
     filter: FilterMode,
     pub(crate) bindings: Bindings,
-    dirty_filter: Arc<AtomicBool>,
-
+    pub(crate) pipeline: Pipeline,
+    dirty_filter: DirtyFlag,
     clones_hack: Arc<()>,
 }
 
@@ -97,7 +96,8 @@ impl Image {
             height: texture.height as u16,
             texture,
             bindings,
-            dirty_filter: Arc::new(AtomicBool::new(false)),
+            pipeline,
+            dirty_filter: DirtyFlag::new(false),
             filter: FilterMode::Linear,
             clones_hack: Arc::new(()),
         })
@@ -117,7 +117,7 @@ impl Image {
     }
 
     pub fn set_filter(&mut self, filter: FilterMode) {
-        self.dirty_filter.store(true, Ordering::Release);
+        self.dirty_filter.store(true);
         self.filter = filter;
     }
 
@@ -169,8 +169,8 @@ impl Drawable for Image {
 
         let transform = param_to_instance_transform(&new_param);
 
-        if self.dirty_filter.load(Ordering::Acquire) {
-            self.dirty_filter.store(false, Ordering::Release);
+        if self.dirty_filter.load() {
+            self.dirty_filter.store(false);
             self.texture.set_filter(&mut ctx.quad_ctx, self.filter);
         }
 
@@ -213,5 +213,28 @@ impl Drop for Image {
             self.bindings.index_buffer.delete();
             self.bindings.vertex_buffers[0].delete();
         }
+    }
+}
+
+#[derive(Debug)]
+struct DirtyFlag(AtomicBool);
+
+impl DirtyFlag {
+    pub fn new(value: bool) -> Self {
+        Self(AtomicBool::new(value))
+    }
+
+    pub fn load(&self) -> bool {
+        self.0.load(Ordering::Acquire)
+    }
+    
+    pub fn store(&self, value: bool) {
+        self.0.store(value, Ordering::Release)
+    }
+}
+
+impl Clone for DirtyFlag {
+    fn clone(&self) -> Self {
+        DirtyFlag(AtomicBool::new(self.0.load(Ordering::Acquire)))
     }
 }

@@ -19,7 +19,7 @@ pub struct Rect {
 
 impl Rect {
     /// Create a new `Rect`.
-    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+    pub const fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
         Rect { x, y, w, h }
     }
 
@@ -35,7 +35,7 @@ impl Rect {
     }
 
     /// Create a new rect from `i32` coordinates.
-    pub fn new_i32(x: i32, y: i32, w: i32, h: i32) -> Self {
+    pub const fn new_i32(x: i32, y: i32, w: i32, h: i32) -> Self {
         Rect {
             x: x as f32,
             y: y as f32,
@@ -45,12 +45,12 @@ impl Rect {
     }
 
     /// Create a new `Rect` with all values zero.
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self::new(0.0, 0.0, 0.0, 0.0)
     }
 
     /// Creates a new `Rect` at `0,0` with width and height 1.
-    pub fn one() -> Self {
+    pub const fn one() -> Self {
         Self::new(0.0, 0.0, 1.0, 1.0)
     }
 
@@ -212,7 +212,7 @@ pub const BLACK: Color = Color {
 
 impl Color {
     /// Create a new `Color` from four `f32`'s in the range `[0.0-1.0]`
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Color { r, g, b, a }
     }
 
@@ -353,3 +353,33 @@ impl Into<String> for Color {
         )
     }
 }
+
+#[cfg(feature = "mesh")]
+mod draw_mode {
+    use crate::graphics::{FillOptions, StrokeOptions};
+
+    /// Specifies whether a shape should be drawn
+    /// filled or as an outline.
+    #[derive(Debug, Copy, Clone)]
+    pub enum DrawMode {
+        /// A stroked line with given parameters, see `StrokeOptions` documentation.
+        Stroke(crate::graphics::StrokeOptions),
+        /// A filled shape with given parameters, see `FillOptions` documentation.
+        Fill(crate::graphics::FillOptions),
+    }
+
+    impl DrawMode {
+        /// Constructs a DrawMode that draws a stroke with the given width
+        pub fn stroke(width: f32) -> DrawMode {
+            DrawMode::Stroke(StrokeOptions::default().with_line_width(width))
+        }
+
+        /// Constructs a DrawMode that fills shapes
+        pub fn fill() -> DrawMode {
+            DrawMode::Fill(FillOptions::default())
+        }
+    }
+}
+
+#[cfg(feature = "mesh")]
+pub use draw_mode::*;

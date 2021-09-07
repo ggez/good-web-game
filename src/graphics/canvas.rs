@@ -4,7 +4,7 @@ use crate::{
     Context, GameResult,
 };
 
-use miniquad::{PixelFormat, RenderPass, RenderTextureParams, Texture};
+use miniquad::{RenderPass, Texture, TextureFormat, TextureParams};
 
 #[derive(Clone, Debug)]
 pub struct Canvas {
@@ -19,18 +19,21 @@ impl Canvas {
         height: u16,
         _samples: NumSamples,
     ) -> GameResult<Canvas> {
-        let texture = Texture::new_render_texture(RenderTextureParams {
-            width: width as u32,
-            height: height as u32,
-            format: PixelFormat::RGBA8,
-            ..Default::default()
-        });
+        let texture = Texture::new_render_texture(
+            &mut ctx.quad_ctx,
+            TextureParams {
+                width: width as u32,
+                height: height as u32,
+                format: TextureFormat::RGBA8,
+                ..Default::default()
+            },
+        );
 
         // let framebuffer = Framebuffer::new(ctx, &texture)
         //     .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
-        let image = Image::from_texture(ctx, texture)?;
+        let image = Image::from_texture(&mut ctx.quad_ctx, texture)?;
 
-        let offscreen_pass = RenderPass::new(ctx.quad_ctx, texture, None);
+        let offscreen_pass = RenderPass::new(&mut ctx.quad_ctx, texture, None);
 
         Ok(Canvas {
             image,
@@ -97,5 +100,5 @@ impl Drawable for Canvas {
 /// Set the `Canvas` to render to. Specifying `Option::None` will cause all
 /// rendering to be done directly to the screen.
 pub fn set_canvas(ctx: &mut Context, target: Option<&Canvas>) {
-    ctx.internal.gfx_context.canvas = target.cloned();
+    ctx.gfx_context.canvas = target.cloned();
 }

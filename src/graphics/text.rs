@@ -1,30 +1,40 @@
 use super::{BlendMode, Color, DrawParam, Drawable, GameResult, Rect};
 
-use crate::graphics::context::GpuText;
+use crate::{filesystem, graphics::param_to_instance_transform};
 
-use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4};
+use miniquad_text_rusttype::{FontTexture, TextDisplay};
 
-use miniquad::*;
+use std::{cell::Ref, ops::Deref, path, rc::Rc};
 
-use std::cell::RefCell;
-
-thread_local! {
-    static FONTS: RefCell<Vec<String>> = RefCell::new(vec![]);
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FontId {
-    TtfFontId,
-    CanvasFontId(usize),
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FontId(usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Font(pub FontId);
 
+impl Default for Font {
+    fn default() -> Font {
+        Font(FontId(0))
+    }
+}
+
 impl Font {
     /// Should construct font from the ttf file path.
-    pub fn new(_: &mut crate::Context, _: &str) -> GameResult<Font> {
-        Ok(Font(FontId::TtfFontId))
+    pub fn new<P: AsRef<path::Path>>(
+        ctx: &mut crate::Context,
+        ttf_filepath: P,
+    ) -> GameResult<Font> {
+        use std::io::Read;
+
+        let mut file = filesystem::open(ctx, ttf_filepath)?;
+
+        let mut bytes = vec![];
+        file.bytes.read_to_end(&mut bytes)?;
+
+        let font =
+            ctx.gfx_context
+                .load_font(&mut ctx.quad_ctx, &bytes[..], ctx.gfx_context.font_size)?;
+        Ok(Font(FontId(font)))
     }
 }
 
@@ -47,7 +57,8 @@ impl Scale {
 /// A piece of text with optional color, font and font scale information.
 /// Drawing text generally involves one or more of these.
 /// These options take precedence over any similar field/argument.
-/// Can be implicitly constructed from `String`, `(String, Color)`, and `(String, FontId, Scale)`.
+/// Implements `From` for `char`, `&str`, `String` and
+/// `(String, Font, Scale)`.
 #[derive(Clone, Debug)]
 pub struct TextFragment {
     /// Text string itself.
@@ -123,6 +134,15 @@ impl From<String> for TextFragment {
     }
 }
 
+impl<T> From<(T, f32)> for TextFragment
+where
+    T: Into<TextFragment>,
+{
+    fn from((text, scale): (T, f32)) -> TextFragment {
+        text.into().scale(Scale::uniform(scale))
+    }
+}
+
 impl<T> From<(T, Font, f32)> for TextFragment
 where
     T: Into<TextFragment>,
@@ -132,9 +152,10 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct Text {
     fragment: TextFragment,
+    font_id: FontId,
+    gpu_text: std::cell::RefCell<Option<TextDisplay<std::rc::Rc<FontTexture>>>>,
 }
 
 impl Text {
@@ -152,141 +173,70 @@ impl Text {
     {
         Text {
             fragment: fragment.into(),
+            font_id: FontId(0),
+            gpu_text: std::cell::RefCell::new(None),
         }
     }
 
-    fn measure_dimensions(&self, _ctx: &mut crate::Context) -> Rect {
-        // let dimensions = ctx
-        //     .gfx_context
-        //     .canvas_context
-        //     .measure_label(&self.fragment.text, None);
-        //Rect::new(0., 0., dimensions.x as f32, dimensions.y as f32)
-        Rect::new(0., 0., self.fragment.text.len() as f32 * 10.0, 10.0)
+    fn lazy_init_gpu_text<'a>(
+        &'a self,
+        ctx: &mut crate::Context,
+    ) -> impl Deref<Target = TextDisplay<Rc<FontTexture>>> + 'a {
+        let font =
+            ctx.gfx_context.fonts_cache[self.fragment.font.map_or(self.font_id, |f| f.0).0].clone();
+        if self.gpu_text.borrow().is_none() {
+            let text = miniquad_text_rusttype::TextDisplay::new(
+                &mut ctx.quad_ctx,
+                &ctx.gfx_context.text_system,
+                font,
+                &self.fragment.text,
+            );
+
+            *self.gpu_text.borrow_mut() = Some(text);
+        }
+
+        Ref::map(self.gpu_text.borrow(), |t| t.as_ref().unwrap())
     }
-}
+    pub fn dimensions(&self, ctx: &mut crate::Context) -> (f32, f32) {
+        let text = self.lazy_init_gpu_text(ctx);
+        let scale = self.fragment.scale.unwrap_or(Scale { x: 1., y: 1. });
 
-fn load_gpu_text(ctx: &mut crate::Context, label: &str) -> GpuText {
-    let shader = Shader::new(
-        &mut ctx.quad_ctx,
-        text_shader::VERTEX,
-        text_shader::FRAGMENT,
-        text_shader::META,
-    );
-
-    let mut vertices = Vec::<f32>::new();
-    let mut indices = Vec::<u16>::new();
-    for (n, ch) in label.chars().enumerate() {
-        let ix = ch as u32;
-
-        let sx = ((ix % 16) as f32) / 16.0;
-        let sy = ((ix / 16) as f32) / 16.0;
-        let sw = 1.0 / 16.0;
-        let sh = 1.0 / 16.0;
-
-        #[rustfmt::skip]
-        let letter: [f32; 16] = [
-            0.0 + n as f32 * 10., 0.0, sx, sy, 
-            10.0 + n as f32 * 10., 0.0, sx + sw, sy, 
-            10.0 + n as f32 * 10., 10.0, sx + sw, sy + sh, 
-            0.0 + n as f32 * 10., 10.0, sx, sy + sh
-        ];
-        vertices.extend(letter.iter());
-        let n = n as u16;
-        indices.extend(
-            [
-                n * 4 + 0,
-                n * 4 + 1,
-                n * 4 + 2,
-                n * 4 + 0,
-                n * 4 + 2,
-                n * 4 + 3,
-            ]
-            .iter()
-            .map(|x| *x),
-        );
+        (text.get_width() * scale.x, scale.y)
     }
-
-    let vertex_buffer = Buffer::immutable(&mut ctx.quad_ctx, BufferType::VertexBuffer, &vertices);
-
-    let index_buffer = Buffer::immutable(&mut ctx.quad_ctx, BufferType::IndexBuffer, &indices);
-
-    let bindings = Bindings {
-        vertex_buffers: vec![vertex_buffer],
-        index_buffer: index_buffer,
-        images: vec![ctx.internal.gfx_context.font_texture.clone()],
-    };
-
-    let pipeline = Pipeline::with_params(
-        &mut ctx.quad_ctx,
-        &[BufferLayout::default()],
-        &[
-            VertexAttribute::new("position", VertexFormat::Float2),
-            VertexAttribute::new("texcoord", VertexFormat::Float2),
-        ],
-        shader,
-        PipelineParams {
-            color_blend: Some((
-                Equation::Add,
-                BlendFactor::Value(BlendValue::SourceAlpha),
-                BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-            )),
-            ..Default::default()
-        },
-    );
-
-    GpuText { bindings, pipeline }
 }
 
 impl Drawable for Text {
     fn draw(&self, ctx: &mut crate::Context, param: DrawParam) -> GameResult {
-        let real_size = Vector2::new(param.src.w as f32, param.src.h as f32);
-        let size = Matrix4::from_nonuniform_scale(
-            real_size.x * param.scale.x,
-            real_size.y * param.scale.y,
-            0.,
+        let text = self.lazy_init_gpu_text(ctx);
+
+        let scale = self.fragment.scale.unwrap_or(Scale { x: 1., y: 1. });
+
+        let mut new_param = param;
+        new_param.scale =
+            cgmath::Vector2::new(scale.x * param.scale.x * 1., -scale.y * param.scale.y * 1.)
+                .into();
+        // 0.7 comes from usual difference between ascender line and cap line, whatever it means
+        new_param.dest.y += scale.y * param.scale.y * 0.7;
+
+        let transform = param_to_instance_transform(&new_param);
+        let projection = ctx.gfx_context.projection;
+
+        let mvp = projection * transform;
+
+        miniquad_text_rusttype::draw(
+            &mut ctx.quad_ctx,
+            &text,
+            &ctx.gfx_context.text_system,
+            mvp,
+            (param.color.r, param.color.g, param.color.b, param.color.a),
         );
-        let dest = Point2::new(
-            param.dest.x - real_size.x * param.offset.x * param.scale.x,
-            param.dest.y - real_size.y * param.offset.y * param.scale.y,
-        );
-        let pos = Matrix4::from_translation(Vector3::new(dest.x, dest.y, 0.));
-        let transform = pos * size;
-
-        if ctx.text_cache().contains_key(&self.fragment.text) == false {
-            let text = load_gpu_text(ctx, &self.fragment.text);
-            ctx.text_cache().insert(self.fragment.text.clone(), text);
-        }
-        let pass = ctx.framebuffer();
-        ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-
-        let text = ctx
-            .internal
-            .gfx_context
-            .text_cache
-            .get(&self.fragment.text.clone())
-            .unwrap();
-
-        ctx.quad_ctx.apply_pipeline(&text.pipeline);
-        ctx.quad_ctx.apply_bindings(&text.bindings);
-
-        let uniforms = text_shader::Uniforms {
-            projection: ctx.internal.gfx_context.projection,
-            model: transform,
-            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
-        };
-
-        ctx.quad_ctx.apply_uniforms(&uniforms);
-
-        // TODO: buffer len from miniquad?
-        ctx.quad_ctx.draw(0, self.fragment.text.len() as i32 * 6, 1);
-
-        ctx.quad_ctx.end_render_pass();
-
         Ok(())
     }
 
     fn dimensions(&self, ctx: &mut crate::Context) -> Option<Rect> {
-        Some(self.measure_dimensions(ctx))
+        let (w, h) = self.dimensions(ctx);
+
+        Some(Rect::new(0., 0., w as f32, h as f32))
     }
 
     fn set_blend_mode(&mut self, _: Option<BlendMode>) {
@@ -295,58 +245,5 @@ impl Drawable for Text {
 
     fn blend_mode(&self) -> Option<BlendMode> {
         unimplemented!()
-    }
-}
-
-mod text_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType};
-
-    pub const VERTEX: &str = r#"#version 100
-    attribute vec2 position;
-    attribute vec2 texcoord;
-
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform mat4 Projection;
-    uniform mat4 Model;
-    uniform vec4 Color;
-
-    uniform float depth;
-
-    void main() {
-        gl_Position = Projection * Model * vec4(position, 0, 1);
-        gl_Position.z = depth;
-        color = Color;
-        uv = texcoord;
-    }"#;
-
-    pub const FRAGMENT: &str = r#"#version 100
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform sampler2D Texture;
-
-    void main() {
-        gl_FragColor = texture2D(Texture, uv) * color;
-    }"#;
-
-    pub const META: ShaderMeta = ShaderMeta {
-        images: &["Texture"],
-        uniforms: UniformBlockLayout {
-            uniforms: &[
-                ("Projection", UniformType::Mat4),
-                ("Model", UniformType::Mat4),
-                ("Color", UniformType::Float4),
-            ],
-        },
-    };
-
-    #[repr(C)]
-    #[derive(Debug)]
-    pub struct Uniforms {
-        pub projection: cgmath::Matrix4<f32>,
-        pub model: cgmath::Matrix4<f32>,
-        pub color: cgmath::Vector4<f32>,
     }
 }

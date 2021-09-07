@@ -1,3 +1,4 @@
+pub mod audio;
 pub mod conf;
 pub mod error;
 pub mod event;
@@ -10,13 +11,13 @@ pub mod timer;
 mod context;
 
 pub use crate::{
-    context::{Context, ContextInternal},
-    error::GameError,
-    error::GameResult,
-    event::EventHandler,
+    context::Context, error::GameError, error::GameResult, event::EventHandler,
     goodies::matrix_transform_2d,
 };
 pub use cgmath;
+
+#[cfg(feature = "log-impl")]
+pub use miniquad::{debug, info, log, warn};
 
 pub mod rand {
     use miniquad::rand;
@@ -38,6 +39,14 @@ pub mod rand {
             r as i32
         }
     }
+    impl RandomRange for i16 {
+        fn gen_range(low: i16, high: i16) -> Self {
+            let r = unsafe { rand() } as f32 / miniquad::RAND_MAX as f32;
+            let r = low as f32 + (high as f32 - low as f32) * r;
+            r as i16
+        }
+    }
+
     impl RandomRange for usize {
         fn gen_range(low: usize, high: usize) -> Self {
             let r = unsafe { rand() } as f32 / miniquad::RAND_MAX as f32;
@@ -65,112 +74,69 @@ pub mod rand {
     }
 }
 
-struct EventHandlderWrapper {
+struct EventHandlerWrapper {
     event_handler: Box<dyn event::EventHandler>,
-    context_internal: ContextInternal,
+    context: Context,
 }
 
-impl miniquad::EventHandler for EventHandlderWrapper {
-    fn update(&mut self, ctx: &mut miniquad::Context) {
-        self.event_handler
-            .update(&mut Context {
-                internal: &mut self.context_internal,
-                quad_ctx: ctx,
-            })
-            .unwrap();
-        self.context_internal.timer_context.tick();
+impl miniquad::EventHandlerFree for EventHandlerWrapper {
+    fn update(&mut self) {
+        self.event_handler.update(&mut self.context).unwrap();
+        if let Some(ref mut mixer) = &mut *self.context.audio_context.mixer.borrow_mut() {
+            mixer.frame();
+        }
+        self.context.timer_context.tick();
     }
 
-    fn draw(&mut self, ctx: &mut miniquad::Context) {
-        self.event_handler
-            .draw(&mut Context {
-                internal: &mut self.context_internal,
-                quad_ctx: ctx,
-            })
-            .unwrap();
+    fn draw(&mut self) {
+        self.event_handler.draw(&mut self.context).unwrap();
     }
 
-    fn resize_event(&mut self, ctx: &mut miniquad::Context, width: f32, height: f32) {
-        self.event_handler.resize_event(
-            &mut Context {
-                internal: &mut self.context_internal,
-                quad_ctx: ctx,
-            },
-            width,
-            height,
-        );
+    fn resize_event(&mut self, width: f32, height: f32) {
+        self.event_handler
+            .resize_event(&mut self.context, width, height);
     }
 
     fn key_down_event(
         &mut self,
-        ctx: &mut miniquad::Context,
         keycode: miniquad::KeyCode,
         _keymods: miniquad::KeyMods,
         repeat: bool,
     ) {
         self.event_handler.key_down_event(
-            &mut Context {
-                internal: &mut self.context_internal,
-                quad_ctx: ctx,
-            },
+            &mut self.context,
             keycode.into(),
             crate::input::keyboard::KeyMods::NONE,
             repeat,
         );
     }
 
-    fn key_up_event(
-        &mut self,
-        ctx: &mut miniquad::Context,
-        keycode: miniquad::KeyCode,
-        _keymods: miniquad::KeyMods,
-    ) {
+    fn key_up_event(&mut self, keycode: miniquad::KeyCode, _keymods: miniquad::KeyMods) {
         self.event_handler.key_up_event(
-            &mut Context {
-                internal: &mut self.context_internal,
-                quad_ctx: ctx,
-            },
+            &mut self.context,
             keycode.into(),
             crate::input::keyboard::KeyMods::NONE,
         );
     }
 
-    fn mouse_button_up_event(
-        &mut self,
-        ctx: &mut miniquad::Context,
-        button: miniquad::MouseButton,
-        x: f32,
-        y: f32,
-    ) {
-        self.event_handler.mouse_button_up_event(
-            &mut Context {
-                internal: &mut self.context_internal,
-                quad_ctx: ctx,
-            },
-            button.into(),
-            x,
-            y,
-        );
+    fn mouse_button_down_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
+        self.event_handler
+            .mouse_button_down_event(&mut self.context, button.into(), x, y);
     }
 
-    fn mouse_motion_event(
-        &mut self,
-        ctx: &mut miniquad::Context,
-        x: f32,
-        y: f32,
-        dx: f32,
-        dy: f32,
-    ) {
-        self.event_handler.mouse_motion_event(
-            &mut Context {
-                internal: &mut self.context_internal,
-                quad_ctx: ctx,
-            },
-            x,
-            y,
-            dx,
-            dy,
-        );
+    fn mouse_button_up_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
+        self.event_handler
+            .mouse_button_up_event(&mut self.context, button.into(), x, y);
+    }
+
+    fn mouse_motion_event(&mut self, x: f32, y: f32) {
+        self.event_handler
+            .mouse_motion_event(&mut self.context, x, y, 0., 0.);
+    }
+
+    fn touch_event(&mut self, phase: miniquad::TouchPhase, id: u64, x: f32, y: f32) {
+        self.event_handler
+            .touch_event(&mut self.context, phase, id, x, y);
     }
 }
 
@@ -179,21 +145,18 @@ where
     F: 'static + FnOnce(&mut Context) -> Box<dyn EventHandler>,
 {
     miniquad::start(miniquad::conf::Conf::default(), |ctx| {
-        let mut context_internal = ContextInternal::new(conf);
+        let mut context = Context::new(ctx, conf);
 
-        let (w, h) = ctx.screen_size();
-        context_internal
+        let (w, h) = context.quad_ctx.screen_size();
+        context
             .gfx_context
             .set_screen_coordinates(graphics::Rect::new(0., 0., w as f32, h as f32));
 
-        let event_handler = f(&mut Context {
-            internal: &mut context_internal,
-            quad_ctx: ctx,
-        });
+        let event_handler = f(&mut context);
 
-        Box::new(EventHandlderWrapper {
-            event_handler: event_handler,
-            context_internal,
+        miniquad::UserData::free(EventHandlerWrapper {
+            event_handler,
+            context,
         })
     });
     Ok(())

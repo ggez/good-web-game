@@ -1,6 +1,6 @@
 [package]
 name = "good-web-game"
-version = "0.2.0"
+version = "0.2.5"
 authors = ["not-fl3 <not.fl3@gmail.com>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -10,10 +10,20 @@ bitflags = "1.1.0"
 rustc-hash = "1.0.1"
 lazy_static = "1.3.0"
 mint = "0.5"
-cgmath = { version = "0.16", features = ["mint"] }
-miniquad = "0.2.9"
+cgmath = { version = "0.17", features = ["mint"] }
+miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rusttype" }
+miniquad = "=0.2.55"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
 tar = { version = "0.4", default-features = false }
+lyon = { version = "0.11", optional = true }
+#quad-snd = { path = "../quad-snd" }
+quad-snd = { git = "https://github.com/not-fl3/quad-snd" }
+
+[features]
+default = [ "mesh" ]
+mesh = [ "lyon" ]
+log-impl = ["miniquad/log-impl"]
+jpeg = [ "image/jpeg" ]
 
 [dev-dependencies]
 nalgebra = { version = "0.19", features = ["mint"] }

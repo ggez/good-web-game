@@ -8,6 +8,13 @@ use std::fmt;
 pub enum GameError {
     /// Something went wrong trying to read from a file
     IOError(std::io::Error),
+    /// Something went wrong with the `lyon` shape-tesselation library
+    LyonError(String),
+    /// SoundMixer in the context should be created explicitly from some of the interaction callbacks
+    /// Thats the only way to get audio to works on web :(
+    MixerNotCreated,
+    SoundError,
+    TTFError(miniquad_text_rusttype::Error),
     UnknownError(&'static str),
 }
 
@@ -34,5 +41,22 @@ pub type GameResult<T = ()> = Result<T, GameError>;
 impl From<std::io::Error> for GameError {
     fn from(e: std::io::Error) -> GameError {
         GameError::IOError(e)
+    }
+}
+
+impl From<miniquad_text_rusttype::Error> for GameError {
+    fn from(e: miniquad_text_rusttype::Error) -> GameError {
+        GameError::TTFError(e)
+    }
+}
+
+#[cfg(feature = "mesh")]
+impl From<lyon::lyon_tessellation::FillError> for GameError {
+    fn from(s: lyon::lyon_tessellation::FillError) -> GameError {
+        let errstr = format!(
+            "Error while tesselating shape (did you give it an infinity or NaN?): {:?}",
+            s
+        );
+        GameError::LyonError(errstr)
     }
 }

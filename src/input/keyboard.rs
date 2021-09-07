@@ -25,12 +25,12 @@ impl KeyboardContext {
 
 /// Checks if a key is currently pressed down.
 pub fn is_key_pressed(ctx: &Context, key: &str) -> bool {
-    ctx.internal.keyboard_context.is_key_pressed(key)
+    ctx.keyboard_context.is_key_pressed(key)
 }
 
 /// Checks if a key was pressed down on exectly this frame.
 pub fn is_key_down(ctx: &Context, key: &str) -> bool {
-    ctx.internal.keyboard_context.is_key_down(key)
+    ctx.keyboard_context.is_key_down(key)
 }
 
 bitflags! {

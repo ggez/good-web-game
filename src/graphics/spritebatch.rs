@@ -1,9 +1,8 @@
 use crate::{
     error::GameResult,
     graphics::{
-        self,
-        image::{batch_shader, param_to_instance_transform},
-        transform_rect, BlendMode, DrawParam, InstanceAttributes, Rect,
+        self, context::batch_shader, image::param_to_instance_transform, transform_rect, BlendMode,
+        DrawParam, FilterMode, InstanceAttributes, Rect,
     },
     Context,
 };
@@ -36,7 +35,7 @@ impl SpriteBatch {
             image: RefCell::new(image),
             sprites: vec![],
             blend_mode: None,
-            gpu_sprites: RefCell::new(vec![InstanceAttributes::default()]),
+            gpu_sprites: RefCell::new(vec![]),
         }
     }
 
@@ -62,6 +61,20 @@ impl SpriteBatch {
     pub fn into_inner(self) -> graphics::Image {
         self.image.into_inner()
     }
+
+    /// Replaces the contained `Image`, returning the old one.
+    pub fn set_image(&mut self, image: graphics::Image) -> graphics::Image {
+        use std::mem;
+
+        self.gpu_sprites = RefCell::new(vec![]);
+        let mut self_image = self.image.borrow_mut();
+        mem::replace(&mut *self_image, image)
+    }
+
+    /// Set the filter mode for the SpriteBatch.
+    pub fn set_filter(&mut self, mode: FilterMode) {
+        self.image.borrow_mut().set_filter(mode);
+    }
 }
 
 impl graphics::Drawable for SpriteBatch {
@@ -69,54 +82,57 @@ impl graphics::Drawable for SpriteBatch {
         let mut image = self.image.borrow_mut();
         let mut gpu_sprites = self.gpu_sprites.borrow_mut();
 
-        if self.sprites.len() != gpu_sprites.len() {
+        if self.sprites.len() > gpu_sprites.len() {
             gpu_sprites.resize(self.sprites.len(), InstanceAttributes::default());
 
-            image.bindings.vertex_buffers[1] = Buffer::stream(
+            let buffer = Buffer::stream(
                 &mut ctx.quad_ctx,
                 BufferType::VertexBuffer,
-                std::mem::size_of::<InstanceAttributes>() * gpu_sprites.len(),
+                std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
             );
-        }
-        // // TODO: This is really nasty and doesn't really do the batching
-        for (n, sprite_param) in self.sprites.iter().enumerate() {
-            let mut new_param = sprite_param.clone();
 
-            new_param.dest.x = new_param.dest.x * param.scale.x + param.dest.x;
-            new_param.dest.y = new_param.dest.y * param.scale.y + param.dest.y;
-            new_param.scale.x *= param.scale.x;
-            new_param.scale.y *= param.scale.y;
+            if image.bindings.vertex_buffers.len() <= 1 {
+                image.bindings.vertex_buffers.push(buffer);
+            } else {
+                image.bindings.vertex_buffers[1].delete();
+
+                image.bindings.vertex_buffers[1] = buffer;
+            }
+        }
+
+        for (n, param) in self.sprites.iter().enumerate() {
+            let mut new_param = param.clone();
+            let src_width = param.src.w;
+            let src_height = param.src.h;
+            let real_scale = graphics::Vector2::new(
+                src_width * param.scale.x * f32::from(image.width),
+                src_height * param.scale.y * f32::from(image.height),
+            );
+            new_param.scale = real_scale.into();
 
             let instance = InstanceAttributes {
-                model: param_to_instance_transform(&new_param, image.width, image.height),
-                source: Vector4::new(
-                    new_param.src.x,
-                    new_param.src.y,
-                    new_param.src.w,
-                    new_param.src.h,
-                ),
-                color: Vector4::new(
-                    new_param.color.r,
-                    new_param.color.g,
-                    new_param.color.b,
-                    new_param.color.a,
-                ),
+                model: param_to_instance_transform(&new_param),
+                source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
+                color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
             };
             gpu_sprites[n] = instance;
         }
 
-        image.bindings.vertex_buffers[1].update(ctx.quad_ctx, &*gpu_sprites);
+        image.bindings.vertex_buffers[1]
+            .update(&mut ctx.quad_ctx, &gpu_sprites[0..self.sprites.len()]);
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx.apply_pipeline(&image.pipeline);
+        ctx.quad_ctx
+            .apply_pipeline(&ctx.gfx_context.sprite_pipeline);
         ctx.quad_ctx.apply_bindings(&image.bindings);
 
         let uniforms = batch_shader::Uniforms {
-            projection: ctx.internal.gfx_context.projection,
+            projection: ctx.gfx_context.projection,
+            model: param_to_instance_transform(&param),
         };
         ctx.quad_ctx.apply_uniforms(&uniforms);
-        ctx.quad_ctx.draw(0, 6, gpu_sprites.len() as i32);
+        ctx.quad_ctx.draw(0, 6, self.sprites.len() as i32);
 
         ctx.quad_ctx.end_render_pass();
 

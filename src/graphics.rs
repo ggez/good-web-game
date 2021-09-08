@@ -26,7 +26,41 @@ pub use self::{
 #[cfg(feature = "mesh")]
 pub use self::mesh::*;
 
+use crate::graphics::drawparam::Transform;
 use miniquad::PassAction;
+use miniquad_text_rusttype::{FontTexture, TextDisplay};
+
+/// Holds the bindings of objects that were dropped this frame.
+/// They (and the buffers inside of them) are kept alive until the beginning of the next frame
+/// to ensure that they're not deleted before being used in the frame in which they were dropped.
+static mut DROPPED_BINDINGS: Vec<miniquad::Bindings> = Vec::new();
+type TextDisp = TextDisplay<std::rc::Rc<FontTexture>>;
+/// The same as `DROPPED_BINDINGS`, but for text, as we can't access their internal bindings directly.
+static mut DROPPED_TEXT: Vec<TextDisp> = Vec::new();
+
+/// Adds some bindings to a vec where they'll be kept alive until the beginning of the next frame.
+pub(crate) fn add_dropped_bindings(bindings: miniquad::Bindings) {
+    unsafe { DROPPED_BINDINGS.push(bindings) };
+}
+/// Adds some bindings to a vec where they'll be kept alive until the beginning of the next frame.
+pub(crate) fn add_dropped_text(text_disp: TextDisp) {
+    unsafe { DROPPED_TEXT.push(text_disp) };
+}
+
+/// Deletes all buffers that were dropped in the previous frame and kept alive for its duration.
+pub(crate) fn release_dropped_bindings() {
+    unsafe {
+        for bindings in DROPPED_BINDINGS.iter_mut() {
+            for v_buffer in bindings.vertex_buffers.iter_mut() {
+                v_buffer.delete();
+            }
+            bindings.index_buffer.delete();
+        }
+        DROPPED_BINDINGS.clear();
+        // dropping the text is enough to trigger `TextDisplay::drop`, which deletes the buffers
+        DROPPED_TEXT.clear();
+    }
+}
 
 /// Clear the screen to the background color.
 pub fn clear(ctx: &mut Context, color: Color) {
@@ -75,7 +109,7 @@ where
 /// Returns the size of the window in pixels as (width, height),
 /// including borders, titlebar, etc.
 /// Returns zeros if the window doesn't exist.
-pub fn size(ctx: &Context) -> (f32, f32) {
+pub fn size(_ctx: &Context) -> (f32, f32) {
     unimplemented!("use `drawable_size()` for getting the size of the underlying window's drawable")
 }
 
@@ -114,7 +148,9 @@ pub fn screen_coordinates(ctx: &Context) -> Rect {
 /// [`draw()`](../event/trait.EventHandler.html#tymethod.draw) method.
 ///
 /// Unsets any active canvas.
-pub fn present(_: &mut Context) -> GameResult<()> {
+pub fn present(ctx: &mut Context) -> GameResult<()> {
+    crate::graphics::set_canvas(ctx, None);
+    ctx.quad_ctx.commit_frame(); // TODO: replace this with an actual flush
     Ok(())
 }
 
@@ -145,26 +181,36 @@ pub trait Drawable {
 
 /// Applies `DrawParam` to `Rect`.
 pub fn transform_rect(rect: Rect, param: DrawParam) -> Rect {
-    // first apply the offset
-    let mut r = Rect {
-        w: rect.w,
-        h: rect.h,
-        x: rect.x - param.offset.x * rect.w,
-        y: rect.y - param.offset.y * rect.h,
-    };
-    // apply the scale
-    let real_scale = (param.src.w * param.scale.x, param.src.h * param.scale.y);
-    r.w = real_scale.0 * rect.w;
-    r.h = real_scale.1 * rect.h;
-    r.x *= real_scale.0;
-    r.y *= real_scale.1;
-    // apply the rotation
-    r.rotate(param.rotation);
-    // apply the destination translation
-    r.x += param.dest.x;
-    r.y += param.dest.y;
+    match param.trans {
+        Transform::Values {
+            scale,
+            offset,
+            dest,
+            rotation,
+        } => {
+            // first apply the offset
+            let mut r = Rect {
+                w: rect.w,
+                h: rect.h,
+                x: rect.x - offset.x * rect.w,
+                y: rect.y - offset.y * rect.h,
+            };
+            // apply the scale
+            let real_scale = (param.src.w * scale.x, param.src.h * scale.y);
+            r.w = real_scale.0 * rect.w;
+            r.h = real_scale.1 * rect.h;
+            r.x *= real_scale.0;
+            r.y *= real_scale.1;
+            // apply the rotation
+            r.rotate(rotation);
+            // apply the destination translation
+            r.x += dest.x;
+            r.y += dest.y;
 
-    r
+            r
+        }
+        Transform::Matrix(_m) => todo!("Fix me"),
+    }
 }
 
 #[cfg(test)]

@@ -66,7 +66,7 @@ impl MainState {
                     y as f32 * Self::GRID_INTERVAL,
                 );
                 let s = format!("({}, {})", point.x, point.y);
-                let t = graphics::Text::new(s);
+                let t = graphics::Text::new((s, 14.0));
                 graphics::draw(ctx, &t, (point,));
             }
         }
@@ -92,7 +92,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
             .offset(Vec2::new(0.5, 0.5))
             .scale(Vec2::new(1.0, 1.0));
 
-        //self.draw_coord_labels(ctx)?;
+        self.draw_coord_labels(ctx)?;
 
         graphics::draw(ctx, &self.angle, param)?;
 

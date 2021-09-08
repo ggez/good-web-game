@@ -25,25 +25,24 @@ use ggez::event::{KeyCode, KeyMods};
 use ggez::{event, graphics, timer, Context, GameResult};
 
 // We'll bring in some things from `std` to help us in the future.
-use ggez::graphics::DrawParam;
 use std::collections::LinkedList;
-use std::env;
-use std::path;
 
 // The first thing we want to do is set up some constants that will help us out later.
 
 // Here we define the size of our game board in terms of how many grid
-// cells it will take up. We choose to make a 30 x 20 game board.
-const GRID_SIZE: (i16, i16) = (30, 20);
+// cells it will take up. We choose to make a 25 x 19 game board.
+const GRID_SIZE: (i16, i16) = (25, 19);
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 const GRID_CELL_SIZE: (i16, i16) = (32, 32);
 
+/*
 // Next we define how large we want our actual window to be by multiplying
 // the components of our grid size by its corresponding pixel size.
 const SCREEN_SIZE: (f32, f32) = (
     GRID_SIZE.0 as f32 * GRID_CELL_SIZE.0 as f32,
     GRID_SIZE.1 as f32 * GRID_CELL_SIZE.1 as f32,
 );
+*/
 
 // Here we're defining how often we want our game to update. This will be
 // important later so that we don't have our snake fly across the screen because
@@ -423,18 +422,8 @@ impl event::EventHandler<ggez::GameError> for GameState {
         // First we clear the screen to a nice (well, maybe pretty glaring ;)) green
         graphics::clear(ctx, [0.0, 1.0, 0.0, 1.0].into());
 
-        // TODO: for some reason, drawing this rect enables us to draw food without running into an error
-        let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
-        let r1 = graphics::Mesh::new_rectangle(
-            ctx,
-            graphics::DrawMode::fill(),
-            rect,
-            graphics::Color::WHITE,
-        )?;
-        graphics::draw(ctx, &r1, DrawParam::default())?;
-
         // Then we tell the snake and the food to draw themselves
-        //self.snake.draw(ctx)?;
+        self.snake.draw(ctx)?;
         self.food.draw(ctx)?;
         // Finally we call graphics::present to cycle the gpu's framebuffer and display
         // the new frame we just drew.
@@ -480,16 +469,6 @@ fn main() -> GameResult {
         // "Failed to build ggez context"
         .build()?;
     */
-
-    // We add the CARGO_MANIFEST_DIR/resources to the resource paths
-    // so that ggez will look in our cargo project directory for files.
-    let resource_dir = if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
-        let mut path = path::PathBuf::from(manifest_dir);
-        path.push("resources");
-        path
-    } else {
-        path::PathBuf::from("./resources")
-    };
 
     // Next we create a new instance of our GameState struct, which implements EventHandler
     let state = GameState::new();

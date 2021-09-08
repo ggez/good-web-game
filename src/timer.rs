@@ -21,8 +21,6 @@ use std::f64;
 use std::time;
 use std::time::Duration;
 
-use miniquad;
-
 type Instant = f64;
 
 pub fn time() -> f64 {

@@ -194,7 +194,7 @@ impl<C> SceneStack<C> {
     ///
     /// This allows for layering GUI's and such.
     fn draw_scenes(scenes: &mut [Box<dyn Scene<C>>], world: &mut C, ctx: &mut crate::Context) {
-        assert!(scenes.len() > 0);
+        assert!(!scenes.is_empty());
         if let Some((current, rest)) = scenes.split_last_mut() {
             if current.draw_previous() {
                 SceneStack::draw_scenes(rest, world, ctx);

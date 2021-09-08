@@ -19,6 +19,13 @@ impl AudioContext {
         }
     }
 }
+
+impl Default for AudioContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct Source {
     sound: Sound,
     mixer: Rc<RefCell<Option<SoundMixer>>>,

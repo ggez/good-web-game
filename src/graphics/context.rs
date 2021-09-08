@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use cgmath::Matrix4;
 
-const DEFAULT_FONT_BYTES: &'static [u8] = include_bytes!(concat!(
+const DEFAULT_FONT_BYTES: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/resources/DejaVuSerif.ttf"
 ));
@@ -40,7 +40,8 @@ impl GraphicsContext {
             batch_shader::VERTEX,
             batch_shader::FRAGMENT,
             batch_shader::meta(),
-        ).expect("couldn't create sprite shader");
+        )
+        .expect("couldn't create sprite shader");
 
         let sprite_pipeline = miniquad::Pipeline::with_params(
             ctx,
@@ -73,7 +74,8 @@ impl GraphicsContext {
             image_shader::VERTEX,
             image_shader::FRAGMENT,
             image_shader::meta(),
-        ).expect("couldn't create image shader");
+        )
+        .expect("couldn't create image shader");
 
         let image_pipeline = miniquad::Pipeline::with_params(
             ctx,
@@ -99,7 +101,8 @@ impl GraphicsContext {
             mesh_shader::VERTEX,
             mesh_shader::FRAGMENT,
             mesh_shader::meta(),
-        ).expect("couldn't create mesh shader");
+        )
+        .expect("couldn't create mesh shader");
 
         let mesh_pipeline = Pipeline::with_params(
             ctx,
@@ -129,7 +132,6 @@ impl GraphicsContext {
             projection,
             screen_rect,
             white_texture,
-            //text_cache: HashMap::new(),
             canvas: None,
             sprite_pipeline,
             mesh_pipeline,
@@ -189,7 +191,7 @@ fn load_font(
 }
 
 pub(crate) mod batch_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType, UniformDesc};
+    use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;
@@ -243,7 +245,7 @@ pub(crate) mod batch_shader {
 }
 
 pub(crate) mod image_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType, UniformDesc};
+    use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;
@@ -300,7 +302,7 @@ pub(crate) mod image_shader {
 }
 
 pub(crate) mod mesh_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformType, UniformDesc};
+    use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;

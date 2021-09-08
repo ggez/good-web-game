@@ -1,6 +1,6 @@
 use super::{BlendMode, Color, DrawParam, Drawable, GameResult, Rect};
 
-use crate::{filesystem, graphics::param_to_instance_transform};
+use crate::filesystem;
 
 use miniquad_text_rusttype::{FontTexture, TextDisplay};
 
@@ -215,16 +215,27 @@ impl Drawable for Text {
     fn draw(&self, ctx: &mut crate::Context, param: DrawParam) -> GameResult {
         let text = self.lazy_init_gpu_text(ctx);
 
-        let scale = self.fragment.scale.unwrap_or(PxScale { x: 1., y: 1. });
+        let frag_scale = self.fragment.scale.unwrap_or(PxScale { x: 1., y: 1. });
 
-        let mut new_param = param;
-        new_param.scale =
-            cgmath::Vector2::new(scale.x * param.scale.x * 1., -scale.y * param.scale.y * 1.)
-                .into();
-        // 0.7 comes from usual difference between ascender line and cap line, whatever it means
-        new_param.dest.y += scale.y * param.scale.y * 0.7;
+        use crate::graphics::Transform;
+        let new_param = match param.trans {
+            Transform::Values { scale, dest, .. } => param
+                .scale(mint::Vector2 {
+                    x: scale.x * frag_scale.x,
+                    y: -scale.y * frag_scale.y,
+                })
+                .dest(mint::Vector2 {
+                    // 0.7 comes from usual difference between ascender line and cap line, whatever it means
+                    x: dest.x,
+                    y: dest.y + frag_scale.y * scale.y * 0.7,
+                }),
+            Transform::Matrix(m) => param.transform(
+                cgmath::Matrix4::from(m)
+                    * cgmath::Matrix4::from_nonuniform_scale(frag_scale.x, frag_scale.y, 1.0),
+            ),
+        };
 
-        let transform = param_to_instance_transform(&new_param);
+        let transform: cgmath::Matrix4<f32> = new_param.trans.to_bare_matrix().into();
         let projection = ctx.gfx_context.projection;
 
         let mvp = projection * transform;
@@ -251,5 +262,14 @@ impl Drawable for Text {
 
     fn blend_mode(&self) -> Option<BlendMode> {
         unimplemented!()
+    }
+}
+
+impl Drop for Text {
+    fn drop(&mut self) {
+        let t_display = std::mem::replace(self.gpu_text.get_mut(), None);
+        if let Some(text_display) = t_display {
+            crate::graphics::add_dropped_text(text_display);
+        }
     }
 }

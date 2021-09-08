@@ -4,7 +4,7 @@ extern crate glam;
 extern crate good_web_game as ggez;
 
 use ggez::event::{self, KeyCode, KeyMods, MouseButton};
-use ggez::graphics::{self, Color, DrawMode, DrawParam};
+use ggez::graphics::{self, Color, DrawMode};
 use ggez::input;
 use ggez::{Context, GameResult};
 use glam::*;
@@ -42,6 +42,8 @@ impl event::EventHandler<ggez::GameError> for MainState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+        // TODO: safely stop buffers from being deleted too soon
+        //       so that adding a second mesh and draw call is no longer necessary to magically fix this
 
         let rectangle = graphics::Mesh::new_rectangle(
             ctx,
@@ -55,21 +57,19 @@ impl event::EventHandler<ggez::GameError> for MainState {
             Color::WHITE,
         )?;
         graphics::draw(ctx, &rectangle, (glam::Vec2::new(0.0, 0.0),))?;
-        /*
-        let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
-        let r1 =
-            graphics::Mesh::new_rectangle(ctx, graphics::DrawMode::fill(), rect, graphics::Color::WHITE)?;
-        graphics::draw(ctx, &r1, DrawParam::default())?;
-        */
-        // TODO: this is necessary to avoid a `STATUS_ACCESS_VIOLATION` for some reason
-        let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
-        let r2 = graphics::Mesh::new_rectangle(
+
+        let rectangle = graphics::Mesh::new_rectangle(
             ctx,
-            graphics::DrawMode::fill(),
-            rect,
-            graphics::Color::new(1.0, 0.0, 0.0, 1.0),
+            DrawMode::fill(),
+            graphics::Rect {
+                x: self.pos_x,
+                y: self.pos_y,
+                w: 400.0,
+                h: 300.0,
+            },
+            Color::WHITE,
         )?;
-        graphics::draw(ctx, &r2, DrawParam::default())?;
+        graphics::draw(ctx, &rectangle, (glam::Vec2::new(0.0, 0.0),))?;
 
         graphics::present(ctx)?;
         Ok(())

@@ -7,7 +7,7 @@
 
 extern crate good_web_game as ggez;
 
-use ggez::event::{self, EventHandler};
+use ggez::event::EventHandler;
 use ggez::graphics::{self, BlendMode, Color, DrawParam, Drawable};
 use ggez::{Context, GameResult};
 use glam::Vec2;
@@ -68,6 +68,7 @@ impl MainState {
             )?;
         }
 
+        // TODO: fix this not appearing on the canvas
         // draw text naming the blend mode
         let text = graphics::Text::new((name, self.font, 20.0));
         let text_offset = Vec2::new(0., -100.);
@@ -79,6 +80,7 @@ impl MainState {
                 .color(Color::WHITE)
                 .offset(Vec2::new(0.5, 0.5)),
         )?;
+
         Ok(())
     }
 
@@ -130,11 +132,6 @@ impl EventHandler<ggez::GameError> for MainState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        graphics::clear(ctx, Color::new(0.3, 0.3, 0.3, 1.0));
-
-        // draw everything directly onto the screen once
-        self.draw_venn_diagrams(ctx)?;
-
         // also draw everything onto the canvas
         graphics::set_canvas(ctx, Some(&self.canvas));
         graphics::clear(ctx, Color::new(0., 0., 0., 0.));
@@ -142,6 +139,10 @@ impl EventHandler<ggez::GameError> for MainState {
 
         // draw the canvas onto the screen
         graphics::set_canvas(ctx, None);
+        graphics::clear(ctx, Color::new(0.3, 0.3, 0.3, 1.0));
+        // draw everything directly onto the screen once
+        self.draw_venn_diagrams(ctx)?;
+
         let (_, height) = graphics::drawable_size(ctx);
         self.canvas.draw(
             ctx,
@@ -211,6 +212,6 @@ pub fn main() -> GameResult {
             loading: ggez::conf::Loading::Embedded,
             physical_root_dir: Some(resource_dir),
         },
-        |mut context| Box::new(MainState::new(context).unwrap()),
+        |context| Box::new(MainState::new(context).unwrap()),
     )
 }

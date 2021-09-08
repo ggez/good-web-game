@@ -4,6 +4,7 @@ use crate::{
     Context, GameResult,
 };
 
+use crate::graphics::drawparam::Transform;
 use miniquad::{RenderPass, Texture, TextureFormat, TextureParams};
 
 #[derive(Clone, Debug)]
@@ -89,9 +90,21 @@ impl Canvas {
 
 impl Drawable for Canvas {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        // No need to flip here. The need for flipping here was just a workaround for canvases
-        // being flipped for some reason in ggez. But here they luckily aren't.
-        self.image.draw(ctx, param)
+        // We have to mess with the scale to make everything
+        // be its-unit-size-in-pixels.
+        let scale_x = param.src.w * f32::from(self.width());
+        let scale_y = param.src.h * f32::from(self.height());
+
+        let param = param.transform(
+            cgmath::Matrix4::from(param.trans.to_bare_matrix())
+                * cgmath::Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
+        );
+
+        // Gotta flip the image on the Y axis here
+        // to account for OpenGL's origin being at the bottom-left.
+        let new_param = flip_draw_param_vertical(param);
+
+        self.image.draw_image_raw(ctx, new_param)
     }
 
     fn set_blend_mode(&mut self, blend_mode: Option<BlendMode>) {
@@ -105,6 +118,25 @@ impl Drawable for Canvas {
     fn dimensions(&self, _: &mut Context) -> Option<Rect> {
         Some(self.image.dimensions())
     }
+}
+
+fn flip_draw_param_vertical(param: DrawParam) -> DrawParam {
+    let param = if let Transform::Matrix(mat) = param.trans {
+        param.transform(
+            cgmath::Matrix4::from(mat)
+                * cgmath::Matrix4::from_translation(cgmath::vec3(0.0, 1.0, 0.0))
+                * cgmath::Matrix4::from_nonuniform_scale(1.0, -1.0, 1.0),
+        )
+    } else {
+        panic!("Can not be called with a non-matrix DrawParam");
+    };
+    let new_src = Rect {
+        x: param.src.x,
+        y: (1.0 - param.src.h) - param.src.y,
+        w: param.src.w,
+        h: param.src.h,
+    };
+    param.src(new_src)
 }
 
 /// Set the `Canvas` to render to. Specifying `Option::None` will cause all

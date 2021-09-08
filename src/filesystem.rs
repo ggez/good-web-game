@@ -4,6 +4,7 @@ use crate::{
     conf::{Cache, Conf},
     Context, GameError, GameResult,
 };
+use std::panic::panic_any;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -30,15 +31,16 @@ impl Filesystem {
         if let Cache::Tar(ref tar_file) = conf.cache {
             let mut archive = tar::Archive::new(tar_file.as_slice());
 
-            for file in archive.entries().unwrap_or_else(|e| panic!(e)) {
+            for file in archive.entries().unwrap_or_else(|e| panic_any(e)) {
                 use std::io::Read;
 
-                let mut file = file.unwrap_or_else(|e| panic!(e.to_string()));
-                let filename = std::path::PathBuf::from(file.path().unwrap_or_else(|e| panic!(e)));
+                let mut file = file.unwrap_or_else(|e| panic_any(e));
+                let filename =
+                    std::path::PathBuf::from(file.path().unwrap_or_else(|e| panic_any(e)));
                 let mut buf = vec![];
 
-                file.read_to_end(&mut buf).unwrap_or_else(|e| panic!(e));
-                if buf.len() != 0 {
+                file.read_to_end(&mut buf).unwrap_or_else(|e| panic_any(e));
+                if !buf.is_empty() {
                     files.insert(
                         filename,
                         File {
@@ -50,7 +52,7 @@ impl Filesystem {
         }
 
         let root = conf.physical_root_dir.clone();
-        Filesystem { files, root }
+        Filesystem { root, files }
     }
 
     /// Opens the given `path` and returns the resulting `File`

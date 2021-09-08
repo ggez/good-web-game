@@ -26,9 +26,7 @@ pub enum GameError {
 
 impl fmt::Display for GameError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            _ => write!(f, "GameError {:?}", self),
-        }
+        write!(f, "GameError {:?}", self)
     }
 }
 

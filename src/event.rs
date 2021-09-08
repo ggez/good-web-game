@@ -14,6 +14,16 @@ pub enum ErrorOrigin {
     Draw,
 }
 
+/// A trait defining event callbacks.  This is your primary interface with
+/// `ggez`'s event loop.  Implement this trait for a type and
+/// override at least the [`update()`](#tymethod.update) and
+/// [`draw()`](#tymethod.draw) methods, then pass it to
+/// [`event::run()`](fn.run.html) to run the game's mainloop.
+///
+/// The default event handlers do nothing, apart from
+/// [`key_down_event()`](#tymethod.key_down_event), which will by
+/// default exit the game if the escape key is pressed.  Just
+/// override the methods you want to use.
 pub trait EventHandler<E>
 where
     E: std::error::Error,
@@ -50,13 +60,22 @@ where
     ) {
     }
 
+    /// A keyboard button was pressed.
+    ///
+    /// The default implementation of this will call `ggez::event::quit()`
+    /// when the escape key is pressed.  If you override this with
+    /// your own event handler you have to re-implment that
+    /// functionality yourself.
     fn key_down_event(
         &mut self,
-        _ctx: &mut Context,
-        _keycode: KeyCode,
+        ctx: &mut Context,
+        keycode: KeyCode,
         _keymods: KeyMods,
         _repeat: bool,
     ) {
+        if keycode == KeyCode::Escape {
+            quit(ctx);
+        }
     }
 
     fn key_up_event(&mut self, _ctx: &mut Context, _keycode: KeyCode, _keymods: KeyMods) {}
@@ -72,6 +91,9 @@ where
     }
 }
 
+/// Terminates the [`ggez::event::run()`](fn.run.html) loop by setting
+/// [`Context.continuing`](struct.Context.html#structfield.continuing)
+/// to `false`.
 pub fn quit(ctx: &mut Context) {
-    ctx.quad_ctx.quit();
+    ctx.continuing = false;
 }

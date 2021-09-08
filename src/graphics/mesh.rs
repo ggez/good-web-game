@@ -540,8 +540,7 @@ pub struct Mesh {
 
 impl Drop for Mesh {
     fn drop(&mut self) {
-        self.bindings.vertex_buffers[0].delete();
-        self.bindings.index_buffer.delete();
+        crate::graphics::add_dropped_bindings(self.bindings.clone());
     }
 }
 
@@ -777,7 +776,7 @@ impl Mesh {
 
 impl Drawable for Mesh {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        let transform = param_to_instance_transform(&param);
+        let transform = param.trans.to_bare_matrix().into();
 
         let pass = ctx.framebuffer();
 

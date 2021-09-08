@@ -1,8 +1,8 @@
 use crate::{
     error::GameResult,
     graphics::{
-        self, context::batch_shader, image::param_to_instance_transform, transform_rect, BlendMode,
-        DrawParam, FilterMode, InstanceAttributes, Rect,
+        self, context::batch_shader, transform_rect, BlendMode, DrawParam, FilterMode,
+        InstanceAttributes, Rect,
     },
     Context,
 };
@@ -82,13 +82,15 @@ impl graphics::Drawable for SpriteBatch {
         // scale the offset according to the dimensions of the spritebatch
         // but only if there is an offset (it's too expensive to calculate the dimensions to always to this)
         let mut param = param;
-        if param.offset != [0.0, 0.0].into() {
-            if let Some(dim) = self.dimensions(ctx) {
-                let new_offset = mint::Vector2 {
-                    x: param.offset.x * dim.w + dim.x,
-                    y: param.offset.y * dim.h + dim.y,
-                };
-                param = param.offset(new_offset);
+        if let crate::graphics::Transform::Values { offset, .. } = param.trans {
+            if offset != [0.0, 0.0].into() {
+                if let Some(dim) = self.dimensions(ctx) {
+                    let new_offset = mint::Vector2 {
+                        x: offset.x * dim.w + dim.x,
+                        y: offset.y * dim.h + dim.y,
+                    };
+                    param = param.offset(new_offset);
+                }
             }
         }
 
@@ -114,17 +116,28 @@ impl graphics::Drawable for SpriteBatch {
         }
 
         for (n, param) in self.sprites.iter().enumerate() {
-            let mut new_param = param.clone();
+            let mut new_param = *param;
             let src_width = param.src.w;
             let src_height = param.src.h;
-            let real_scale = graphics::Vector2::new(
-                src_width * param.scale.x * f32::from(image.width),
-                src_height * param.scale.y * f32::from(image.height),
-            );
-            new_param.scale = real_scale.into();
+            // We have to mess with the scale to make everything
+            // be its-unit-size-in-pixels.
+            let scale_x = src_width * f32::from(image.width);
+            let scale_y = src_height * f32::from(image.height);
+
+            use crate::graphics::Transform;
+            new_param = match new_param.trans {
+                Transform::Values { scale, .. } => new_param.scale(mint::Vector2 {
+                    x: scale.x * scale_x,
+                    y: scale.y * scale_y,
+                }),
+                Transform::Matrix(m) => new_param.transform(
+                    cgmath::Matrix4::from(m)
+                        * cgmath::Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
+                ),
+            };
 
             let instance = InstanceAttributes {
-                model: param_to_instance_transform(&new_param),
+                model: new_param.trans.to_bare_matrix().into(),
                 source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
                 color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
             };
@@ -142,7 +155,7 @@ impl graphics::Drawable for SpriteBatch {
 
         let uniforms = batch_shader::Uniforms {
             projection: ctx.gfx_context.projection,
-            model: param_to_instance_transform(&param),
+            model: param.trans.to_bare_matrix().into(),
         };
         ctx.quad_ctx.apply_uniforms(&uniforms);
         ctx.quad_ctx.draw(0, 6, self.sprites.len() as i32);

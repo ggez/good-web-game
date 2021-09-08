@@ -89,8 +89,17 @@ struct EventHandlerWrapper<E: std::error::Error> {
 
 impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E> {
     fn update(&mut self) {
+        // if the program is to quit, quit
+        // (in ggez this is done before looking at any of the events of this frame, but this isn't
+        //  possible here, so this is the closest it can get)
+        if !self.context.continuing {
+            self.context.quad_ctx.quit();
+        }
+
         // in ggez tick is called before update, so I moved this to the front
         self.context.timer_context.tick();
+        // release all buffers that were kept alive for the previous frame
+        graphics::release_dropped_bindings();
         // do ggez 0.6 style error handling
         if let Err(e) = self.event_handler.update(&mut self.context) {
             error!("Error on EventHandler::update(): {:?}", e); // TODO: maybe use miniquad-logging here instead, but I haven't looked into it yet
@@ -99,7 +108,7 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
                 .event_handler
                 .on_error(&mut self.context, ErrorOrigin::Update, e)
             {
-                self.context.quad_ctx.quit(); // this is closest to the way ggez quits when such a fatal error happens
+                event::quit(&mut self.context);
             }
         }
         if let Some(ref mut mixer) = &mut *self.context.audio_context.mixer.borrow_mut() {
@@ -116,11 +125,10 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
                 .event_handler
                 .on_error(&mut self.context, ErrorOrigin::Draw, e)
             {
-                self.context.quad_ctx.quit(); // this is closest to the way ggez quits when such a fatal error happens
+                event::quit(&mut self.context);
             }
         }
         // reset the mouse frame delta value
-        //      TODO: this is based upon the assumption that draw gets called after update, as in ggez
         self.context.mouse_context.reset_delta();
     }
 
@@ -162,18 +170,14 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
         // first update the keyboard context state
         self.context.keyboard_context.set_key(keycode, true);
         // then hand it to the user
-        self.event_handler.key_down_event(
-            &mut self.context,
-            keycode,
-            keymods.into(),
-            repeat, // TODO: repeat is always `false`, even when the key fires repeatedly
-        );
+        self.event_handler
+            .key_down_event(&mut self.context, keycode, keymods.into(), repeat);
     }
 
     fn key_up_event(&mut self, keycode: miniquad::KeyCode, keymods: miniquad::KeyMods) {
         self.context.keyboard_context.set_key(keycode, false);
         self.event_handler
-            .key_up_event(&mut self.context, keycode.into(), keymods.into());
+            .key_up_event(&mut self.context, keycode, keymods.into());
     }
 
     fn touch_event(&mut self, phase: miniquad::TouchPhase, id: u64, x: f32, y: f32) {

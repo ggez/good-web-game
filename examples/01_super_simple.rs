@@ -15,7 +15,7 @@ fn main() -> GameResult<()> {
             loading: ggez::conf::Loading::Embedded,
             ..Default::default()
         },
-        |mut context| Box::new(MousePos(0., 0.)),
+        |_| Box::new(MousePos(0., 0.)),
     )
     //ggez::event::run(ctx, event_loop, MousePos(0.0, 0.0));
 }

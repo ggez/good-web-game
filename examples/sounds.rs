@@ -83,10 +83,9 @@ impl event::EventHandler<ggez::GameError> for MainState {
         )?;
         graphics::draw(ctx, &r1, DrawParam::default())?;
 
-        let text = graphics::Text::new((
+        let text = graphics::Text::new(
             "Press number keys 1-6 to play a sound, or escape to quit.",
-            30.,
-        ));
+        );
         graphics::draw(
             ctx,
             &text,

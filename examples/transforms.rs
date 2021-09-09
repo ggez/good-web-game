@@ -66,8 +66,8 @@ impl MainState {
                     y as f32 * Self::GRID_INTERVAL,
                 );
                 let s = format!("({}, {})", point.x, point.y);
-                let t = graphics::Text::new((s, 14.0));
-                graphics::draw(ctx, &t, (point,));
+                let t = graphics::Text::new(s);
+                graphics::draw(ctx, &t, (point,))?
             }
         }
         Ok(())
@@ -130,6 +130,6 @@ pub fn main() -> GameResult {
             loading: ggez::conf::Loading::Embedded,
             physical_root_dir: Some(resource_dir),
         },
-        |mut context| Box::new(MainState::new(context).unwrap()),
+        |context| Box::new(MainState::new(context).unwrap()),
     )
 }

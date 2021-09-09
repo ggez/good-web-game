@@ -28,24 +28,24 @@ pub use self::mesh::*;
 
 use crate::graphics::drawparam::Transform;
 use miniquad::PassAction;
-use miniquad_text_rusttype::{FontTexture, TextDisplay};
+//use miniquad_text_rusttype::{FontTexture, TextDisplay};
 
 /// Holds the bindings of objects that were dropped this frame.
 /// They (and the buffers inside of them) are kept alive until the beginning of the next frame
 /// to ensure that they're not deleted before being used in the frame in which they were dropped.
 static mut DROPPED_BINDINGS: Vec<miniquad::Bindings> = Vec::new();
-type TextDisp = TextDisplay<std::rc::Rc<FontTexture>>;
+//type TextDisp = TextDisplay<std::rc::Rc<FontTexture>>;
 /// The same as `DROPPED_BINDINGS`, but for text, as we can't access their internal bindings directly.
-static mut DROPPED_TEXT: Vec<TextDisp> = Vec::new();
+//static mut DROPPED_TEXT: Vec<TextDisp> = Vec::new();
 
 /// Adds some bindings to a vec where they'll be kept alive until the beginning of the next frame.
 pub(crate) fn add_dropped_bindings(bindings: miniquad::Bindings) {
     unsafe { DROPPED_BINDINGS.push(bindings) };
 }
 /// Adds some bindings to a vec where they'll be kept alive until the beginning of the next frame.
-pub(crate) fn add_dropped_text(text_disp: TextDisp) {
-    unsafe { DROPPED_TEXT.push(text_disp) };
-}
+//pub(crate) fn add_dropped_text(text_disp: TextDisp) {
+//    unsafe { DROPPED_TEXT.push(text_disp) };
+//}
 
 /// Deletes all buffers that were dropped in the previous frame and kept alive for its duration.
 pub(crate) fn release_dropped_bindings() {
@@ -58,7 +58,7 @@ pub(crate) fn release_dropped_bindings() {
         }
         DROPPED_BINDINGS.clear();
         // dropping the text is enough to trigger `TextDisplay::drop`, which deletes the buffers
-        DROPPED_TEXT.clear();
+        //DROPPED_TEXT.clear();
     }
 }
 
@@ -153,11 +153,11 @@ pub fn present(ctx: &mut Context) -> GameResult<()> {
     ctx.quad_ctx.commit_frame(); // TODO: replace this with an actual flush
     Ok(())
 }
-
+/*
 pub fn set_font_size(ctx: &mut Context, font_size: u32) {
     ctx.gfx_context.font_size = font_size;
 }
-
+*/
 /// All types that can be drawn on the screen implement the `Drawable` trait.
 pub trait Drawable {
     /// Draws the drawable onto the rendering target.

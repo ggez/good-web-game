@@ -11,7 +11,8 @@ rustc-hash = "1.0.1"
 lazy_static = "1.3.0"
 mint = "0.5"
 cgmath = { version = "0.17", features = ["mint"] }
-miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rusttype", branch = "0.3" }
+#miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rusttype", branch = "0.3" }
+glyph_brush = "0.7"
 miniquad = "0.3.0-alpha.37"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
 serde = "1"
@@ -32,6 +33,7 @@ jpeg = [ "image/jpeg" ]
 
 [dev-dependencies]
 quad-rand = "0.2.1"
+oorandom = "11"
 getrandom = { version = "0.2", features = ["js"] }
 glam = { version = "0.17.3", features = ["mint"]}
 keyframe = "1.0.4"

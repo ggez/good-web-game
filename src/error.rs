@@ -14,7 +14,7 @@ pub enum GameError {
     /// Thats the only way to get audio to works on web :(
     MixerNotCreated,
     SoundError,
-    TTFError(miniquad_text_rusttype::Error),
+    //TTFError(miniquad_text_rusttype::Error),
     UnknownError(&'static str),
     /// Unable to find a resource; the `Vec` is the paths it searched for and associated errors
     ResourceNotFound(String, Vec<(std::path::PathBuf, GameError)>),
@@ -47,13 +47,13 @@ impl From<std::io::Error> for GameError {
         GameError::IOError(e)
     }
 }
-
+/*
 impl From<miniquad_text_rusttype::Error> for GameError {
     fn from(e: miniquad_text_rusttype::Error) -> GameError {
         GameError::TTFError(e)
     }
 }
-
+*/
 #[cfg(feature = "mesh")]
 impl From<lyon::lyon_tessellation::TessellationError> for GameError {
     fn from(s: lyon::lyon_tessellation::TessellationError) -> GameError {

@@ -129,7 +129,7 @@ impl MeshBuilder {
             let point = point.into();
             let buffers = &mut self.buffer;
             let vb = VertexBuilder {
-                color: LinearColor::from(color),
+                color
             };
             match mode {
                 DrawMode::Fill(fill_options) => {
@@ -178,7 +178,7 @@ impl MeshBuilder {
             let buffers = &mut self.buffer;
             let point = point.into();
             let vb = VertexBuilder {
-                color: LinearColor::from(color),
+                color
             };
             match mode {
                 DrawMode::Fill(fill_options) => {
@@ -261,7 +261,7 @@ impl MeshBuilder {
         P: Into<mint::Point2<f32>> + Clone,
     {
         let vb = VertexBuilder {
-            color: LinearColor::from(color),
+            color
         };
         self.polyline_with_vertex_builder(mode, points, is_closed, vb)
     }
@@ -321,7 +321,7 @@ impl MeshBuilder {
             let buffers = &mut self.buffer;
             let rect = t::math::rect(bounds.x, bounds.y, bounds.w, bounds.h);
             let vb = VertexBuilder {
-                color: LinearColor::from(color),
+                color
             };
             match mode {
                 DrawMode::Fill(fill_options) => {
@@ -352,7 +352,7 @@ impl MeshBuilder {
             let rect = t::math::rect(bounds.x, bounds.y, bounds.w, bounds.h);
             let radii = t::path::builder::BorderRadii::new(radius);
             let vb = VertexBuilder {
-                color: LinearColor::from(color),
+                color
             };
             let mut path_builder = t::path::Path::builder();
             path_builder.add_rounded_rectangle(&rect, &radii, t::path::Winding::Positive);
@@ -404,11 +404,11 @@ impl MeshBuilder {
                 .collect::<Vec<_>>();
             let tris = tris.chunks(3);
             let vb = VertexBuilder {
-                color: LinearColor::from(color),
+                color,
             };
             for tri in tris {
                 // Ideally this assert makes bounds-checks only happen once.
-                assert!(tri.len() == 3);
+                assert_eq!(tri.len(), 3);
                 let first_index: u16 = self.buffer.vertices.len().try_into().unwrap();
                 self.buffer.vertices.push(vb.new_vertex(tri[0]));
                 self.buffer.vertices.push(vb.new_vertex(tri[1]));
@@ -475,7 +475,7 @@ impl MeshBuilder {
         );
         let bindings = miniquad::Bindings {
             vertex_buffers: vec![vertex_buffer],
-            index_buffer: index_buffer,
+            index_buffer,
             images: self
                 .texture
                 .map_or(vec![ctx.gfx_context.white_texture], |texture| vec![texture]),
@@ -483,7 +483,7 @@ impl MeshBuilder {
         let rect = bbox_for_vertices(&self.buffer.vertices).expect("No vertices in MeshBuilder");
 
         Ok(Mesh {
-            bindings: bindings,
+            bindings,
             blend_mode: None,
             rect,
         })
@@ -492,7 +492,7 @@ impl MeshBuilder {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct VertexBuilder {
-    color: LinearColor,
+    color: Color,
 }
 
 impl VertexBuilder {
@@ -735,7 +735,7 @@ impl Mesh {
 
         let bindings = miniquad::Bindings {
             vertex_buffers: vec![vertex_buffer],
-            index_buffer: index_buffer,
+            index_buffer,
             images: texture.map_or(vec![ctx.gfx_context.white_texture], |texture| vec![texture]),
         };
 
@@ -751,7 +751,7 @@ impl Mesh {
     /// reusing memory instead of allocating and deallocating it, both on the CPU and
     /// GPU side.  There's too much variation in implementations and drivers to promise
     /// it will actually be faster though.  At worst, it will be the same speed.
-    pub fn set_vertices(&mut self, ctx: &mut Context, verts: &[Vertex], indices: &[u16]) {
+    pub fn set_vertices(&mut self, _ctx: &mut Context, _verts: &[Vertex], _indices: &[u16]) {
         // This is in principle faster than throwing away an existing mesh and
         // creating a new one with `Mesh::from_raw()`, but really only because it
         // doesn't take `Into<Vertex>` and so doesn't need to create an intermediate
@@ -799,14 +799,14 @@ impl Drawable for Mesh {
 
         Ok(())
     }
-    fn dimensions(&self, _ctx: &mut Context) -> Option<Rect> {
-        Some(self.rect)
-    }
     fn set_blend_mode(&mut self, mode: Option<BlendMode>) {
         self.blend_mode = mode;
     }
     fn blend_mode(&self) -> Option<BlendMode> {
         self.blend_mode
+    }
+    fn dimensions(&self, _ctx: &mut Context) -> Option<Rect> {
+        Some(self.rect)
     }
 }
 

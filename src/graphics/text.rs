@@ -240,12 +240,22 @@ impl Drawable for Text {
 
         let mvp = projection * transform;
 
+        // if there's a specified color for the fragment use that
+        // if not, use the color of the DrawParam
+        // TODO: maybe instead recreate the expected color blending effect here
+        let color =
+        if let Some(frag_color) = self.fragment.color {
+            frag_color
+        } else {
+            param.color
+        };
+
         miniquad_text_rusttype::draw(
             &mut ctx.quad_ctx,
             &text,
             &ctx.gfx_context.text_system,
             mvp,
-            (param.color.r, param.color.g, param.color.b, param.color.a),
+            (color.r, color.g, color.b, color.a),
         );
         Ok(())
     }

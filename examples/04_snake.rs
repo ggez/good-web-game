@@ -12,12 +12,10 @@
 //! Author: @termhn
 //! Original repo: https://github.com/termhn/ggez_snake
 
-extern crate good_web_game as ggez;
-
 // First we'll import the crates we need for our game;
-// in this case that is just `ggez` and `oorandom` (and `getrandom`
-// to seed the RNG.)
-use oorandom::Rand32;
+// in this case that is just `ggez` and `quad-rand`
+extern crate good_web_game as ggez;
+use quad_rand as qrand;
 
 // Next we need to actually `use` the pieces of ggez that we are going
 // to need frequently.
@@ -68,12 +66,12 @@ impl GridPosition {
 
     /// As well as a helper function that will give us a random `GridPosition` from
     /// `(0, 0)` to `(max_x, max_y)`
-    pub fn random(rng: &mut Rand32, max_x: i16, max_y: i16) -> Self {
+    pub fn random(max_x: i16, max_y: i16) -> Self {
         // We can use `.into()` to convert from `(i16, i16)` to a `GridPosition` since
         // we implement `From<(i16, i16)>` for `GridPosition` below.
         (
-            rng.rand_range(0..(max_x as u32)) as i16,
-            rng.rand_range(0..(max_y as u32)) as i16,
+            qrand::gen_range(0, max_x),
+            qrand::gen_range(0, max_y),
         )
             .into()
     }
@@ -352,8 +350,6 @@ struct GameState {
     food: Food,
     /// Whether the game is over or not
     gameover: bool,
-    /// Our RNG state
-    rng: Rand32,
 }
 
 impl GameState {
@@ -365,16 +361,15 @@ impl GameState {
         // And we seed our RNG with the system RNG.
         let mut seed: [u8; 8] = [0; 8];
         getrandom::getrandom(&mut seed[..]).expect("Could not create RNG seed");
-        let mut rng = Rand32::new(u64::from_ne_bytes(seed));
+        qrand::srand(u64::from_ne_bytes(seed));
         // Then we choose a random place to put our piece of food using the helper we made
         // earlier.
-        let food_pos = GridPosition::random(&mut rng, GRID_SIZE.0, GRID_SIZE.1);
+        let food_pos = GridPosition::random(GRID_SIZE.0, GRID_SIZE.1);
 
         GameState {
             snake: Snake::new(snake_pos),
             food: Food::new(food_pos),
             gameover: false,
-            rng,
         }
     }
 }
@@ -402,7 +397,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
                         // and move it to this new position.
                         Ate::Food => {
                             let new_food_pos =
-                                GridPosition::random(&mut self.rng, GRID_SIZE.0, GRID_SIZE.1);
+                                GridPosition::random(GRID_SIZE.0, GRID_SIZE.1);
                             self.food.pos = new_food_pos;
                         }
                         // If it ate itself, we set our gameover state to true.

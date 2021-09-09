@@ -20,7 +20,6 @@ log = "0.4"
 tar = { version = "0.4", default-features = false }
 lyon = { version = "0.17.5", optional = true }
 smart-default = "0.6"
-#quad-snd = { path = "../quad-snd" }
 quad-snd = "0.1.0-alpha.1"
 zip = { version = "0.5", default-features = false }
 approx = "0.5"
@@ -32,7 +31,7 @@ log-impl = ["miniquad/log-impl"]
 jpeg = [ "image/jpeg" ]
 
 [dev-dependencies]
-oorandom = "11"
+quad-rand = "0.2.1"
 getrandom = { version = "0.2", features = ["js"] }
 glam = { version = "0.17.3", features = ["mint"]}
 keyframe = "1.0.4"

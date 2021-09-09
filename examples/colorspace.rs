@@ -204,6 +204,6 @@ pub fn main() -> GameResult {
             loading: ggez::conf::Loading::Embedded,
             physical_root_dir: Some(resource_dir),
         },
-        |mut context| Box::new(MainState::new(context).unwrap()),
+        |context| Box::new(MainState::new(context).unwrap()),
     )
 }

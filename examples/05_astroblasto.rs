@@ -7,9 +7,10 @@
 extern crate glam;
 extern crate good_web_game as ggez;
 
+use quad_rand as qrand;
+
 use ggez::event::{EventHandler, KeyCode, KeyMods};
 use ggez::graphics;
-use ggez::rand;
 use ggez::timer;
 use ggez::{Context, GameResult};
 
@@ -32,8 +33,8 @@ fn vec_from_angle(angle: f32) -> Vector2 {
 
 /// Just makes a random `Vector2` with the given max magnitude.
 fn random_vec(max_magnitude: f32) -> Vector2 {
-    let angle = rand::gen_range::<f32>(0., 1.) * 2.0 * std::f32::consts::PI;
-    let mag = rand::gen_range::<f32>(0., 1.) * max_magnitude;
+    let angle = qrand::gen_range::<f32>(0., 1.) * 2.0 * std::f32::consts::PI;
+    let mag = qrand::gen_range::<f32>(0., 1.) * max_magnitude;
     vec_from_angle(angle) * (mag)
 }
 
@@ -128,8 +129,8 @@ fn create_rocks(num: i32, exclusion: Point2, min_radius: f32, max_radius: f32) -
     assert!(max_radius > min_radius);
     let new_rock = |_| {
         let mut rock = create_rock();
-        let r_angle = rand::gen_range::<f32>(0., 1.) * 2.0 * std::f32::consts::PI;
-        let r_distance = rand::gen_range::<f32>(0., 1.) * (max_radius - min_radius) + min_radius;
+        let r_angle = qrand::gen_range::<f32>(0., 1.) * 2.0 * std::f32::consts::PI;
+        let r_distance = qrand::gen_range::<f32>(0., 1.) * (max_radius - min_radius) + min_radius;
         rock.pos = exclusion + vec_from_angle(r_angle) * r_distance;
         rock.velocity = random_vec(MAX_ROCK_VEL);
         rock

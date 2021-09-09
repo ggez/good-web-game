@@ -33,7 +33,7 @@ impl EventHandler<GameError> for MousePos {
     }
 
     fn mouse_motion_event(&mut self, _ctx: &mut Context, x: f32, y: f32, dx: f32, dy: f32) {
-        let d = ggez::input::mouse::delta(ctx);
+        //let d = ggez::input::mouse::delta(ctx);
         let delta = (x - self.0, y - self.1);
         *self = MousePos(x, y);
         println!(

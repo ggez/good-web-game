@@ -2,11 +2,10 @@
 /// which is based on https://github.com/openfl/openfl-samples/tree/master/demos/BunnyMark
 /// Original BunnyMark (and sprite) by Iain Lobb
 extern crate good_web_game as ggez;
+use quad_rand as qrand;
 
 use std::env;
 use std::path;
-
-use oorandom::Rand32;
 
 use ggez::graphics::{spritebatch::SpriteBatch, Color, Image};
 use ggez::Context;
@@ -27,9 +26,9 @@ struct Bunny {
 }
 
 impl Bunny {
-    fn new(rng: &mut Rand32) -> Bunny {
-        let x_vel = rng.rand_float() * 5.0;
-        let y_vel = (rng.rand_float() * 5.0) - 2.5;
+    fn new() -> Bunny {
+        let x_vel = qrand::gen_range(0.0, 5.0);
+        let y_vel = qrand::gen_range(0.0, 5.0) - 2.5;
 
         Bunny {
             position: Vec2::new(0.0, 0.0),
@@ -39,7 +38,6 @@ impl Bunny {
 }
 
 struct GameState {
-    rng: Rand32,
     texture: Image,
     bunnies: Vec<Bunny>,
     max_x: f32,
@@ -53,20 +51,19 @@ struct GameState {
 impl GameState {
     fn new(ctx: &mut Context) -> ggez::GameResult<GameState> {
         // We just use the same RNG seed every time.
-        let mut rng = Rand32::new(12345);
+        qrand::srand(12345);
         let texture = Image::new(ctx, "/wabbit_alpha.png")?;
         let mut bunnies = Vec::with_capacity(INITIAL_BUNNIES);
         let max_x = (WIDTH - texture.width()) as f32;
         let max_y = (HEIGHT - texture.height()) as f32;
 
         for _ in 0..INITIAL_BUNNIES {
-            bunnies.push(Bunny::new(&mut rng));
+            bunnies.push(Bunny::new());
         }
 
         let bunnybatch = SpriteBatch::new(texture.clone());
 
         Ok(GameState {
-            rng,
             texture,
             bunnies,
             max_x,
@@ -102,8 +99,8 @@ impl event::EventHandler<ggez::GameError> for GameState {
                 bunny.position.y = self.max_y;
 
                 // Flip a coin
-                if self.rng.rand_i32() > 0 {
-                    bunny.velocity -= Vec2::new(0.0, 3.0 + (self.rng.rand_float() * 4.0));
+                if qrand::gen_range(0, 2) > 0 {
+                    bunny.velocity -= Vec2::new(0.0, 3.0 + (qrand::gen_range(0.0, 4.0)));
                 }
             } else if bunny.position.y < 0.0 {
                 bunny.velocity.y = 0.0;
@@ -166,7 +163,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
     ) {
         if button == input::mouse::MouseButton::Left && self.click_timer == 0 {
             for _ in 0..INITIAL_BUNNIES {
-                self.bunnies.push(Bunny::new(&mut self.rng));
+                self.bunnies.push(Bunny::new());
             }
             self.click_timer = 10;
         }

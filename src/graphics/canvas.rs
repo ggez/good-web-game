@@ -1,5 +1,4 @@
 use crate::{
-    conf::NumSamples,
     graphics::{BlendMode, DrawParam, Drawable, FilterMode, Image, Rect},
     Context, GameResult,
 };
@@ -18,7 +17,6 @@ impl Canvas {
         ctx: &mut Context,
         width: u16,
         height: u16,
-        _samples: NumSamples,
     ) -> GameResult<Canvas> {
         let texture = Texture::new_render_texture(
             &mut ctx.quad_ctx,
@@ -47,7 +45,7 @@ impl Canvas {
         use crate::graphics;
         let (w, h) = graphics::drawable_size(ctx);
         // Default to no multisampling
-        Canvas::new(ctx, w as u16, h as u16, NumSamples::One)
+        Canvas::new(ctx, w as u16, h as u16)
     }
 
     /// Gets the backend `Image` that is being rendered to.

@@ -26,6 +26,7 @@ use crate::event::ErrorOrigin;
 use crate::input::mouse;
 #[cfg(feature = "log-impl")]
 pub use miniquad::{debug, info, log, warn};
+use crate::filesystem::Filesystem;
 
 struct EventHandlerWrapper<E: std::error::Error> {
     event_handler: Box<dyn event::EventHandler<E>>,
@@ -43,8 +44,10 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
 
         // in ggez tick is called before update, so I moved this to the front
         self.context.timer_context.tick();
+
         // release all buffers that were kept alive for the previous frame
         graphics::release_dropped_bindings();
+
         // do ggez 0.6 style error handling
         if let Err(e) = self.event_handler.update(&mut self.context) {
             error!("Error on EventHandler::update(): {:?}", e); // TODO: maybe use miniquad-logging here instead, but I haven't looked into it yet
@@ -136,18 +139,22 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
     }
 }
 
-pub fn start<F, E>(conf: conf::Conf, f: F) -> GameResult
+pub fn start<F, E>(quad_conf: miniquad::conf::Conf, conf: conf::Conf, f: F) -> GameResult
 where
     E: std::error::Error + 'static,
     F: 'static + FnOnce(&mut Context) -> Box<dyn EventHandler<E>>,
 {
-    miniquad::start(miniquad::conf::Conf::default(), |ctx| {
-        let mut context = Context::new(ctx, conf);
+    let fs = Filesystem::new(&conf, &quad_conf.cache);
+    let (w, h) = (quad_conf.window_width, quad_conf.window_height);
+    miniquad::start(quad_conf, move |ctx| {
+        let mut context = Context::new(ctx, fs);
 
-        let (w, h) = context.quad_ctx.screen_size();
+        // uncommenting this leads to wrong window sizes as `set_window_size` is currently buggy
+        //context.quad_ctx.set_window_size(w as u32, h as u32);
+        let dpi_factor = context.quad_ctx.dpi_scale();
         context
             .gfx_context
-            .set_screen_coordinates(graphics::Rect::new(0., 0., w as f32, h as f32));
+            .set_screen_coordinates(graphics::Rect::new(0., 0., w as f32 * dpi_factor, h as f32 * dpi_factor));
 
         let event_handler = f(&mut context);
 

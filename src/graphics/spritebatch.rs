@@ -158,7 +158,21 @@ impl graphics::Drawable for SpriteBatch {
             model: param.trans.to_bare_matrix().into(),
         };
         ctx.quad_ctx.apply_uniforms(&uniforms);
+
+        let mut custom_blend = false;
+        if let Some(blend_mode) = self.blend_mode() {
+            custom_blend = true;
+            let (color_blend, alpha_blend) = blend_mode.into();
+            ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+        }
+
         ctx.quad_ctx.draw(0, 6, self.sprites.len() as i32);
+
+        // restore default blend mode
+        if custom_blend {
+            let (color_blend, alpha_blend) = BlendMode::Alpha.into();
+            ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+        }
 
         ctx.quad_ctx.end_render_pass();
 

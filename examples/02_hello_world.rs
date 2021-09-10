@@ -31,9 +31,7 @@ impl MainState {
 // The `EventHandler` trait also contains callbacks for event handling
 // that you can override if you wish, but the defaults are fine.
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        Ok(())
-    }
+    fn update(&mut self, ctx: &mut Context) -> GameResult { Ok(()) }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
@@ -47,6 +45,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
         self.frames += 1;
         if (self.frames % 100) == 0 {
             println!("FPS: {}", ggez::timer::fps(ctx));
+            println!("drawable size: {:?}", graphics::drawable_size(ctx));
         }
 
         Ok(())
@@ -72,9 +71,11 @@ pub fn main() -> GameResult {
         path::PathBuf::from("./resources")
     };
 
+    let mut quad_conf = ggez::conf::default_quad_conf();
+    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
+        quad_conf,
         ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
             loading: ggez::conf::Loading::Embedded,
             physical_root_dir: Some(resource_dir),
         },

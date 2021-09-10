@@ -26,7 +26,7 @@ impl MainState {
             ctx,
             graphics::DrawMode::fill(),
             Vec2::new(0.0, 0.0),
-            45.0,
+            40.0,
             0.5,
             Color::WHITE,
         )?;
@@ -51,7 +51,7 @@ impl MainState {
             Color::new(0., 0., 0.8, 0.5),
         ];
 
-        const OFFSET: f32 = 24.;
+        const OFFSET: f32 = 20.;
         const REL_POSITIONS: [[f32; 2]; 3] = [
             [-OFFSET, -OFFSET / 2.],
             [OFFSET, -OFFSET / 2.],
@@ -68,10 +68,9 @@ impl MainState {
             )?;
         }
 
-        // TODO: fix this not appearing on the canvas
         // draw text naming the blend mode
-        let text = graphics::Text::new((name, self.font, 20.0));
-        let text_offset = Vec2::new(0., -100.);
+        let text = graphics::Text::new((name, self.font, 16.0));
+        let text_offset = Vec2::new(0., -90.);
         graphics::draw(
             ctx,
             &text,
@@ -87,7 +86,7 @@ impl MainState {
     fn draw_venn_diagrams(&mut self, ctx: &mut Context) -> GameResult<()> {
         let (w, h) = graphics::drawable_size(ctx);
         let y = h / 4.;
-        const MODE_COUNT: usize = 8;
+        const MODE_COUNT: usize = 5;
         let x_step = w / (MODE_COUNT + 1) as f32;
 
         // draw with Alpha
@@ -106,21 +105,9 @@ impl MainState {
         self.circle.set_blend_mode(Some(BlendMode::Multiply));
         self.draw_venn(ctx, [x_step * 4., y].into(), "Multiply")?;
 
-        // draw with Invert
-        self.circle.set_blend_mode(Some(BlendMode::Invert));
-        self.draw_venn(ctx, [x_step * 5., y].into(), "Invert")?;
-
         // draw with Replace
         self.circle.set_blend_mode(Some(BlendMode::Replace));
-        self.draw_venn(ctx, [x_step * 6., y].into(), "Replace")?;
-
-        // draw with Darken
-        self.circle.set_blend_mode(Some(BlendMode::Darken));
-        self.draw_venn(ctx, [x_step * 7., y].into(), "Darken")?;
-
-        // draw with Lighten
-        self.circle.set_blend_mode(Some(BlendMode::Lighten));
-        self.draw_venn(ctx, [x_step * 8., y].into(), "Lighten")?;
+        self.draw_venn(ctx, [x_step * 5., y].into(), "Replace")?;
 
         Ok(())
     }
@@ -206,12 +193,14 @@ pub fn main() -> GameResult {
         path::PathBuf::from("./resources")
     };
 
+    let mut quad_conf = ggez::conf::default_quad_conf();
+    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
+        quad_conf,
         ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
             loading: ggez::conf::Loading::Embedded,
             physical_root_dir: Some(resource_dir),
         },
-        |context| Box::new(MainState::new(context).unwrap()),
+        |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

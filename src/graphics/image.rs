@@ -40,6 +40,7 @@ pub struct Image {
     pub(crate) height: u16,
     filter: FilterMode,
     pub(crate) bindings: Bindings,
+    blend_mode: Option<BlendMode>,
     dirty_filter: DirtyFlag,
     clones_hack: Arc<()>,
 }
@@ -101,6 +102,7 @@ impl Image {
             height: texture.height as u16,
             texture,
             bindings,
+            blend_mode: None,
             dirty_filter: DirtyFlag::new(false),
             filter: FilterMode::Linear,
             clones_hack: Arc::new(()),
@@ -165,7 +167,21 @@ impl Image {
         };
 
         ctx.quad_ctx.apply_uniforms(&uniforms);
+
+        let mut custom_blend = false;
+        if let Some(blend_mode) = self.blend_mode() {
+            custom_blend = true;
+            let (color_blend, alpha_blend) = blend_mode.into();
+            ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+        }
+
         ctx.quad_ctx.draw(0, 6, 1);
+
+        // restore default blend mode
+        if custom_blend {
+            let (color_blend, alpha_blend) = BlendMode::Alpha.into();
+            ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+        }
 
         ctx.quad_ctx.end_render_pass();
 
@@ -196,11 +212,13 @@ impl Drawable for Image {
         self.draw_image_raw(ctx, new_param)
     }
 
-    fn set_blend_mode(&mut self, _: Option<BlendMode>) {}
+    fn set_blend_mode(&mut self, mode: Option<BlendMode>) {
+        self.blend_mode = mode;
+    }
 
     /// Gets the blend mode to be used when drawing this drawable.
     fn blend_mode(&self) -> Option<BlendMode> {
-        unimplemented!()
+        self.blend_mode
     }
 
     fn dimensions(&self, _ctx: &mut Context) -> Option<Rect> {

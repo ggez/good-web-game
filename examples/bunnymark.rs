@@ -142,18 +142,6 @@ impl event::EventHandler<ggez::GameError> for GameState {
         Ok(())
     }
 
-    fn key_down_event(
-        &mut self,
-        _ctx: &mut Context,
-        keycode: event::KeyCode,
-        _keymods: event::KeyMods,
-        _repeat: bool,
-    ) {
-        if keycode == event::KeyCode::Space {
-            self.batched_drawing = !self.batched_drawing;
-        }
-    }
-
     fn mouse_button_down_event(
         &mut self,
         _ctx: &mut Context,
@@ -168,6 +156,18 @@ impl event::EventHandler<ggez::GameError> for GameState {
             self.click_timer = 10;
         }
     }
+
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        keycode: event::KeyCode,
+        _keymods: event::KeyMods,
+        _repeat: bool,
+    ) {
+        if keycode == event::KeyCode::Space {
+            self.batched_drawing = !self.batched_drawing;
+        }
+    }
 }
 
 fn main() -> GameResult {
@@ -179,9 +179,11 @@ fn main() -> GameResult {
         path::PathBuf::from("./resources")
     };
 
+    let mut quad_conf = ggez::conf::default_quad_conf();
+    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
+        quad_conf,
         ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
             loading: ggez::conf::Loading::Embedded,
             physical_root_dir: Some(resource_dir),
         },

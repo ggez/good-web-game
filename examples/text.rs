@@ -71,7 +71,7 @@ impl App {
                 .font(fancy_font)
                 .scale(PxScale::from(25.0)),
         )
-            .add(" and a default one, for symmetry");
+        .add(" and a default one, for symmetry");
         // Store a copy of the built text, retain original for further modifications.
         texts.insert("1_demo_text_1", text.clone());
 
@@ -205,11 +205,14 @@ pub fn main() -> GameResult {
         );
     }
 
+    let mut quad_conf = ggez::conf::default_quad_conf();
+    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
+    quad_conf.window_resizable = true;
     ggez::start(
+        quad_conf,
         ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
             loading: ggez::conf::Loading::Embedded,
-            ..Default::default()
+            physical_root_dir: None,
         },
         |context| Box::new(App::new(context).unwrap()),
     )

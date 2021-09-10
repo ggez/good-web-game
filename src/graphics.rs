@@ -33,30 +33,35 @@ use miniquad::PassAction;
 /// Holds the bindings of objects that were dropped this frame.
 /// They (and the buffers inside of them) are kept alive until the beginning of the next frame
 /// to ensure that they're not deleted before being used in the frame in which they were dropped.
-static mut DROPPED_BINDINGS: Vec<miniquad::Bindings> = Vec::new();
+static mut DROPPED_BINDINGS: Vec<(miniquad::Bindings, i32)> = Vec::new();
 //type TextDisp = TextDisplay<std::rc::Rc<FontTexture>>;
 /// The same as `DROPPED_BINDINGS`, but for text, as we can't access their internal bindings directly.
 //static mut DROPPED_TEXT: Vec<TextDisp> = Vec::new();
 
-/// Adds some bindings to a vec where they'll be kept alive until the beginning of the next frame.
+/// Adds some bindings to a vec where they'll be kept alive until the beginning of the next but one frame.
 pub(crate) fn add_dropped_bindings(bindings: miniquad::Bindings) {
-    unsafe { DROPPED_BINDINGS.push(bindings) };
+    unsafe { DROPPED_BINDINGS.push((bindings, 1)) };
 }
 /// Adds some bindings to a vec where they'll be kept alive until the beginning of the next frame.
 //pub(crate) fn add_dropped_text(text_disp: TextDisp) {
 //    unsafe { DROPPED_TEXT.push(text_disp) };
 //}
 
-/// Deletes all buffers that were dropped in the previous frame and kept alive for its duration.
+/// Deletes all buffers that were dropped two frames before and kept alive for the duration of their
+/// own frame and the next one.
 pub(crate) fn release_dropped_bindings() {
     unsafe {
-        for bindings in DROPPED_BINDINGS.iter_mut() {
-            for v_buffer in bindings.vertex_buffers.iter_mut() {
-                v_buffer.delete();
+        for (bindings, counter) in DROPPED_BINDINGS.iter_mut() {
+            if *counter == 0 {
+                for v_buffer in bindings.vertex_buffers.iter_mut() {
+                    v_buffer.delete();
+                }
+                bindings.index_buffer.delete();
+            } else {
+                *counter -= 1;
             }
-            bindings.index_buffer.delete();
         }
-        DROPPED_BINDINGS.clear();
+        DROPPED_BINDINGS.retain(|(_bindings, counter)| *counter > 0);
         // dropping the text is enough to trigger `TextDisplay::drop`, which deletes the buffers
         //DROPPED_TEXT.clear();
     }
@@ -150,7 +155,7 @@ pub fn screen_coordinates(ctx: &Context) -> Rect {
 /// Unsets any active canvas.
 pub fn present(ctx: &mut Context) -> GameResult<()> {
     crate::graphics::set_canvas(ctx, None);
-    ctx.quad_ctx.commit_frame(); // TODO: replace this with an actual flush
+    ctx.quad_ctx.commit_frame();
     Ok(())
 }
 /*

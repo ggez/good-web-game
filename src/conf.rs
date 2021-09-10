@@ -1,19 +1,6 @@
 use std::path::PathBuf;
 
 #[derive(Debug)]
-pub enum Cache {
-    /// No preloading at all, filesystem::open will always panic.
-    No,
-    /// Load /index.txt first, and cache all the files specified.
-    /// Game will not start until all the files will be cached
-    Index,
-    /// Same as Index, but with the files list instead of index.txt
-    List(Vec<&'static str>),
-    /// All the files in one tar archive
-    Tar(Vec<u8>),
-}
-
-#[derive(Debug)]
 pub enum Loading {
     /// No progressbar at all, no html special requirements
     No,
@@ -23,7 +10,6 @@ pub enum Loading {
 
 #[derive(Debug)]
 pub struct Conf {
-    pub cache: Cache,
     pub loading: Loading,
     /// `Filesystem::open` will try to read from this dir if there's no such file in the cache.
     ///
@@ -34,26 +20,21 @@ pub struct Conf {
 impl Default for Conf {
     fn default() -> Conf {
         Conf {
-            cache: Cache::No,
             loading: Loading::No,
             physical_root_dir: None,
         }
     }
 }
 
-/// The possible number of samples for multisample anti-aliasing.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum NumSamples {
-    /// Multisampling disabled.
-    Zero = 0,
-    /// One sample
-    One = 1,
-    /// Two samples
-    Two = 2,
-    /// Four samples
-    Four = 4,
-    /// Eight samples
-    Eight = 8,
-    /// Sixteen samples
-    Sixteen = 16,
+pub fn default_quad_conf() -> miniquad::conf::Conf {
+    miniquad::conf::Conf {
+        cache: miniquad::conf::Cache::No,
+        window_title: "An easy, good game".to_string(),
+        window_width: 800,
+        window_height: 600,
+        high_dpi: true,
+        fullscreen: false,
+        sample_count: 1,
+        window_resizable: false
+    }
 }

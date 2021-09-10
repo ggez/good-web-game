@@ -1,6 +1,5 @@
 use crate::{
     audio,
-    conf::Conf,
     filesystem::Filesystem,
     graphics,
     input::{input_handler::InputHandler, KeyboardContext, MouseContext},
@@ -42,11 +41,11 @@ pub struct Context {
 }
 
 impl Context {
-    pub(crate) fn new(mut quad_ctx: miniquad::Context, conf: Conf) -> Context {
+    pub(crate) fn new(mut quad_ctx: miniquad::Context, filesystem: Filesystem) -> Context {
         let input_handler = InputHandler::new();
 
         Context {
-            filesystem: Filesystem::new(&conf),
+            filesystem,
             gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
             audio_context: audio::AudioContext::new(),
             mouse_context: MouseContext::new(input_handler),

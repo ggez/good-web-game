@@ -69,11 +69,7 @@ impl GridPosition {
     pub fn random(max_x: i16, max_y: i16) -> Self {
         // We can use `.into()` to convert from `(i16, i16)` to a `GridPosition` since
         // we implement `From<(i16, i16)>` for `GridPosition` below.
-        (
-            qrand::gen_range(0, max_x),
-            qrand::gen_range(0, max_y),
-        )
-            .into()
+        (qrand::gen_range(0, max_x), qrand::gen_range(0, max_y)).into()
     }
 
     /// We'll make another helper function that takes one grid position and returns a new one after
@@ -396,8 +392,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
                         // If it ate a piece of food, we randomly select a new position for our piece of food
                         // and move it to this new position.
                         Ate::Food => {
-                            let new_food_pos =
-                                GridPosition::random(GRID_SIZE.0, GRID_SIZE.1);
+                            let new_food_pos = GridPosition::random(GRID_SIZE.0, GRID_SIZE.1);
                             self.food.pos = new_food_pos;
                         }
                         // If it ate itself, we set our gameover state to true.
@@ -468,9 +463,11 @@ fn main() -> GameResult {
     // Next we create a new instance of our GameState struct, which implements EventHandler
     let state = GameState::new();
     // And finally we actually run our game, passing in our context and state.
+    let mut quad_conf = ggez::conf::default_quad_conf();
+    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
+        quad_conf,
         ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
             loading: ggez::conf::Loading::Embedded,
             physical_root_dir: None,
         },

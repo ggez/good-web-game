@@ -2,6 +2,8 @@
 
 //type Blend = Option<(Equation, BlendFactor, BlendFactor)>;
 
+use miniquad::{BlendState, Equation, BlendFactor, BlendValue};
+
 /// An enum for specifying default and custom blend modes
 ///
 /// If you want to know what these actually do take a look at the implementation of `From<BlendMode> for Blend`
@@ -18,20 +20,10 @@ pub enum BlendMode {
     /// of the source alpha channel. Has the usual transparency effect: mixes the
     /// two colors using a fraction of each one specified by the alpha of the source.
     Alpha,
-    /// When combining two fragments, subtract the destination color from a constant
-    /// color using the source color as weight. Has an invert effect with the constant
-    /// color as base and source color controlling displacement from the base color.
-    /// A white source color and a white value results in plain invert. The output
-    /// alpha is same as destination alpha.
-    Invert,
     /// When combining two fragments, multiply their values together (including alpha)
     Multiply,
     /// When combining two fragments, choose the source value (including source alpha)
     Replace,
-    /// When combining two fragments, choose the lighter value
-    Lighten,
-    /// When combining two fragments, choose the darker value
-    Darken,
     /// When using premultiplied alpha, use this.
     ///
     /// You usually want to use this blend mode for drawing canvases
@@ -40,88 +32,81 @@ pub enum BlendMode {
     Premultiplied,
 }
 
-// TODO: find out if there might exist a way to get alpha blending using miniquad;
-//       if not, at least create some color-only blend modes
-/*
-impl From<BlendMode> for Blend {
+impl From<BlendMode> for (BlendState, BlendState) {
     fn from(bm: BlendMode) -> Self {
         match bm {
-            BlendMode::Add => Blend {
-                color: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::Value(BlendValue::SourceAlpha),
-                    destination: BlendFactor::One,
-                },
-                alpha: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
-                    destination: BlendFactor::One,
-                },
-            },
-            BlendMode::Subtract => Blend {
-                color: BlendChannel {
-                    equation: Equation::ReverseSubtract,
-                    source: BlendFactor::Value(BlendValue::SourceAlpha),
-                    destination: BlendFactor::One,
-                },
-                alpha: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::Zero,
-                    destination: BlendFactor::One,
-                },
-            },
-            BlendMode::Alpha => Blend {
-                color: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::Value(BlendValue::SourceAlpha),
-                    destination: BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-                },
-                alpha: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
-                    destination: BlendFactor::One,
-                },
-            },
-            BlendMode::Invert => blend::INVERT,
-            BlendMode::Multiply => blend::MULTIPLY,
-            BlendMode::Replace => blend::REPLACE,
-            BlendMode::Lighten => Blend {
-                color: BlendChannel {
-                    equation: Equation::Max,
-                    source: BlendFactor::Value(BlendValue::SourceAlpha),
-                    destination: BlendFactor::One,
-                },
-                alpha: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
-                    destination: BlendFactor::One,
-                },
-            },
-            BlendMode::Darken => Blend {
-                color: BlendChannel {
-                    equation: Equation::Min,
-                    source: BlendFactor::Value(BlendValue::SourceAlpha),
-                    destination: BlendFactor::One,
-                },
-                alpha: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
-                    destination: BlendFactor::One,
-                },
-            },
-            BlendMode::Premultiplied => Blend {
-                color: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::One,
-                    destination: BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-                },
-                alpha: BlendChannel {
-                    equation: Equation::Add,
-                    source: BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
-                    destination: BlendFactor::One,
-                },
-            },
+            BlendMode::Add => (
+                    BlendState::new(
+                    Equation::Add,
+                    BlendFactor::Value(BlendValue::SourceAlpha),
+                    BlendFactor::One,
+                    ),
+                    BlendState::new(
+                       Equation::Add,
+                       BlendFactor::Value(BlendValue::SourceAlpha),
+                       BlendFactor::One,
+                    )
+                ),
+            BlendMode::Subtract => (
+                BlendState::new(
+                    Equation::ReverseSubtract,
+                    BlendFactor::Value(BlendValue::SourceAlpha),
+                    BlendFactor::One,
+                ),
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::Zero,
+                    BlendFactor::One,
+                )
+            ),
+            BlendMode::Alpha => (
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::Value(BlendValue::SourceAlpha),
+                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
+                ),
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
+                    BlendFactor::One,
+                )
+            ),
+            BlendMode::Premultiplied => (
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::One,
+                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha)
+                ),
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
+                    BlendFactor::One,
+                )
+            ),
+            BlendMode::Multiply => (
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::Value(BlendValue::DestinationColor),
+                    BlendFactor::Zero,
+                ),
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::Value(BlendValue::DestinationAlpha),
+                    BlendFactor::Zero,
+                )
+            ),
+            BlendMode::Replace => (
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::One,
+                    BlendFactor::Zero,
+                ),
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::One,
+                    BlendFactor::Zero,
+                )
+            )
         }
     }
 }
-*/

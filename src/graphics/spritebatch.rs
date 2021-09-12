@@ -106,6 +106,7 @@ impl graphics::Drawable for SpriteBatch {
                 std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
             );
 
+            // TODO: This looks a bit dirty. What if there are two different spritebatches using this image?
             if image.bindings.vertex_buffers.len() <= 1 {
                 image.bindings.vertex_buffers.push(buffer);
             } else {

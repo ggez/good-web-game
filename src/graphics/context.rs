@@ -299,28 +299,31 @@ pub(crate) mod image_shader {
     }
 }
 
-pub(crate) mod mesh_shader {
+// TODO: this shader is WIP (probably)
+pub(crate) mod mesh_batch_shader {
     use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;
     attribute vec2 texcoord;
     attribute vec4 color0;
+    attribute vec4 Source;
+    attribute vec4 Color;
+    attribute mat4 InstanceModel;
 
     varying lowp vec4 color;
     varying lowp vec2 uv;
 
     uniform mat4 Projection;
     uniform mat4 Model;
-    uniform vec4 Color;
 
     uniform float depth;
 
     void main() {
-        gl_Position = Projection * Model * vec4(position, 0, 1);
+        gl_Position = Projection * Model * InstanceModel * vec4(position, 0, 1);
         gl_Position.z = depth;
         color = Color * color0;
-        uv = texcoord;
+        uv = texcoord * Source.zw + Source.xy;
     }"#;
 
     pub const FRAGMENT: &str = r#"#version 100
@@ -340,6 +343,62 @@ pub(crate) mod mesh_shader {
                 uniforms: vec![
                     UniformDesc::new("Projection", UniformType::Mat4),
                     UniformDesc::new("Model", UniformType::Mat4),
+                ],
+            },
+        }
+    }
+
+    #[repr(C)]
+    #[derive(Debug)]
+    pub struct Uniforms {
+        pub projection: cgmath::Matrix4<f32>,
+        pub model: cgmath::Matrix4<f32>,
+    }
+}
+
+pub(crate) mod mesh_shader {
+    use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
+
+    pub const VERTEX: &str = r#"#version 100
+    attribute vec2 position;
+    attribute vec2 texcoord;
+    attribute vec4 color0;
+
+    varying lowp vec4 color;
+    varying lowp vec2 uv;
+
+    uniform mat4 Projection;
+    uniform vec4 Source;
+    uniform mat4 Model;
+    uniform vec4 Color;
+
+    uniform float depth;
+
+    void main() {
+        gl_Position = Projection * Model * vec4(position, 0, 1);
+        gl_Position.z = depth;
+        color = Color * color0;
+        uv = texcoord * Source.zw + Source.xy;
+    }"#;
+
+    pub const FRAGMENT: &str = r#"#version 100
+    varying lowp vec4 color;
+    varying lowp vec2 uv;
+
+    uniform sampler2D Texture;
+
+    void main() {
+        gl_FragColor = texture2D(Texture, uv) * color;
+    }"#;
+
+    pub fn meta() -> ShaderMeta {
+        ShaderMeta {
+            images: vec!["Texture".to_string()],
+            uniforms: UniformBlockLayout {
+                uniforms: vec![
+                    UniformDesc::new("Projection", UniformType::Mat4),
+                    UniformDesc::new("Source", UniformType::Float4),
+                    UniformDesc::new("Model", UniformType::Mat4),
                     UniformDesc::new("Color", UniformType::Float4),
                 ],
             },
@@ -350,6 +409,7 @@ pub(crate) mod mesh_shader {
     #[derive(Debug)]
     pub struct Uniforms {
         pub projection: cgmath::Matrix4<f32>,
+        pub source: cgmath::Vector4<f32>,
         pub model: cgmath::Matrix4<f32>,
         pub color: cgmath::Vector4<f32>,
     }

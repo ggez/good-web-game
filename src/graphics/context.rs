@@ -1,13 +1,11 @@
-use crate::{
-    graphics::{types::Rect, Canvas},
-};
+use crate::graphics::{types::Rect, Canvas};
 //use miniquad_text_rusttype::{FontAtlas, FontTexture};
 use std::rc::Rc;
 
+use crate::graphics::{spritebatch, BlendMode, DrawParam, Font, Image};
 use cgmath::Matrix4;
-use crate::graphics::{DrawParam, Image, spritebatch, Font};
-use std::cell::RefCell;
 use glyph_brush::{GlyphBrush, GlyphBrushBuilder};
+use std::cell::RefCell;
 
 pub struct GraphicsContext {
     pub(crate) screen_rect: Rect,
@@ -17,6 +15,7 @@ pub struct GraphicsContext {
     pub(crate) sprite_pipeline: miniquad::Pipeline,
     pub(crate) mesh_pipeline: miniquad::Pipeline,
     pub(crate) image_pipeline: miniquad::Pipeline,
+    pub(crate) blend_mode: BlendMode,
 
     pub(crate) glyph_brush: Rc<RefCell<GlyphBrush<DrawParam>>>,
     pub(crate) glyph_cache: Image,
@@ -152,6 +151,7 @@ impl GraphicsContext {
             sprite_pipeline,
             mesh_pipeline,
             image_pipeline,
+            blend_mode: BlendMode::Alpha,
             glyph_brush: Rc::new(RefCell::new(glyph_brush)),
             glyph_cache,
             glyph_state,
@@ -160,20 +160,6 @@ impl GraphicsContext {
 }
 
 impl GraphicsContext {
-    /*
-    pub(crate) fn load_font(
-        &mut self,
-        ctx: &mut miniquad::Context,
-        font_bytes: &[u8],
-        font_size: u32,
-    ) -> GameResult<usize> {
-        let font = load_font(ctx, &font_bytes, font_size)?;
-
-        self.fonts_cache.push(Rc::new(font));
-
-        Ok(self.fonts_cache.len() - 1)
-    }
-    */
     /// Sets the raw projection matrix to the given Matrix.
     ///
     /// Call `update_globals()` to apply after calling this.
@@ -191,22 +177,17 @@ impl GraphicsContext {
         self.projection =
             cgmath::ortho(rect.x, rect.x + rect.w, rect.y + rect.h, rect.y, -1.0, 1.0);
     }
+
+    pub(crate) fn set_blend_mode(&mut self, mode: BlendMode) {
+        self.blend_mode = mode;
+    }
+
+    /// Gets the current global
+    pub(crate) fn blend_mode(&self) -> &BlendMode {
+        &self.blend_mode
+    }
 }
-/*
-fn load_font(
-    ctx: &mut miniquad::Context,
-    font_data: &[u8],
-    font_size: u32,
-) -> GameResult<FontTexture> {
-    Ok(FontTexture::new(
-        ctx,
-        font_data,
-        font_size,
-        FontAtlas::ascii_character_list(), // TODO: check whether `FontAtlas::ascii_character_list()`
-                                           //      is a proper drop in replacement for `FontTexture::ascii_character_list()`
-    )?)
-}
-*/
+
 pub(crate) mod batch_shader {
     use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 

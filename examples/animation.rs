@@ -404,14 +404,10 @@ pub fn main() -> GameResult {
     println!("Up/Down: change easing function");
     println!("W/S: change duration");
 
-    let mut quad_conf = ggez::conf::default_quad_conf();
-    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
-        quad_conf,
-        ggez::conf::Conf {
-            loading: ggez::conf::Loading::Embedded,
-            physical_root_dir: Some(resource_dir),
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+            .physical_root_dir(Some(resource_dir)),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

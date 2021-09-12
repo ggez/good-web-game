@@ -171,16 +171,14 @@ impl Image {
         let mut custom_blend = false;
         if let Some(blend_mode) = self.blend_mode() {
             custom_blend = true;
-            let (color_blend, alpha_blend) = blend_mode.into();
-            ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+            crate::graphics::set_current_blend_mode(ctx, blend_mode)
         }
 
         ctx.quad_ctx.draw(0, 6, 1);
 
         // restore default blend mode
         if custom_blend {
-            let (color_blend, alpha_blend) = BlendMode::Alpha.into();
-            ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+            crate::graphics::restore_blend_mode(ctx);
         }
 
         ctx.quad_ctx.end_render_pass();

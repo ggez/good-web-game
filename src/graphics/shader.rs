@@ -2,7 +2,7 @@
 
 //type Blend = Option<(Equation, BlendFactor, BlendFactor)>;
 
-use miniquad::{BlendState, Equation, BlendFactor, BlendValue};
+use miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 
 /// An enum for specifying default and custom blend modes
 ///
@@ -36,28 +36,24 @@ impl From<BlendMode> for (BlendState, BlendState) {
     fn from(bm: BlendMode) -> Self {
         match bm {
             BlendMode::Add => (
-                    BlendState::new(
+                BlendState::new(
                     Equation::Add,
                     BlendFactor::Value(BlendValue::SourceAlpha),
                     BlendFactor::One,
-                    ),
-                    BlendState::new(
-                       Equation::Add,
-                       BlendFactor::Value(BlendValue::SourceAlpha),
-                       BlendFactor::One,
-                    )
                 ),
+                BlendState::new(
+                    Equation::Add,
+                    BlendFactor::Value(BlendValue::SourceAlpha),
+                    BlendFactor::One,
+                ),
+            ),
             BlendMode::Subtract => (
                 BlendState::new(
                     Equation::ReverseSubtract,
                     BlendFactor::Value(BlendValue::SourceAlpha),
                     BlendFactor::One,
                 ),
-                BlendState::new(
-                    Equation::Add,
-                    BlendFactor::Zero,
-                    BlendFactor::One,
-                )
+                BlendState::new(Equation::Add, BlendFactor::Zero, BlendFactor::One),
             ),
             BlendMode::Alpha => (
                 BlendState::new(
@@ -69,19 +65,19 @@ impl From<BlendMode> for (BlendState, BlendState) {
                     Equation::Add,
                     BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
                     BlendFactor::One,
-                )
+                ),
             ),
             BlendMode::Premultiplied => (
                 BlendState::new(
                     Equation::Add,
                     BlendFactor::One,
-                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha)
+                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
                 ),
                 BlendState::new(
                     Equation::Add,
                     BlendFactor::OneMinusValue(BlendValue::DestinationAlpha),
                     BlendFactor::One,
-                )
+                ),
             ),
             BlendMode::Multiply => (
                 BlendState::new(
@@ -93,20 +89,12 @@ impl From<BlendMode> for (BlendState, BlendState) {
                     Equation::Add,
                     BlendFactor::Value(BlendValue::DestinationAlpha),
                     BlendFactor::Zero,
-                )
+                ),
             ),
             BlendMode::Replace => (
-                BlendState::new(
-                    Equation::Add,
-                    BlendFactor::One,
-                    BlendFactor::Zero,
-                ),
-                BlendState::new(
-                    Equation::Add,
-                    BlendFactor::One,
-                    BlendFactor::Zero,
-                )
-            )
+                BlendState::new(Equation::Add, BlendFactor::One, BlendFactor::Zero),
+                BlendState::new(Equation::Add, BlendFactor::One, BlendFactor::Zero),
+            ),
         }
     }
 }

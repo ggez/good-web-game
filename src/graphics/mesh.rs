@@ -128,9 +128,7 @@ impl MeshBuilder {
         {
             let point = point.into();
             let buffers = &mut self.buffer;
-            let vb = VertexBuilder {
-                color
-            };
+            let vb = VertexBuilder { color };
             match mode {
                 DrawMode::Fill(fill_options) => {
                     let mut tessellator = t::FillTessellator::new();
@@ -177,9 +175,7 @@ impl MeshBuilder {
         {
             let buffers = &mut self.buffer;
             let point = point.into();
-            let vb = VertexBuilder {
-                color
-            };
+            let vb = VertexBuilder { color };
             match mode {
                 DrawMode::Fill(fill_options) => {
                     let builder = &mut t::BuffersBuilder::new(buffers, vb);
@@ -260,9 +256,7 @@ impl MeshBuilder {
     where
         P: Into<mint::Point2<f32>> + Clone,
     {
-        let vb = VertexBuilder {
-            color
-        };
+        let vb = VertexBuilder { color };
         self.polyline_with_vertex_builder(mode, points, is_closed, vb)
     }
 
@@ -320,9 +314,7 @@ impl MeshBuilder {
         {
             let buffers = &mut self.buffer;
             let rect = t::math::rect(bounds.x, bounds.y, bounds.w, bounds.h);
-            let vb = VertexBuilder {
-                color
-            };
+            let vb = VertexBuilder { color };
             match mode {
                 DrawMode::Fill(fill_options) => {
                     let builder = &mut t::BuffersBuilder::new(buffers, vb);
@@ -351,9 +343,7 @@ impl MeshBuilder {
             let buffers = &mut self.buffer;
             let rect = t::math::rect(bounds.x, bounds.y, bounds.w, bounds.h);
             let radii = t::path::builder::BorderRadii::new(radius);
-            let vb = VertexBuilder {
-                color
-            };
+            let vb = VertexBuilder { color };
             let mut path_builder = t::path::Path::builder();
             path_builder.add_rounded_rectangle(&rect, &radii, t::path::Winding::Positive);
             let path = path_builder.build();
@@ -403,9 +393,7 @@ impl MeshBuilder {
                 // nicer, so we'll just live with it.
                 .collect::<Vec<_>>();
             let tris = tris.chunks(3);
-            let vb = VertexBuilder {
-                color,
-            };
+            let vb = VertexBuilder { color };
             for tri in tris {
                 // Ideally this assert makes bounds-checks only happen once.
                 assert_eq!(tri.len(), 3);
@@ -795,8 +783,7 @@ impl Drawable for Mesh {
         let mut custom_blend = false;
         if let Some(blend_mode) = self.blend_mode() {
             custom_blend = true;
-            let (color_blend, alpha_blend) = blend_mode.into();
-            ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+            crate::graphics::set_current_blend_mode(ctx, blend_mode)
         }
 
         ctx.quad_ctx
@@ -804,8 +791,7 @@ impl Drawable for Mesh {
 
         // restore default blend mode
         if custom_blend {
-            let (color_blend, alpha_blend) = BlendMode::Alpha.into();
-            ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+            crate::graphics::restore_blend_mode(ctx);
         }
 
         ctx.quad_ctx.end_render_pass();

@@ -1,9 +1,6 @@
 use std::{collections::HashMap, io, path};
 
-use crate::{
-    conf::Conf,
-    Context, GameError, GameResult,
-};
+use crate::{conf::Conf, Context, GameError, GameResult};
 use std::panic::panic_any;
 
 #[derive(Debug, Clone)]
@@ -25,11 +22,11 @@ pub struct Filesystem {
 }
 
 impl Filesystem {
-    pub(crate) fn new(conf: &Conf, cache: &miniquad::conf::Cache) -> Filesystem {
+    pub(crate) fn new(conf: &Conf) -> Filesystem {
         let mut files = HashMap::new();
 
-        if let miniquad::conf::Cache::Tar(tar_file) = cache {
-            let mut archive = tar::Archive::new(*tar_file);
+        if let miniquad::conf::Cache::Tar(tar_file) = conf.quad_conf.cache {
+            let mut archive = tar::Archive::new(tar_file);
 
             for file in archive.entries().unwrap_or_else(|e| panic_any(e)) {
                 use std::io::Read;

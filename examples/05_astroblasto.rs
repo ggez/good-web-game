@@ -619,18 +619,13 @@ impl EventHandler<ggez::GameError> for MainState {
 
 /// **********************************************************************
 /// Finally our main function!  Which merely sets up a config and calls
-/// `ggez::event::run()` with our `EventHandler` type.
+/// `good-web-game::start()` with our `EventHandler` type.
 /// **********************************************************************
 
 pub fn main() -> GameResult {
-    let mut quad_conf = ggez::conf::default_quad_conf();
-    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
-        quad_conf,
-        ggez::conf::Conf {
-            loading: ggez::conf::Loading::Embedded,
-            physical_root_dir: None,
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

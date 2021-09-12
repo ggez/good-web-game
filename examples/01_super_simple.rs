@@ -9,14 +9,9 @@ fn main() -> GameResult<()> {
     //    .unwrap();
     //set_cursor_grabbed(&mut ctx, true);
 
-    let mut quad_conf = ggez::conf::default_quad_conf();
-    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
-        quad_conf,
-        ggez::conf::Conf {
-            loading: ggez::conf::Loading::Embedded,
-            ..Default::default()
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
         |_| Box::new(MousePos(0., 0.)),
     )
 }
@@ -34,7 +29,6 @@ impl EventHandler<GameError> for MousePos {
     }
 
     fn mouse_motion_event(&mut self, _ctx: &mut Context, x: f32, y: f32, dx: f32, dy: f32) {
-        //let d = ggez::input::mouse::delta(ctx);
         let delta = (x - self.0, y - self.1);
         *self = MousePos(x, y);
         println!(

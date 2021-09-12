@@ -111,12 +111,14 @@ where
     gfx.set_projection(proj * curr);
 }
 
+/*
 /// Returns the size of the window in pixels as (width, height),
 /// including borders, titlebar, etc.
 /// Returns zeros if the window doesn't exist.
 pub fn size(_ctx: &Context) -> (f32, f32) {
     unimplemented!("use `drawable_size()` for getting the size of the underlying window's drawable")
 }
+*/
 
 /// Returns the size of the window's underlying drawable in pixels as (width, height).
 /// This may return a different value than `get_size()` when run on a platform with high-DPI support
@@ -148,6 +150,31 @@ pub fn screen_coordinates(ctx: &Context) -> Rect {
     ctx.gfx_context.screen_rect
 }
 
+/// Sets the global blend mode. Note that whenever a `Drawable` has its own blend mode it will
+/// prioritize it over the global one.
+pub fn set_blend_mode(ctx: &mut Context, mode: BlendMode) -> GameResult {
+    let (color_blend, alpha_blend) = mode.into();
+    ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+    ctx.gfx_context.set_blend_mode(mode);
+    Ok(())
+}
+
+/// Gets the current global blend mode
+pub fn blend_mode(ctx: &Context) -> &BlendMode {
+    ctx.gfx_context.blend_mode()
+}
+
+/// makes this blend mode current
+pub(crate) fn set_current_blend_mode(ctx: &mut Context, blend_mode: BlendMode) {
+    let (color_blend, alpha_blend) = blend_mode.into();
+    ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+}
+
+/// makes the global blend mode the current one
+pub(crate) fn restore_blend_mode(ctx: &mut Context) {
+    set_current_blend_mode(ctx, ctx.gfx_context.blend_mode.into())
+}
+
 /// Tells the graphics system to actually put everything on the screen.
 /// Call this at the end of your [`EventHandler`](../event/trait.EventHandler.html)'s
 /// [`draw()`](../event/trait.EventHandler.html#tymethod.draw) method.
@@ -158,11 +185,47 @@ pub fn present(ctx: &mut Context) -> GameResult<()> {
     ctx.quad_ctx.commit_frame();
     Ok(())
 }
-/*
-pub fn set_font_size(ctx: &mut Context, font_size: u32) {
-    ctx.gfx_context.font_size = font_size;
+
+/// Sets the window to fullscreen or back.
+pub fn set_fullscreen(context: &mut Context, fullscreen: bool) {
+    context.quad_ctx.set_fullscreen(fullscreen);
 }
-*/
+
+/// Sets the window size (in physical pixels) / resolution to the specified width and height.
+///
+/// Note:   These dimensions are only interpreted as resolutions in true fullscreen mode.
+pub fn set_drawable_size(context: &mut Context, width: u32, height: u32) {
+    context.quad_ctx.set_window_size(width, height);
+}
+
+/// Deletes all cached font data.
+///
+/// Suggest this only gets used if you're sure you actually need it.
+pub fn clear_font_cache(ctx: &mut Context) {
+    use glyph_brush::GlyphBrushBuilder;
+    use std::cell::RefCell;
+    use std::convert::TryInto;
+    use std::rc::Rc;
+    let font_vec =
+        glyph_brush::ab_glyph::FontArc::try_from_slice(Font::default_font_bytes()).unwrap();
+    let glyph_brush = GlyphBrushBuilder::using_font(font_vec).build();
+    let (glyph_cache_width, glyph_cache_height) = glyph_brush.texture_dimensions();
+    let initial_contents = vec![255; 4 * glyph_cache_width as usize * glyph_cache_height as usize];
+    let glyph_cache = Image::from_rgba8(
+        ctx,
+        glyph_cache_width.try_into().unwrap(),
+        glyph_cache_height.try_into().unwrap(),
+        &initial_contents,
+    )
+    .unwrap();
+    let glyph_state = Rc::new(RefCell::new(spritebatch::SpriteBatch::new(
+        glyph_cache.clone(),
+    )));
+    ctx.gfx_context.glyph_brush = Rc::new(RefCell::new(glyph_brush));
+    ctx.gfx_context.glyph_cache = glyph_cache;
+    ctx.gfx_context.glyph_state = glyph_state;
+}
+
 /// All types that can be drawn on the screen implement the `Drawable` trait.
 pub trait Drawable {
     /// Draws the drawable onto the rendering target.

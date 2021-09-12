@@ -23,10 +23,10 @@ pub use crate::{
 pub use cgmath;
 
 use crate::event::ErrorOrigin;
+use crate::filesystem::Filesystem;
 use crate::input::mouse;
 #[cfg(feature = "log-impl")]
 pub use miniquad::{debug, info, log, warn};
-use crate::filesystem::Filesystem;
 
 struct EventHandlerWrapper<E: std::error::Error> {
     event_handler: Box<dyn event::EventHandler<E>>,
@@ -139,22 +139,23 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
     }
 }
 
-pub fn start<F, E>(quad_conf: miniquad::conf::Conf, conf: conf::Conf, f: F) -> GameResult
+pub fn start<F, E>(conf: conf::Conf, f: F) -> GameResult
 where
     E: std::error::Error + 'static,
     F: 'static + FnOnce(&mut Context) -> Box<dyn EventHandler<E>>,
 {
-    let fs = Filesystem::new(&conf, &quad_conf.cache);
-    let (w, h) = (quad_conf.window_width, quad_conf.window_height);
-    miniquad::start(quad_conf, move |ctx| {
+    let fs = Filesystem::new(&conf);
+    let quad_conf = conf.into();
+
+    miniquad::start(quad_conf, |ctx| {
         let mut context = Context::new(ctx, fs);
 
         // uncommenting this leads to wrong window sizes as `set_window_size` is currently buggy
-        //context.quad_ctx.set_window_size(w as u32, h as u32);
-        let dpi_factor = context.quad_ctx.dpi_scale();
+        //context.quad_ctx.set_window_size(800 as u32, 600 as u32);
+        let (d_w, d_h) = context.quad_ctx.screen_size();
         context
             .gfx_context
-            .set_screen_coordinates(graphics::Rect::new(0., 0., w as f32 * dpi_factor, h as f32 * dpi_factor));
+            .set_screen_coordinates(graphics::Rect::new(0., 0., d_w, d_h));
 
         let event_handler = f(&mut context);
 

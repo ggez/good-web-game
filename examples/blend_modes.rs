@@ -69,7 +69,7 @@ impl MainState {
         }
 
         // draw text naming the blend mode
-        let text = graphics::Text::new((name, self.font, 16.0));
+        let text = graphics::Text::new((name, self.font, 20.0));
         let text_offset = Vec2::new(0., -90.);
         graphics::draw(
             ctx,
@@ -193,14 +193,10 @@ pub fn main() -> GameResult {
         path::PathBuf::from("./resources")
     };
 
-    let mut quad_conf = ggez::conf::default_quad_conf();
-    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
-        quad_conf,
-        ggez::conf::Conf {
-            loading: ggez::conf::Loading::Embedded,
-            physical_root_dir: Some(resource_dir),
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+            .physical_root_dir(Some(resource_dir)),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

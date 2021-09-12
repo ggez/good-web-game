@@ -31,7 +31,9 @@ impl MainState {
 // The `EventHandler` trait also contains callbacks for event handling
 // that you can override if you wish, but the defaults are fine.
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult { Ok(()) }
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        Ok(())
+    }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
@@ -52,14 +54,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
     }
 }
 
-// Now our main function, which does three things:
-//
-// * First, create a new `ggez::ContextBuilder`
-// object which contains configuration info on things such
-// as screen resolution and window title.
-// * Second, create a `ggez::game::Game` object which will
-// do the work of creating our MainState and running our game.
-// * Then, just call `game.run()` which runs the `Game` mainloop.
+// Now our main function:
 pub fn main() -> GameResult {
     // We add the CARGO_MANIFEST_DIR/resources to the resource paths
     // so that ggez will look in our cargo project directory for files.
@@ -71,14 +66,10 @@ pub fn main() -> GameResult {
         path::PathBuf::from("./resources")
     };
 
-    let mut quad_conf = ggez::conf::default_quad_conf();
-    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
-        quad_conf,
-        ggez::conf::Conf {
-            loading: ggez::conf::Loading::Embedded,
-            physical_root_dir: Some(resource_dir),
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+            .physical_root_dir(Some(resource_dir)),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

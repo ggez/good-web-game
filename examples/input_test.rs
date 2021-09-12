@@ -174,14 +174,10 @@ pub fn main() -> GameResult {
     // alternatively, resizing the window also leads to screen coordinates
     // and physical window size being out of sync
 
-    let mut quad_conf = ggez::conf::default_quad_conf();
-    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
     ggez::start(
-        quad_conf,
-        ggez::conf::Conf {
-            loading: ggez::conf::Loading::Embedded,
-            physical_root_dir: None,
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+            .window_resizable(true),
         |_context| Box::new(MainState::new()),
     )
 }

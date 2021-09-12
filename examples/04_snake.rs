@@ -33,14 +33,12 @@ const GRID_SIZE: (i16, i16) = (25, 19);
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 const GRID_CELL_SIZE: (i16, i16) = (32, 32);
 
-/*
 // Next we define how large we want our actual window to be by multiplying
 // the components of our grid size by its corresponding pixel size.
-const SCREEN_SIZE: (f32, f32) = (
-    GRID_SIZE.0 as f32 * GRID_CELL_SIZE.0 as f32,
-    GRID_SIZE.1 as f32 * GRID_CELL_SIZE.1 as f32,
+const SCREEN_SIZE: (i32, i32) = (
+    (GRID_SIZE.0 * GRID_CELL_SIZE.0) as i32,
+    (GRID_SIZE.1 * GRID_CELL_SIZE.1) as i32,
 );
-*/
 
 // Here we're defining how often we want our game to update. This will be
 // important later so that we don't have our snake fly across the screen because
@@ -448,29 +446,17 @@ impl event::EventHandler<ggez::GameError> for GameState {
 }
 
 fn main() -> GameResult {
-    /*
-    // Here we use a ContextBuilder to setup metadata about our game. First the title and author
-    let (ctx, events_loop) = ggez::ContextBuilder::new("snake", "Gray Olson")
-        // Next we set up the window. This title will be displayed in the title bar of the window.
-        .window_setup(ggez::conf::WindowSetup::default().title("Snake!"))
-        // Now we get to set the size of the window, which we use our SCREEN_SIZE constant from earlier to help with
-        .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
-        // And finally we attempt to build the context and create the window. If it fails, we panic with the message
-        // "Failed to build ggez context"
-        .build()?;
-    */
-
-    // Next we create a new instance of our GameState struct, which implements EventHandler
+    // First we create a new instance of our GameState struct, which implements EventHandler
     let state = GameState::new();
-    // And finally we actually run our game, passing in our context and state.
-    let mut quad_conf = ggez::conf::default_quad_conf();
-    quad_conf.cache = miniquad::conf::Cache::Tar(include_bytes!("resources.tar"));
-    ggez::start(
-        quad_conf,
-        ggez::conf::Conf {
-            loading: ggez::conf::Loading::Embedded,
-            physical_root_dir: None,
-        },
-        |_context| Box::new(state),
-    )
+    // Then we create a configuration for how to start the application
+    let conf = ggez::conf::Conf::default()
+        .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+        // We set up the window. This title will be displayed in the title bar of the window.
+        .window_title("Snake!".to_string())
+        // Now we get to set the size of the window, which we use our SCREEN_SIZE constant from earlier to help with
+        .window_width(SCREEN_SIZE.0)
+        .window_height(SCREEN_SIZE.1);
+
+    // And finally, we start the game!
+    ggez::start(conf, |_context| Box::new(state))
 }

@@ -122,8 +122,8 @@ impl From<String> for TextFragment {
 }
 
 impl<T> From<(T, Font, f32)> for TextFragment
-    where
-        T: Into<TextFragment>,
+where
+    T: Into<TextFragment>,
 {
     fn from((text, font, scale): (T, Font, f32)) -> TextFragment {
         text.into().font(font).scale(PxScale::from(scale))
@@ -194,8 +194,8 @@ impl Text {
     /// # }
     /// ```
     pub fn new<F>(fragment: F) -> Text
-        where
-            F: Into<TextFragment>,
+    where
+        F: Into<TextFragment>,
     {
         let mut text = Text::default();
         let _ = text.add(fragment);
@@ -204,8 +204,8 @@ impl Text {
 
     /// Appends a `TextFragment` to the `Text`.
     pub fn add<F>(&mut self, fragment: F) -> &mut Text
-        where
-            F: Into<TextFragment>,
+    where
+        F: Into<TextFragment>,
     {
         self.fragments.push(fragment.into());
         self.invalidate_cached_metrics();
@@ -227,8 +227,8 @@ impl Text {
     /// by wrapping, and alignment within the bounds.  To disable wrapping,
     /// give it a layout with `f32::INF` for the x value.
     pub fn set_bounds<P>(&mut self, bounds: P, alignment: Align) -> &mut Text
-        where
-            P: Into<mint::Point2<f32>>,
+    where
+        P: Into<mint::Point2<f32>>,
     {
         self.bounds = Point2::from(bounds.into());
         if self.bounds.x == f32::INFINITY {
@@ -438,8 +438,8 @@ impl Font {
 
     /// Load a new TTF font from the given file.
     pub fn new<P>(context: &mut Context, path: P) -> GameResult<Font>
-        where
-            P: AsRef<path::Path> + fmt::Debug,
+    where
+        P: AsRef<path::Path> + fmt::Debug,
     {
         use crate::filesystem;
         let mut stream = filesystem::open(context, path.as_ref())?;
@@ -463,8 +463,8 @@ impl Font {
     /// Returns the baked-in bytes of default font (currently `LiberationSans-Regular.ttf`).
     pub(crate) fn default_font_bytes() -> &'static [u8] {
         include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/resources/LiberationMono-Regular.ttf"
+            env!("CARGO_MANIFEST_DIR"),
+            "/resources/LiberationMono-Regular.ttf"
         ))
     }
 }
@@ -487,8 +487,8 @@ pub fn font_cache(context: &Context) -> FontCache {
 /// passed to `draw_queued()`. Note, any `Text` drawn via [`graphics::draw()`](fn.draw.html)
 /// will also draw everything already the queue.
 pub fn queue_text<P>(context: &mut Context, batch: &Text, relative_dest: P, color: Option<Color>)
-    where
-        P: Into<mint::Point2<f32>>,
+where
+    P: Into<mint::Point2<f32>>,
 {
     let p = Point2::from(relative_dest.into());
     let varied_section = batch.generate_varied_section(p, color);
@@ -503,9 +503,9 @@ pub fn queue_text<P>(context: &mut Context, batch: &Text, relative_dest: P, colo
 /// It takes `glyph_brush`'s `VariedSection` and `GlyphPositioner`, which give you lower-
 /// level control over how text is drawn.
 pub fn queue_text_raw<'a, S, G>(context: &mut Context, section: S, custom_layout: Option<&G>)
-    where
-        S: Into<Cow<'a, Section<'a>>>,
-        G: GlyphPositioner,
+where
+    S: Into<Cow<'a, Section<'a>>>,
+    G: GlyphPositioner,
 {
     let brush = &mut context.gfx_context.glyph_brush.borrow_mut();
     match custom_layout {
@@ -530,8 +530,8 @@ pub fn draw_queued_text<D>(
     blend: Option<BlendMode>,
     filter: FilterMode,
 ) -> GameResult
-    where
-        D: Into<DrawParam>,
+where
+    D: Into<DrawParam>,
 {
     let param: DrawParam = param.into();
 

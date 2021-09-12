@@ -13,11 +13,7 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    pub fn new(
-        ctx: &mut Context,
-        width: u16,
-        height: u16,
-    ) -> GameResult<Canvas> {
+    pub fn new(ctx: &mut Context, width: u16, height: u16) -> GameResult<Canvas> {
         let texture = Texture::new_render_texture(
             &mut ctx.quad_ctx,
             TextureParams {
@@ -93,14 +89,23 @@ impl Drawable for Canvas {
         let scale_x = param.src.w * f32::from(self.width());
         let scale_y = param.src.h * f32::from(self.height());
 
-        let param = param.transform(
-            cgmath::Matrix4::from(param.trans.to_bare_matrix())
-                * cgmath::Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
-        );
+        let scaled_param = match param.trans {
+            Transform::Values { scale, .. } => {
+                let s_param = param.scale(mint::Vector2 {
+                    x: scale.x * scale_x,
+                    y: scale.y * scale_y,
+                });
+                s_param.transform(s_param.trans.to_bare_matrix())
+            }
+            Transform::Matrix(m) => param.transform(
+                cgmath::Matrix4::from(m)
+                    * cgmath::Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
+            ),
+        };
 
         // Gotta flip the image on the Y axis here
         // to account for OpenGL's origin being at the bottom-left.
-        let new_param = flip_draw_param_vertical(param);
+        let new_param = flip_draw_param_vertical(scaled_param);
 
         self.image.draw_image_raw(ctx, new_param)
     }
@@ -118,13 +123,20 @@ impl Drawable for Canvas {
     }
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
+/// equal to
+///
+/// Matrix4::from_translation(cgmath::vec3(0.0, 1.0, 0.0)) * Matrix4::from_nonuniform_scale(1.0, -1.0, 1.0),
+const FLIP_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, -1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 1.0, 0.0, 1.0,
+);
+
 fn flip_draw_param_vertical(param: DrawParam) -> DrawParam {
     let param = if let Transform::Matrix(mat) = param.trans {
-        param.transform(
-            cgmath::Matrix4::from(mat)
-                * cgmath::Matrix4::from_translation(cgmath::vec3(0.0, 1.0, 0.0))
-                * cgmath::Matrix4::from_nonuniform_scale(1.0, -1.0, 1.0),
-        )
+        param.transform(cgmath::Matrix4::from(mat) * FLIP_MATRIX)
     } else {
         panic!("Can not be called with a non-matrix DrawParam");
     };

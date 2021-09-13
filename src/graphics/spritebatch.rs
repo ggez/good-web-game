@@ -17,7 +17,6 @@ pub struct SpriteBatch {
     image: RefCell<graphics::Image>,
     sprites: Vec<DrawParam>,
     gpu_sprites: RefCell<Vec<InstanceAttributes>>,
-    blend_mode: Option<BlendMode>,
 }
 
 /// An index of a particular sprite in a `SpriteBatch`.
@@ -34,7 +33,6 @@ impl SpriteBatch {
         Self {
             image: RefCell::new(image),
             sprites: vec![],
-            blend_mode: None,
             gpu_sprites: RefCell::new(vec![]),
         }
     }
@@ -106,7 +104,6 @@ impl graphics::Drawable for SpriteBatch {
                 std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
             );
 
-            // TODO: This looks a bit dirty. What if there are two different spritebatches using this image?
             if image.bindings.vertex_buffers.len() <= 1 {
                 image.bindings.vertex_buffers.push(buffer);
             } else {
@@ -196,10 +193,10 @@ impl graphics::Drawable for SpriteBatch {
     }
 
     fn set_blend_mode(&mut self, mode: Option<BlendMode>) {
-        self.blend_mode = mode;
+        self.image.get_mut().set_blend_mode(mode);
     }
 
     fn blend_mode(&self) -> Option<BlendMode> {
-        self.blend_mode
+        self.image.borrow().blend_mode()
     }
 }

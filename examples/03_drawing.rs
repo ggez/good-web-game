@@ -5,7 +5,7 @@ extern crate glam;
 extern crate good_web_game as ggez;
 
 use ggez::event;
-use ggez::graphics::{self, Color, DrawMode, DrawParam};
+use ggez::graphics::{self, Color, DrawMode, DrawParam, FilterMode};
 use ggez::timer;
 use ggez::{Context, GameResult};
 use lyon::lyon_tessellation::FillOptions;
@@ -102,7 +102,8 @@ fn build_textured_triangle(ctx: &mut Context) -> GameResult<graphics::Mesh> {
 
     let triangle_indices = vec![0, 1, 2];
 
-    let i = graphics::Image::new(ctx, "rock.png")?;
+    let mut i = graphics::Image::new(ctx, "rock.png")?;
+    i.set_filter(FilterMode::Nearest);
     mb.raw(&triangle_verts, &triangle_indices, Some(i));
     mb.build(ctx)
 }

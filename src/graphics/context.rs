@@ -15,6 +15,7 @@ pub struct GraphicsContext {
     pub(crate) sprite_pipeline: miniquad::Pipeline,
     pub(crate) mesh_pipeline: miniquad::Pipeline,
     pub(crate) image_pipeline: miniquad::Pipeline,
+    pub(crate) meshbatch_pipeline: miniquad::Pipeline,
     pub(crate) blend_mode: BlendMode,
 
     pub(crate) glyph_brush: Rc<RefCell<GlyphBrush<DrawParam>>>,
@@ -30,6 +31,7 @@ impl GraphicsContext {
         let screen_rect = Rect::new(-1., -1., 2., 2.);
 
         let white_texture = Texture::from_rgba8(ctx, 1, 1, &[255, 255, 255, 255]);
+        let (color_blend, alpha_blend) = BlendMode::Alpha.into();
 
         let sprite_shader = Shader::new(
             ctx,
@@ -56,11 +58,8 @@ impl GraphicsContext {
             ],
             sprite_shader,
             PipelineParams {
-                color_blend: Some(BlendState::new(
-                    Equation::Add,
-                    BlendFactor::Value(BlendValue::SourceAlpha),
-                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-                )),
+                color_blend: Some(color_blend),
+                alpha_blend: Some(alpha_blend),
                 ..Default::default()
             },
         );
@@ -83,11 +82,41 @@ impl GraphicsContext {
             )],
             image_shader,
             PipelineParams {
-                color_blend: Some(BlendState::new(
-                    Equation::Add,
-                    BlendFactor::Value(BlendValue::SourceAlpha),
-                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-                )),
+                color_blend: Some(color_blend),
+                alpha_blend: Some(alpha_blend),
+                ..Default::default()
+            },
+        );
+
+        let meshbatch_shader = Shader::new(
+            ctx,
+            meshbatch_shader::VERTEX,
+            meshbatch_shader::FRAGMENT,
+            meshbatch_shader::meta(),
+        )
+            .expect("couldn't create mesh batch shader");
+
+        let meshbatch_pipeline = miniquad::Pipeline::with_params(
+            ctx,
+            &[
+                BufferLayout::default(),
+                BufferLayout {
+                    step_func: VertexStep::PerInstance,
+                    ..Default::default()
+                },
+            ],
+            &[
+                VertexAttribute::with_buffer("position", VertexFormat::Float2, 0),
+                VertexAttribute::with_buffer("texcoord", VertexFormat::Float2, 0),
+                VertexAttribute::with_buffer("color0", VertexFormat::Float4, 0),
+                VertexAttribute::with_buffer("Source", VertexFormat::Float4, 1),
+                VertexAttribute::with_buffer("Color", VertexFormat::Float4, 1),
+                VertexAttribute::with_buffer("InstanceModel", VertexFormat::Mat4, 1),
+            ],
+            meshbatch_shader,
+            PipelineParams {
+                color_blend: Some(color_blend),
+                alpha_blend: Some(alpha_blend),
                 ..Default::default()
             },
         );
@@ -110,11 +139,8 @@ impl GraphicsContext {
             ],
             mesh_shader,
             PipelineParams {
-                color_blend: Some(BlendState::new(
-                    Equation::Add,
-                    BlendFactor::Value(BlendValue::SourceAlpha),
-                    BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
-                )),
+                color_blend: Some(color_blend),
+                alpha_blend: Some(alpha_blend),
                 ..Default::default()
             },
         );
@@ -151,6 +177,7 @@ impl GraphicsContext {
             sprite_pipeline,
             mesh_pipeline,
             image_pipeline,
+            meshbatch_pipeline,
             blend_mode: BlendMode::Alpha,
             glyph_brush: Rc::new(RefCell::new(glyph_brush)),
             glyph_cache,
@@ -300,7 +327,7 @@ pub(crate) mod image_shader {
 }
 
 // TODO: this shader is WIP (probably)
-pub(crate) mod mesh_batch_shader {
+pub(crate) mod meshbatch_shader {
     use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 
     pub const VERTEX: &str = r#"#version 100

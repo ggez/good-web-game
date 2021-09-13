@@ -42,21 +42,6 @@ impl event::EventHandler<ggez::GameError> for MainState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
-        // TODO: safely stop buffers from being deleted too soon
-        //       so that adding a second mesh and draw call is no longer necessary to magically fix this
-
-        let rectangle = graphics::Mesh::new_rectangle(
-            ctx,
-            DrawMode::fill(),
-            graphics::Rect {
-                x: self.pos_x,
-                y: self.pos_y,
-                w: 400.0,
-                h: 300.0,
-            },
-            Color::WHITE,
-        )?;
-        graphics::draw(ctx, &rectangle, (glam::Vec2::new(0.0, 0.0),))?;
 
         let rectangle = graphics::Mesh::new_rectangle(
             ctx,

@@ -10,8 +10,9 @@ use lyon::{self, math::Point as LPoint};
 
 pub use self::t::{FillOptions, FillRule, LineCap, LineJoin, StrokeOptions};
 
-use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4};
+use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4, Transform};
 use std::convert::TryInto;
+use std::cell::RefCell;
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
@@ -19,6 +20,24 @@ pub struct Vertex {
     pub pos: [f32; 2],
     pub uv: [f32; 2],
     pub color: [f32; 4],
+}
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub(crate) struct InstanceAttributes {
+    pub source: Vector4<f32>,
+    pub color: Vector4<f32>,
+    pub model: Matrix4<f32>,
+}
+
+impl Default for InstanceAttributes {
+    fn default() -> InstanceAttributes {
+        InstanceAttributes {
+            source: Vector4::new(0., 0., 0., 0.),
+            color: Vector4::new(0., 0., 0., 0.),
+            model: Matrix4::one(),
+        }
+    }
 }
 
 /// A builder for creating [`Mesh`](struct.Mesh.html)es.
@@ -82,6 +101,7 @@ pub struct Vertex {
 pub struct MeshBuilder {
     buffer: t::geometry_builder::VertexBuffers<Vertex, u16>,
     texture: Option<miniquad::Texture>,
+    tex_filter: Option<FilterMode>,
 }
 
 impl Default for MeshBuilder {
@@ -89,6 +109,7 @@ impl Default for MeshBuilder {
         Self {
             buffer: t::VertexBuffers::new(),
             texture: None,
+            tex_filter: None,
         }
     }
 }
@@ -415,6 +436,14 @@ impl MeshBuilder {
         Ok(self)
     }
 
+    pub fn set_filter(&mut self, filter: FilterMode) {
+        self.tex_filter = Some(filter);
+    }
+
+    pub fn filter(&self) -> Option<FilterMode> {
+        self.tex_filter
+    }
+
     /// Creates a `Mesh` from a raw list of triangles defined from vertices
     /// and indices.  You may also
     /// supply an `Image` to use as a texture, if you pass `None`, it will
@@ -444,7 +473,10 @@ impl MeshBuilder {
         let indices = indices.iter().map(|i| (*i) + next_idx);
         self.buffer.vertices.extend(vertices);
         self.buffer.indices.extend(indices);
-        self.texture = texture.map(|texture| texture.texture);
+        if let Some(image) = texture {
+            self.tex_filter = Some(image.filter());
+            self.texture = Some(image.texture);
+        }
         Ok(self)
     }
 
@@ -461,6 +493,10 @@ impl MeshBuilder {
             miniquad::BufferType::IndexBuffer,
             &self.buffer.indices[..],
         );
+        // make sure to set the filter before building
+        if let Some((filter, texture)) = self.tex_filter.zip(self.texture) {
+            texture.set_filter(&mut ctx.quad_ctx, filter);
+        }
         let bindings = miniquad::Bindings {
             vertex_buffers: vec![vertex_buffer],
             index_buffer,
@@ -846,7 +882,7 @@ pub struct MeshIdx(pub usize);
 pub struct MeshBatch {
     mesh: Mesh,
     instance_params: Vec<DrawParam>,
-    instance_buffer: Option<Vec<InstanceAttributes>>,
+    gpu_instance_params: RefCell<Vec<InstanceAttributes>>,
     instance_buffer_dirty: bool,
 }
 /*
@@ -858,7 +894,7 @@ impl MeshBatch {
         Ok(MeshBatch {
             mesh,
             instance_params: Vec::new(),
-            instance_buffer: None,
+            gpu_instance_params: RefCell::new(vec![]),
             instance_buffer_dirty: true,
         })
     }
@@ -963,8 +999,8 @@ impl MeshBatch {
         let first_param = first_handle.0;
         let slice_len = first_param + count;
         if first_param < self.instance_params.len() && slice_len <= self.instance_params.len() {
-            let needs_new_buffer = self.instance_buffer == None
-                || self.instance_buffer.as_ref().unwrap().len() < slice_len;
+            let needs_new_buffer = self.gpu_instance_params == None
+                || self.gpu_instance_params.as_ref().unwrap().len() < slice_len;
 
             let slice = if needs_new_buffer {
                 &self.instance_params
@@ -985,16 +1021,16 @@ impl MeshBatch {
                     gfx::memory::Bind::TRANSFER_DST,
                 )?;
 
-                self.instance_buffer = Some(new_buffer);
+                self.gpu_instance_params = Some(new_buffer);
 
                 ctx.gfx_context.encoder.update_buffer(
-                    self.instance_buffer.as_ref().expect("Can never fail"),
+                    self.gpu_instance_params.as_ref().expect("Can never fail"),
                     new_properties.as_slice(),
                     0,
                 )?;
             } else {
                 ctx.gfx_context.encoder.update_buffer(
-                    self.instance_buffer.as_ref().expect("Should never fail"),
+                    self.gpu_instance_params.as_ref().expect("Should never fail"),
                     new_properties.as_slice(),
                     first_param,
                 )?;
@@ -1036,7 +1072,7 @@ impl MeshBatch {
 
             // HACK this code has to restore the old instance buffer after drawing,
             // otherwise something else will override the first instance data
-            let instance_buffer = self.instance_buffer.as_ref().expect("Should never fail");
+            let instance_buffer = self.gpu_instance_params.as_ref().expect("Should never fail");
             let old_instance_buffer = gfx.data.rect_instance_properties.clone();
 
             gfx.data.rect_instance_properties = instance_buffer.clone();
@@ -1062,7 +1098,23 @@ impl MeshBatch {
 
     /// Returns a bounding box in the form of a `Rect`.
     pub fn dimensions(&self, ctx: &mut Context) -> Option<Rect> {
-        self.mesh.dimensions(ctx)
+        if self.instance_params.is_empty() {
+            return None;
+        }
+        if let Some(dimensions) = self.mesh.dimensions() {
+            self.instance_params
+                .iter()
+                .map(|&param| transform_rect(dimensions, param))
+                .fold(None, |acc: Option<Rect>, rect| {
+                    Some(if let Some(acc) = acc {
+                        acc.combine_with(rect)
+                    } else {
+                        rect
+                    })
+                })
+        } else {
+            None
+        }
     }
 
     /// Sets the blend mode to be used when drawing this drawable.

@@ -66,8 +66,6 @@
 //! into sRGB for you to match everything else.  The purpose of this
 //! example is to show that this actually *works* correctly!
 
-// TODO: as you can see by running the example color spaces aren't handled properly as of now
-
 extern crate good_web_game as ggez;
 
 use ggez::event;

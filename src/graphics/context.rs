@@ -94,7 +94,7 @@ impl GraphicsContext {
             meshbatch_shader::FRAGMENT,
             meshbatch_shader::meta(),
         )
-            .expect("couldn't create mesh batch shader");
+        .expect("couldn't create mesh batch shader");
 
         let meshbatch_pipeline = miniquad::Pipeline::with_params(
             ctx,

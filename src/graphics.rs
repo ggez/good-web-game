@@ -14,13 +14,7 @@ use crate::error::GameResult;
 use crate::Context;
 
 pub use self::{
-    canvas::*,
-    context::GraphicsContext,
-    drawparam::*,
-    image::*,
-    shader::*,
-    text::*,
-    types::*,
+    canvas::*, context::GraphicsContext, drawparam::*, image::*, shader::*, text::*, types::*,
 };
 
 #[cfg(feature = "mesh")]

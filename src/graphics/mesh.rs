@@ -10,11 +10,11 @@ use lyon::{self, math::Point as LPoint};
 
 pub use self::t::{FillOptions, FillRule, LineCap, LineJoin, StrokeOptions};
 
-use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4, Transform};
-use std::convert::TryInto;
-use std::cell::RefCell;
-use miniquad::{Buffer, BufferType, PassAction};
 use crate::graphics::context::meshbatch_shader;
+use cgmath::{Matrix4, Point2, Transform, Vector2, Vector3, Vector4};
+use miniquad::{Buffer, BufferType, PassAction};
+use std::cell::RefCell;
+use std::convert::TryInto;
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
@@ -932,8 +932,8 @@ impl MeshBatch {
     /// Calling this invalidates the entire buffer and will result in
     /// flusing it on the next [`graphics::draw()`](../fn.draw.html) call.
     pub fn add<P>(&mut self, param: P) -> MeshIdx
-        where
-            P: Into<DrawParam>,
+    where
+        P: Into<DrawParam>,
     {
         self.instance_params.push(param.into());
         self.instance_buffer_dirty = true;
@@ -948,8 +948,8 @@ impl MeshBatch {
     /// This might cause performance issues with large batches, to avoid this
     /// consider using `flush_range` to explicitly invalidate required data slice.
     pub fn set<P>(&mut self, handle: MeshIdx, param: P) -> GameResult
-        where
-            P: Into<DrawParam>,
+    where
+        P: Into<DrawParam>,
     {
         if handle.0 < self.instance_params.len() {
             self.instance_params[handle.0] = param.into();
@@ -968,8 +968,8 @@ impl MeshBatch {
     /// This might cause performance issues with large batches, to avoid this
     /// consider using `flush_range` to explicitly invalidate required data slice.
     pub fn set_range<P>(&mut self, first_handle: MeshIdx, params: &[P]) -> GameResult
-        where
-            P: Into<DrawParam> + Copy,
+    where
+        P: Into<DrawParam> + Copy,
     {
         let first_param = first_handle.0;
         let num_params = params.len();
@@ -1007,7 +1007,8 @@ impl MeshBatch {
             let mut gpu_instance_params = &mut self.gpu_instance_params;
 
             if needs_new_buffer {
-                gpu_instance_params.resize(self.instance_params.len(), InstanceAttributes::default());
+                gpu_instance_params
+                    .resize(self.instance_params.len(), InstanceAttributes::default());
 
                 let buffer = Buffer::stream(
                     &mut ctx.quad_ctx,
@@ -1040,8 +1041,7 @@ impl MeshBatch {
             }
 
             // TODO: if `update` had an offset parameter we could really only update parts of the buffer, just like intended
-            mesh.bindings.vertex_buffers[1]
-                .update(&mut ctx.quad_ctx, &gpu_instance_params[..]);
+            mesh.bindings.vertex_buffers[1].update(&mut ctx.quad_ctx, &gpu_instance_params[..]);
 
             self.instance_buffer_dirty = false;
             Ok(())
@@ -1098,9 +1098,10 @@ impl MeshBatch {
                 crate::graphics::set_current_blend_mode(ctx, blend_mode)
             }
 
-            ctx.quad_ctx.draw(0,
-                              self.mesh.bindings.index_buffer.size() as i32 / 2,
-                              self.instance_params.len() as i32
+            ctx.quad_ctx.draw(
+                0,
+                self.mesh.bindings.index_buffer.size() as i32 / 2,
+                self.instance_params.len() as i32,
             );
 
             // restore default blend mode

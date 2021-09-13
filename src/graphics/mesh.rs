@@ -13,6 +13,8 @@ pub use self::t::{FillOptions, FillRule, LineCap, LineJoin, StrokeOptions};
 use cgmath::{Matrix4, Point2, Vector2, Vector3, Vector4, Transform};
 use std::convert::TryInto;
 use std::cell::RefCell;
+use miniquad::{Buffer, BufferType, PassAction};
+use crate::graphics::context::meshbatch_shader;
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
@@ -882,10 +884,10 @@ pub struct MeshIdx(pub usize);
 pub struct MeshBatch {
     mesh: Mesh,
     instance_params: Vec<DrawParam>,
-    gpu_instance_params: RefCell<Vec<InstanceAttributes>>,
+    gpu_instance_params: Vec<InstanceAttributes>,
     instance_buffer_dirty: bool,
 }
-/*
+
 impl MeshBatch {
     /// Creates a new mesh batch.
     ///
@@ -894,7 +896,7 @@ impl MeshBatch {
         Ok(MeshBatch {
             mesh,
             instance_params: Vec::new(),
-            gpu_instance_params: RefCell::new(vec![]),
+            gpu_instance_params: vec![],
             instance_buffer_dirty: true,
         })
     }
@@ -997,44 +999,49 @@ impl MeshBatch {
         count: usize,
     ) -> GameResult {
         let first_param = first_handle.0;
-        let slice_len = first_param + count;
-        if first_param < self.instance_params.len() && slice_len <= self.instance_params.len() {
-            let needs_new_buffer = self.gpu_instance_params == None
-                || self.gpu_instance_params.as_ref().unwrap().len() < slice_len;
+        let slice_end = first_param + count;
+        if first_param < self.instance_params.len() && slice_end <= self.instance_params.len() {
+            let needs_new_buffer = self.gpu_instance_params.len() < slice_end;
+
+            let mut mesh = &mut self.mesh;
+            let mut gpu_instance_params = &mut self.gpu_instance_params;
+
+            if needs_new_buffer {
+                gpu_instance_params.resize(self.instance_params.len(), InstanceAttributes::default());
+
+                let buffer = Buffer::stream(
+                    &mut ctx.quad_ctx,
+                    BufferType::VertexBuffer,
+                    std::mem::size_of::<InstanceAttributes>() * self.instance_params.len(),
+                );
+
+                if mesh.bindings.vertex_buffers.len() <= 1 {
+                    mesh.bindings.vertex_buffers.push(buffer);
+                } else {
+                    mesh.bindings.vertex_buffers[1].delete();
+
+                    mesh.bindings.vertex_buffers[1] = buffer;
+                }
+            }
 
             let slice = if needs_new_buffer {
                 &self.instance_params
             } else {
-                &self.instance_params[first_param..slice_len]
+                &self.instance_params[first_param..slice_end]
             };
 
-            let new_properties: Vec<InstanceProperties> = slice
-                .iter()
-                .map(|param| param.to_instance_properties(ctx.gfx_context.is_srgb()))
-                .collect();
-
-            if needs_new_buffer {
-                let new_buffer = ctx.gfx_context.factory.create_buffer(
-                    new_properties.len(),
-                    gfx::buffer::Role::Vertex,
-                    gfx::memory::Usage::Dynamic,
-                    gfx::memory::Bind::TRANSFER_DST,
-                )?;
-
-                self.gpu_instance_params = Some(new_buffer);
-
-                ctx.gfx_context.encoder.update_buffer(
-                    self.gpu_instance_params.as_ref().expect("Can never fail"),
-                    new_properties.as_slice(),
-                    0,
-                )?;
-            } else {
-                ctx.gfx_context.encoder.update_buffer(
-                    self.gpu_instance_params.as_ref().expect("Should never fail"),
-                    new_properties.as_slice(),
-                    first_param,
-                )?;
+            for (n, param) in slice.iter().enumerate() {
+                let instance = InstanceAttributes {
+                    model: param.trans.to_bare_matrix().into(),
+                    source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
+                    color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
+                };
+                gpu_instance_params[n] = instance;
             }
+
+            // TODO: if `update` had an offset parameter we could really only update parts of the buffer, just like intended
+            mesh.bindings.vertex_buffers[1]
+                .update(&mut ctx.quad_ctx, &gpu_instance_params[..]);
 
             self.instance_buffer_dirty = false;
             Ok(())
@@ -1054,43 +1061,54 @@ impl MeshBatch {
     /// Draws the drawable onto the rendering target.
     pub fn draw(&mut self, ctx: &mut Context, param: DrawParam) -> GameResult {
         if !self.instance_params.is_empty() {
-            self.mesh.debug_id.assert(ctx);
+            // scale the offset according to the dimensions of the spritebatch
+            // but only if there is an offset (it's too expensive to calculate the dimensions to always to this)
+            let mut param = param;
+            if let crate::graphics::Transform::Values { offset, .. } = param.trans {
+                if offset != [0.0, 0.0].into() {
+                    if let Some(dim) = self.dimensions(ctx) {
+                        let new_offset = mint::Vector2 {
+                            x: offset.x * dim.w + dim.x,
+                            y: offset.y * dim.h + dim.y,
+                        };
+                        param = param.offset(new_offset);
+                    }
+                }
+            }
 
-            if !self.instance_params.is_empty() && self.instance_buffer_dirty {
+            if self.instance_buffer_dirty {
                 self.flush(ctx)?;
             }
 
-            let mut slice = self.mesh.slice.clone();
-            slice.instances = Some((self.instance_params.len() as u32, 0));
+            let pass = ctx.framebuffer();
+            ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
+            ctx.quad_ctx
+                .apply_pipeline(&ctx.gfx_context.meshbatch_pipeline);
+            ctx.quad_ctx.apply_bindings(&self.mesh.bindings);
 
-            let gfx = &mut ctx.gfx_context;
+            let uniforms = meshbatch_shader::Uniforms {
+                projection: ctx.gfx_context.projection,
+                model: param.trans.to_bare_matrix().into(),
+            };
+            ctx.quad_ctx.apply_uniforms(&uniforms);
 
-            // In the batch we multiply the transform for each item in the batch
-            // with the transform given in the `DrawParam` here.
-            let batch_transform = Matrix4::from(param.trans.to_bare_matrix());
-            gfx.set_global_mvp(batch_transform)?;
+            let mut custom_blend = false;
+            if let Some(blend_mode) = self.blend_mode() {
+                custom_blend = true;
+                crate::graphics::set_current_blend_mode(ctx, blend_mode)
+            }
 
-            // HACK this code has to restore the old instance buffer after drawing,
-            // otherwise something else will override the first instance data
-            let instance_buffer = self.gpu_instance_params.as_ref().expect("Should never fail");
-            let old_instance_buffer = gfx.data.rect_instance_properties.clone();
+            ctx.quad_ctx.draw(0,
+                              self.mesh.bindings.index_buffer.size() as i32 / 2,
+                              self.instance_params.len() as i32
+            );
 
-            gfx.data.rect_instance_properties = instance_buffer.clone();
-            gfx.data.vbuf = self.mesh.buffer.clone();
-            let texture = self.mesh.image.texture.clone();
-            let sampler = gfx
-                .samplers
-                .get_or_insert(self.mesh.image.sampler_info, gfx.factory.as_mut());
+            // restore default blend mode
+            if custom_blend {
+                crate::graphics::restore_blend_mode(ctx);
+            }
 
-            let typed_thingy = gfx.backend_spec.raw_to_typed_shader_resource(texture);
-            gfx.data.tex = (typed_thingy, sampler);
-
-            gfx.draw(Some(&slice))?;
-
-            gfx.data.rect_instance_properties = old_instance_buffer;
-
-            // Undo the change we've made to the global MVP
-            gfx.set_global_mvp(Matrix4::IDENTITY)?;
+            ctx.quad_ctx.end_render_pass();
         }
 
         Ok(())
@@ -1101,7 +1119,7 @@ impl MeshBatch {
         if self.instance_params.is_empty() {
             return None;
         }
-        if let Some(dimensions) = self.mesh.dimensions() {
+        if let Some(dimensions) = self.mesh.dimensions(ctx) {
             self.instance_params
                 .iter()
                 .map(|&param| transform_rect(dimensions, param))
@@ -1127,4 +1145,3 @@ impl MeshBatch {
         self.mesh.blend_mode()
     }
 }
-*/

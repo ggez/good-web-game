@@ -14,9 +14,9 @@ use crate::error::GameResult;
 use crate::Context;
 
 pub use self::{
-    canvas::{set_canvas, Canvas},
+    canvas::*,
     context::GraphicsContext,
-    drawparam::DrawParam,
+    drawparam::*,
     image::*,
     shader::*,
     text::*,
@@ -26,7 +26,6 @@ pub use self::{
 #[cfg(feature = "mesh")]
 pub use self::mesh::*;
 
-use crate::graphics::drawparam::Transform;
 use miniquad::PassAction;
 //use miniquad_text_rusttype::{FontTexture, TextDisplay};
 

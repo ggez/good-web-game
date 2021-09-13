@@ -22,6 +22,8 @@ pub enum GameError {
     FilesystemError(String),
     /// An error trying to load a resource, such as getting an invalid image file.
     ResourceLoadError(String),
+    /// Something went wrong in the renderer
+    RenderError(String),
 }
 
 impl fmt::Display for GameError {

@@ -80,10 +80,10 @@ impl Image {
     ) -> GameResult<Image> {
         let texture = Texture::from_rgba8(&mut ctx.quad_ctx, width, height, bytes);
 
-        Self::from_texture(&mut ctx.quad_ctx, texture)
+        Self::from_texture(&mut ctx.quad_ctx, texture, ctx.gfx_context.default_filter)
     }
 
-    pub fn from_texture(ctx: &mut miniquad::Context, texture: Texture) -> GameResult<Image> {
+    pub fn from_texture(ctx: &mut miniquad::Context, texture: Texture, filter: FilterMode) -> GameResult<Image> {
         #[rustfmt::skip]
         let vertices: [f32; 8] = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
         let vertex_buffer = Buffer::immutable(ctx, BufferType::VertexBuffer, &vertices);
@@ -104,7 +104,7 @@ impl Image {
             bindings,
             blend_mode: None,
             dirty_filter: DirtyFlag::new(false),
-            filter: FilterMode::Linear,
+            filter,
             clones_hack: Arc::new(()),
         })
     }

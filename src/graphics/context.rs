@@ -1,4 +1,4 @@
-use crate::graphics::{types::Rect, Canvas};
+use crate::graphics::{types::Rect, Canvas, FilterMode};
 //use miniquad_text_rusttype::{FontAtlas, FontTexture};
 use std::rc::Rc;
 
@@ -17,6 +17,7 @@ pub struct GraphicsContext {
     pub(crate) image_pipeline: miniquad::Pipeline,
     pub(crate) meshbatch_pipeline: miniquad::Pipeline,
     pub(crate) blend_mode: BlendMode,
+    pub(crate) default_filter: FilterMode,
 
     pub(crate) glyph_brush: Rc<RefCell<GlyphBrush<DrawParam>>>,
     pub(crate) glyph_cache: Image,
@@ -163,7 +164,7 @@ impl GraphicsContext {
             &initial_contents,
         );
 
-        let glyph_cache = Image::from_texture(ctx, glyph_cache).unwrap();
+        let glyph_cache = Image::from_texture(ctx, glyph_cache, FilterMode::Linear).unwrap();
 
         let glyph_state = Rc::new(RefCell::new(spritebatch::SpriteBatch::new(
             glyph_cache.clone(),
@@ -179,6 +180,7 @@ impl GraphicsContext {
             image_pipeline,
             meshbatch_pipeline,
             blend_mode: BlendMode::Alpha,
+            default_filter: FilterMode::Linear,
             glyph_brush: Rc::new(RefCell::new(glyph_brush)),
             glyph_cache,
             glyph_state,

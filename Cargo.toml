@@ -1,7 +1,7 @@
 [package]
 name = "good-web-game"
-version = "0.2.5"
-authors = ["not-fl3 <not.fl3@gmail.com>"]
+version = "0.3.0"
+authors = ["not-fl3 <not.fl3@gmail.com>", "PSteinhaus"]
 license = "MIT/Apache-2.0"
 edition = "2018"
 
@@ -13,7 +13,7 @@ mint = "0.5"
 cgmath = { version = "0.17", features = ["mint"] }
 #miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rusttype", branch = "0.3" }
 glyph_brush = "0.7"
-miniquad = { git = "https://github.com/PSteinhaus/miniquad", branch = "patch-1" } #"0.3.0-alpha.37"
+miniquad = "0.3.0-alpha.37"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
 serde = "1"
 serde_derive = "1"

@@ -21,24 +21,16 @@ pub use self::{
 pub use self::mesh::*;
 
 use miniquad::PassAction;
-//use miniquad_text_rusttype::{FontTexture, TextDisplay};
 
 /// Holds the bindings of objects that were dropped this frame.
 /// They (and the buffers inside of them) are kept alive until the beginning of the next frame
 /// to ensure that they're not deleted before being used in the frame in which they were dropped.
 static mut DROPPED_BINDINGS: Vec<(miniquad::Bindings, i32)> = Vec::new();
-//type TextDisp = TextDisplay<std::rc::Rc<FontTexture>>;
-/// The same as `DROPPED_BINDINGS`, but for text, as we can't access their internal bindings directly.
-//static mut DROPPED_TEXT: Vec<TextDisp> = Vec::new();
 
 /// Adds some bindings to a vec where they'll be kept alive until the beginning of the next but one frame.
 pub(crate) fn add_dropped_bindings(bindings: miniquad::Bindings) {
     unsafe { DROPPED_BINDINGS.push((bindings, 1)) };
 }
-/// Adds some bindings to a vec where they'll be kept alive until the beginning of the next frame.
-//pub(crate) fn add_dropped_text(text_disp: TextDisp) {
-//    unsafe { DROPPED_TEXT.push(text_disp) };
-//}
 
 /// Deletes all buffers that were dropped two frames before and kept alive for the duration of their
 /// own frame and the next one.
@@ -55,8 +47,6 @@ pub(crate) fn release_dropped_bindings() {
             }
         }
         DROPPED_BINDINGS.retain(|(_bindings, counter)| *counter > 0);
-        // dropping the text is enough to trigger `TextDisplay::drop`, which deletes the buffers
-        //DROPPED_TEXT.clear();
     }
 }
 
@@ -155,6 +145,18 @@ pub fn set_blend_mode(ctx: &mut Context, mode: BlendMode) -> GameResult {
 /// Gets the current global blend mode
 pub fn blend_mode(ctx: &Context) -> &BlendMode {
     ctx.gfx_context.blend_mode()
+}
+
+/// Sets the default filter mode used to scale images.
+///
+/// This does not apply retroactively to already created images.
+pub fn set_default_filter(ctx: &mut Context, mode: FilterMode) {
+    ctx.gfx_context.default_filter = mode;
+}
+
+/// Get the default filter mode for new images.
+pub fn default_filter(ctx: &Context) -> FilterMode {
+    ctx.gfx_context.default_filter.clone()
 }
 
 /// makes this blend mode current

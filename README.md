@@ -4,7 +4,7 @@
 
 good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
 
-It has been recently updated to support much of the ggez 0.6.1 API. If you're already working with ggez you might use this library to port your game to the web (or perhaps even mobile).
+It has been recently updated to support much of the ggez 0.6.0 API. If you're already working with ggez you might use this library to port your game to the web (or perhaps even mobile).
 Since it also runs well on desktop it also offers an alternative implementation of ggez, which might come in handy if you experience bugs in ggez, which you can't work around for some reason. Canvases with multisampling are currently buggy in classic ggez while they work fine in good-web-game, for example.
 
 If you are looking for a properly maintained and supported minimal high-level engine on top of miniquad - check out [macroquad](https://github.com/not-fl3/macroquad/) instead.

@@ -38,7 +38,7 @@ In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
 To build and run an example as a native binary:
 
 ```rust
-cargo run --example astroblasto
+cargo run --example 05_astroblasto
 ```
 
 Building for web and mobile is currently a WIP (ironic, I know).

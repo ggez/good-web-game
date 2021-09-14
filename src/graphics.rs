@@ -25,28 +25,31 @@ use miniquad::PassAction;
 /// Holds the bindings of objects that were dropped this frame.
 /// They (and the buffers inside of them) are kept alive until the beginning of the next frame
 /// to ensure that they're not deleted before being used in the frame in which they were dropped.
-static mut DROPPED_BINDINGS: Vec<(miniquad::Bindings, i32)> = Vec::new();
+static mut DROPPED_BINDINGS: Vec<(miniquad::Bindings, i32, bool)> = Vec::new();
 
 /// Adds some bindings to a vec where they'll be kept alive until the beginning of the next but one frame.
-pub(crate) fn add_dropped_bindings(bindings: miniquad::Bindings) {
-    unsafe { DROPPED_BINDINGS.push((bindings, 1)) };
+pub(crate) fn add_dropped_bindings(bindings: miniquad::Bindings, delete_texture: bool) {
+    unsafe { DROPPED_BINDINGS.push((bindings, 1, delete_texture)) };
 }
 
 /// Deletes all buffers that were dropped two frames before and kept alive for the duration of their
 /// own frame and the next one.
 pub(crate) fn release_dropped_bindings() {
     unsafe {
-        for (bindings, counter) in DROPPED_BINDINGS.iter_mut() {
+        for (bindings, counter, delete_texture) in DROPPED_BINDINGS.iter_mut() {
             if *counter == 0 {
                 for v_buffer in bindings.vertex_buffers.iter_mut() {
                     v_buffer.delete();
                 }
                 bindings.index_buffer.delete();
+                if *delete_texture {
+                    bindings.images[0].delete();
+                }
             } else {
                 *counter -= 1;
             }
         }
-        DROPPED_BINDINGS.retain(|(_bindings, counter)| *counter > 0);
+        DROPPED_BINDINGS.retain(|(_bindings, counter, _delete_texture)| *counter > 0);
     }
 }
 

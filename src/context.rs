@@ -1,3 +1,4 @@
+use crate::input::gamepad;
 use crate::{
     audio,
     filesystem::Filesystem,
@@ -28,12 +29,21 @@ use crate::{
 /// public and stable API is `ggez`'s module-level functions and
 /// types.
 pub struct Context {
+    /// Filesystem state
     pub filesystem: Filesystem,
+    /// Audio context
     pub audio_context: audio::AudioContext,
+    /// Graphics state
     pub gfx_context: graphics::GraphicsContext,
+    /// Mouse context
     pub mouse_context: MouseContext,
+    /// Keyboard context
     pub keyboard_context: KeyboardContext,
+    /// Gamepad context
+    pub gamepad_context: Box<dyn gamepad::GamepadContext>,
+    /// Timer state
     pub timer_context: TimeContext,
+    /// Exposed miniquad context. Handle with care.
     pub quad_ctx: miniquad::Context,
     /// Controls whether or not the event loop should be running.
     /// Set this with `ggez::event::quit()`.
@@ -43,6 +53,12 @@ pub struct Context {
 impl Context {
     pub(crate) fn new(mut quad_ctx: miniquad::Context, filesystem: Filesystem) -> Context {
         let input_handler = InputHandler::new();
+        let gamepad_context: Box<dyn gamepad::GamepadContext> =
+            if let Ok(g_context) = gamepad::GilrsGamepadContext::new() {
+                Box::new(g_context)
+            } else {
+                Box::new(gamepad::NullGamepadContext::default())
+            };
 
         Context {
             filesystem,
@@ -50,6 +66,7 @@ impl Context {
             audio_context: audio::AudioContext::new(),
             mouse_context: MouseContext::new(input_handler),
             keyboard_context: KeyboardContext::new(),
+            gamepad_context,
             timer_context: TimeContext::new(),
             quad_ctx,
             continuing: true,

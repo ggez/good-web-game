@@ -8,6 +8,8 @@ use std::fmt;
 pub enum GameError {
     /// Something went wrong trying to read from a file
     IOError(std::io::Error),
+    /// Something went wrong with the `gilrs` gamepad-input library.
+    GamepadError(String),
     /// Something went wrong with the `lyon` shape-tesselation library
     LyonError(String),
     /// SoundMixer in the context should be created explicitly from some of the interaction callbacks
@@ -82,5 +84,12 @@ impl From<zip::result::ZipError> for GameError {
     fn from(e: zip::result::ZipError) -> GameError {
         let errstr = format!("Zip error: {}", e.to_string());
         GameError::ResourceLoadError(errstr)
+    }
+}
+
+impl From<gilrs::Error> for GameError {
+    fn from(s: gilrs::Error) -> GameError {
+        let errstr = format!("Gamepad error: {}", s);
+        GameError::GamepadError(errstr)
     }
 }

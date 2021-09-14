@@ -1,5 +1,6 @@
 pub(crate) mod input_handler;
 
+pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
 

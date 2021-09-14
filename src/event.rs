@@ -1,7 +1,9 @@
 use crate::context::Context;
 
+use crate::input::gamepad::GamepadId;
 pub use crate::input::keyboard::KeyMods;
 pub use crate::input::MouseButton;
+use gilrs::{Axis, Button};
 pub use miniquad::{KeyCode, TouchPhase};
 
 /// Used in [`EventHandler`](trait.EventHandler.html)
@@ -97,6 +99,22 @@ where
     /// A unicode character was received, usually from keyboard input.
     /// This is the intended way of facilitating text input.
     fn text_input_event(&mut self, _ctx: &mut Context, _character: char) {}
+
+    /// A gamepad button was pressed; `id` identifies which gamepad.
+    /// Use [`input::gamepad()`](../input/fn.gamepad.html) to get more info about
+    /// the gamepad.
+    fn gamepad_button_down_event(&mut self, _ctx: &mut Context, _btn: Button, _id: GamepadId) {}
+
+    /// A gamepad button was released; `id` identifies which gamepad.
+    /// Use [`input::gamepad()`](../input/fn.gamepad.html) to get more info about
+    /// the gamepad.
+    fn gamepad_button_up_event(&mut self, _ctx: &mut Context, _btn: Button, _id: GamepadId) {}
+
+    /// A gamepad axis moved; `id` identifies which gamepad.
+    /// Use [`input::gamepad()`](../input/fn.gamepad.html) to get more info about
+    /// the gamepad.
+    fn gamepad_axis_event(&mut self, _ctx: &mut Context, _axis: Axis, _value: f32, _id: GamepadId) {
+    }
 
     /// Something went wrong, causing a `GameError`.
     /// If this returns true, the error was fatal, so the event loop ends, aborting the game.

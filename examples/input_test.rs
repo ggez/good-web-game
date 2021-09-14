@@ -6,6 +6,8 @@ extern crate good_web_game as ggez;
 use ggez::event::{self, KeyCode, KeyMods, MouseButton};
 use ggez::graphics::{self, Color, DrawMode};
 use ggez::input;
+use ggez::input::gamepad::gilrs::{Axis, Button};
+use ggez::input::gamepad::GamepadId;
 use ggez::{Context, GameResult};
 use glam::*;
 
@@ -119,7 +121,6 @@ impl event::EventHandler<ggez::GameError> for MainState {
         println!("Text input: {}", ch);
     }
 
-    /*
     fn gamepad_button_down_event(&mut self, _ctx: &mut Context, btn: Button, id: GamepadId) {
         println!("Gamepad button pressed: {:?} Gamepad_Id: {:?}", btn, id);
     }
@@ -135,6 +136,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
         );
     }
 
+    /*
     fn focus_event(&mut self, _ctx: &mut Context, gained: bool) {
         if gained {
             println!("Focus gained");

@@ -79,6 +79,7 @@ pub extern crate mint;
 
 use crate::event::ErrorOrigin;
 use crate::filesystem::Filesystem;
+use crate::input::gamepad::GamepadId;
 use crate::input::mouse;
 #[cfg(feature = "log-impl")]
 pub use miniquad::{debug, info, log, warn};
@@ -102,6 +103,35 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
 
         // release all buffers that were kept alive for the previous frame
         graphics::release_dropped_bindings();
+
+        // before running the game logic update the gamepad state
+        while let Some(gilrs::Event { id, event, .. }) = self.context.gamepad_context.next_event() {
+            match event {
+                gilrs::EventType::ButtonPressed(button, _) => {
+                    self.event_handler.gamepad_button_down_event(
+                        &mut self.context,
+                        button,
+                        GamepadId(id),
+                    );
+                }
+                gilrs::EventType::ButtonReleased(button, _) => {
+                    self.event_handler.gamepad_button_up_event(
+                        &mut self.context,
+                        button,
+                        GamepadId(id),
+                    );
+                }
+                gilrs::EventType::AxisChanged(axis, value, _) => {
+                    self.event_handler.gamepad_axis_event(
+                        &mut self.context,
+                        axis,
+                        value,
+                        GamepadId(id),
+                    );
+                }
+                _ => {}
+            }
+        }
 
         // do ggez 0.6 style error handling
         if let Err(e) = self.event_handler.update(&mut self.context) {

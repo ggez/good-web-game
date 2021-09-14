@@ -23,6 +23,7 @@ lyon = { version = "0.17.5", optional = true }
 smart-default = "0.6"
 quad-snd = "0.1.0-alpha.1"
 zip = { version = "0.5", default-features = false }
+gilrs = "0.8"
 approx = "0.5"
 
 [features]

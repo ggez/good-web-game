@@ -11,7 +11,7 @@ If you are looking for a properly maintained and supported minimal high-level en
 
 ## Status
 
-"good-web-game" implements the most important parts of the ggez 0.6.1 API.
+"good-web-game" implements the most important parts of the ggez 0.6.0 API.
 
 ### Missing / Not available:
 

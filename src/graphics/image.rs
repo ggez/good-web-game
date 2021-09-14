@@ -42,7 +42,8 @@ pub struct Image {
     pub(crate) bindings: Bindings,
     blend_mode: Option<BlendMode>,
     dirty_filter: DirtyFlag,
-    clones_hack: Arc<()>,
+    pub(crate) bindings_clones_hack: Arc<()>,
+    pub(crate) texture_clones_hack: Arc<()>,
 }
 
 impl Image {
@@ -109,7 +110,8 @@ impl Image {
             blend_mode: None,
             dirty_filter: DirtyFlag::new(false),
             filter,
-            clones_hack: Arc::new(()),
+            bindings_clones_hack: Arc::new(()),
+            texture_clones_hack: Arc::new(()),
         })
     }
 
@@ -230,8 +232,11 @@ impl Drawable for Image {
 
 impl Drop for Image {
     fn drop(&mut self) {
-        if Arc::strong_count(&self.clones_hack) == 1 {
-            crate::graphics::add_dropped_bindings(self.bindings.clone());
+        if Arc::strong_count(&self.bindings_clones_hack) == 1 {
+            crate::graphics::add_dropped_bindings(
+                self.bindings.clone(),
+                Arc::strong_count(&self.texture_clones_hack) == 1,
+            );
         }
     }
 }

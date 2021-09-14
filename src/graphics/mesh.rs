@@ -15,6 +15,7 @@ use cgmath::{Matrix4, Point2, Transform, Vector2, Vector3, Vector4};
 use miniquad::{Buffer, BufferType, PassAction};
 use std::cell::RefCell;
 use std::convert::TryInto;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
@@ -104,6 +105,7 @@ pub struct MeshBuilder {
     buffer: t::geometry_builder::VertexBuffers<Vertex, u16>,
     texture: Option<miniquad::Texture>,
     tex_filter: Option<FilterMode>,
+    tex_clones_hack: Option<Arc<()>>,
 }
 
 impl Default for MeshBuilder {
@@ -112,6 +114,7 @@ impl Default for MeshBuilder {
             buffer: t::VertexBuffers::new(),
             texture: None,
             tex_filter: None,
+            tex_clones_hack: None,
         }
     }
 }
@@ -433,8 +436,11 @@ impl MeshBuilder {
     }
 
     /// Takes an `Image` to apply to the mesh.
-    pub fn texture(&mut self, texture: Image) -> GameResult<&mut Self> {
-        self.texture = Some(texture.texture);
+    pub fn texture(&mut self, image: Image) -> GameResult<&mut Self> {
+        // we can't move out of Image, because it implements Drop
+        self.tex_filter = Some(image.filter());
+        self.tex_clones_hack = Some(image.texture_clones_hack.clone());
+        self.texture = Some(image.texture);
         Ok(self)
     }
 
@@ -477,6 +483,7 @@ impl MeshBuilder {
         self.buffer.indices.extend(indices);
         if let Some(image) = texture {
             self.tex_filter = Some(image.filter());
+            self.tex_clones_hack = Some(image.texture_clones_hack.clone());
             self.texture = Some(image.texture);
         }
         Ok(self)
@@ -512,6 +519,7 @@ impl MeshBuilder {
             bindings,
             blend_mode: None,
             rect,
+            texture_clones_hack: self.tex_clones_hack.clone(),
         })
     }
 }
@@ -562,11 +570,16 @@ pub struct Mesh {
     bindings: miniquad::Bindings,
     blend_mode: Option<BlendMode>,
     rect: Rect,
+    texture_clones_hack: Option<Arc<()>>,
 }
 
 impl Drop for Mesh {
     fn drop(&mut self) {
-        crate::graphics::add_dropped_bindings(self.bindings.clone());
+        let delete_texture = self
+            .texture_clones_hack
+            .as_ref()
+            .map_or(false, |arc| Arc::strong_count(arc) == 1);
+        crate::graphics::add_dropped_bindings(self.bindings.clone(), delete_texture);
     }
 }
 
@@ -769,6 +782,7 @@ impl Mesh {
             bindings,
             blend_mode: None,
             rect,
+            texture_clones_hack: None,
         })
     }
 

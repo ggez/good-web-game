@@ -1,5 +1,3 @@
-//! https://github.com/ggez/ggez/blob/master/examples/04_snake.rs
-//!
 //! A small snake game done after watching
 //! <https://www.youtube.com/watch?v=HCwMb0KslX8>
 //! to showcase ggez and how it relates/differs from piston.
@@ -14,13 +12,15 @@
 //! Author: @termhn
 //! Original repo: https://github.com/termhn/ggez_snake
 
+// First we'll import the crates we need for our game;
+// in this case that is just `ggez` and `quad-rand`
 extern crate good_web_game as ggez;
-extern crate nalgebra;
+use quad_rand as qrand;
 
-use ggez::event::{self, KeyCode, KeyMods};
-use ggez::graphics;
-use ggez::rand;
-use ggez::{Context, GameResult};
+// Next we need to actually `use` the pieces of ggez that we are going
+// to need frequently.
+use ggez::event::{KeyCode, KeyMods};
+use ggez::{event, graphics, timer, Context, GameResult};
 
 // We'll bring in some things from `std` to help us in the future.
 use std::collections::LinkedList;
@@ -28,17 +28,22 @@ use std::collections::LinkedList;
 // The first thing we want to do is set up some constants that will help us out later.
 
 // Here we define the size of our game board in terms of how many grid
-// cells it will take up. We choose to make a 30 x 20 game board.
-const GRID_SIZE: (i16, i16) = (30, 20);
+// cells it will take up. We choose to make a 25 x 19 game board.
+const GRID_SIZE: (i16, i16) = (25, 19);
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 const GRID_CELL_SIZE: (i16, i16) = (32, 32);
 
-// Here we're defining how many quickly we want our game to update. This will be
+// Next we define how large we want our actual window to be by multiplying
+// the components of our grid size by its corresponding pixel size.
+const SCREEN_SIZE: (i32, i32) = (
+    (GRID_SIZE.0 * GRID_CELL_SIZE.0) as i32,
+    (GRID_SIZE.1 * GRID_CELL_SIZE.1) as i32,
+);
+
+// Here we're defining how often we want our game to update. This will be
 // important later so that we don't have our snake fly across the screen because
 // it's moving a full tile every frame.
-const UPDATES_PER_SECOND: f32 = 8.0;
-// And we get the milliseconds of delay that this update rate corresponds to.
-const SECONDS_PER_UPDATE: f64 = (1.0 / UPDATES_PER_SECOND) as f64;
+const DESIRED_FPS: u32 = 8;
 
 /// Now we define a struct that will hold an entity's position on our game board
 /// or grid which we defined above. We'll use signed integers because we only want
@@ -48,29 +53,6 @@ const SECONDS_PER_UPDATE: f64 = (1.0 / UPDATES_PER_SECOND) as f64;
 struct GridPosition {
     x: i16,
     y: i16,
-}
-
-/// This is a trait that provides a modulus function that works for negative values
-/// rather than just the standard remainder op (%) which does not. We'll use this
-/// to get our snake to wrap from one side of the game board around to the other
-/// when it goes off the top, bottom, left, or right side of the screen.
-trait ModuloSigned {
-    fn modulo(&self, n: Self) -> Self;
-}
-
-/// Here we implement our `ModuloSigned` trait for any type T which implements
-/// `Add` (the `+` operator) with an output type T and Rem (the `%` operator)
-/// that also has an output type of T, and that can be cloned. These are the bounds
-/// that we need in order to implement a modulus function that works for negative numbers
-/// as well.
-impl<T> ModuloSigned for T
-where
-    T: std::ops::Add<Output = T> + std::ops::Rem<Output = T> + Clone,
-{
-    fn modulo(&self, n: T) -> T {
-        // Because of our trait bounds, we can now apply these operators.
-        (self.clone() % n.clone() + n.clone()) % n.clone()
-    }
 }
 
 impl GridPosition {
@@ -85,20 +67,21 @@ impl GridPosition {
     pub fn random(max_x: i16, max_y: i16) -> Self {
         // We can use `.into()` to convert from `(i16, i16)` to a `GridPosition` since
         // we implement `From<(i16, i16)>` for `GridPosition` below.
-        (rand::gen_range(0, max_x), rand::gen_range(0, max_y)).into()
+        (qrand::gen_range(0, max_x), qrand::gen_range(0, max_y)).into()
     }
 
     /// We'll make another helper function that takes one grid position and returns a new one after
-    /// making one move in the direction of `dir`. We use our `SignedModulo` trait
-    /// above, which is now implemented on `i16` because it satisfies the trait bounds,
-    /// to automatically wrap around within our grid size if the move would have otherwise
-    /// moved us off the board to the top, bottom, left, or right.
+    /// making one move in the direction of `dir`.
+    /// We use the [rem_euclid()](https://doc.rust-lang.org/std/primitive.i16.html#method.rem_euclid)
+    /// API when crossing the top/left limits, as the standard remainder function (`%`) returns a
+    /// negative value when the left operand is negative.
+    /// Only the Up/Left cases require rem_euclid(); for consistency, it's used for all of them.
     pub fn new_from_move(pos: GridPosition, dir: Direction) -> Self {
         match dir {
-            Direction::Up => GridPosition::new(pos.x, (pos.y - 1).modulo(GRID_SIZE.1)),
-            Direction::Down => GridPosition::new(pos.x, (pos.y + 1).modulo(GRID_SIZE.1)),
-            Direction::Left => GridPosition::new((pos.x - 1).modulo(GRID_SIZE.0), pos.y),
-            Direction::Right => GridPosition::new((pos.x + 1).modulo(GRID_SIZE.0), pos.y),
+            Direction::Up => GridPosition::new(pos.x, (pos.y - 1).rem_euclid(GRID_SIZE.1)),
+            Direction::Down => GridPosition::new(pos.x, (pos.y + 1).rem_euclid(GRID_SIZE.1)),
+            Direction::Left => GridPosition::new((pos.x - 1).rem_euclid(GRID_SIZE.0), pos.y),
+            Direction::Right => GridPosition::new((pos.x + 1).rem_euclid(GRID_SIZE.0), pos.y),
         }
     }
 }
@@ -198,18 +181,16 @@ impl Food {
     /// Note: this method of drawing does not scale. If you need to render
     /// a large number of shapes, use a SpriteBatch. This approach is fine for
     /// this example since there are a fairly limited number of calls.
-    fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+    fn draw(&self, ctx: &mut Context) -> GameResult {
         // First we set the color to draw with, in this case all food will be
         // colored blue.
         let color = [0.0, 0.0, 1.0, 1.0].into();
         // Then we draw a rectangle with the Fill draw mode, and we convert the
         // Food's position into a `ggez::Rect` using `.into()` which we can do
         // since we implemented `From<GridPosition>` for `Rect` earlier.
-        // graphics::rectangle(ctx, color, graphics::DrawMode::fill(), self.pos.into())
-
         let rectangle =
             graphics::Mesh::new_rectangle(ctx, graphics::DrawMode::fill(), self.pos.into(), color)?;
-        graphics::draw(ctx, &rectangle, (cgmath::Point2::new(0.0, 0.0),))
+        graphics::draw(ctx, &rectangle, (mint::Point2 { x: 0.0, y: 0.0 },))
     }
 }
 
@@ -241,6 +222,10 @@ struct Snake {
     /// time that `update` was called, which we will use to determine valid
     /// directions that it could move the next time update is called.
     last_update_dir: Direction,
+    /// Store the direction that will be used in the `update` after the next `update`
+    /// This is needed so a user can press two directions (eg. left then up)
+    /// before one `update` has happened. It sort of queues up key press input
+    next_dir: Option<Direction>,
 }
 
 impl Snake {
@@ -249,13 +234,13 @@ impl Snake {
         // Our snake will initially have a head and one body segment,
         // and will be moving to the right.
         body.push_back(Segment::new((pos.x - 1, pos.y).into()));
-
         Snake {
             head: Segment::new(pos),
             dir: Direction::Right,
             last_update_dir: Direction::Right,
-            body: body,
+            body,
             ate: None,
+            next_dir: None,
         }
     }
 
@@ -263,11 +248,7 @@ impl Snake {
     /// the snake eats a given piece of Food based
     /// on its current position
     fn eats(&self, food: &Food) -> bool {
-        if self.head.pos == food.pos {
-            true
-        } else {
-            false
-        }
+        self.head.pos == food.pos
     }
 
     /// A helper function that determines whether
@@ -284,6 +265,12 @@ impl Snake {
     /// The main update function for our snake which gets called every time
     /// we want to update the game state.
     fn update(&mut self, food: &Food) {
+        // If `last_update_dir` has already been updated to be the same as `dir`
+        // and we have a `next_dir`, then set `dir` to `next_dir` and unset `next_dir`
+        if self.last_update_dir == self.dir && self.next_dir.is_some() {
+            self.dir = self.next_dir.unwrap();
+            self.next_dir = None;
+        }
         // First we get a new head position by using our `new_from_move` helper
         // function from earlier. We move our head in the direction we are currently
         // heading.
@@ -309,7 +296,7 @@ impl Snake {
         // which gives the illusion that the snake is moving. In reality, all the segments stay
         // stationary, we just add a segment to the front and remove one from the back. If we eat
         // a piece of food, then we leave the last segment so that we extend our body by one.
-        if let None = self.ate {
+        if self.ate.is_none() {
             self.body.pop_back();
         }
         // And set our last_update_dir to the direction we just moved.
@@ -322,30 +309,27 @@ impl Snake {
     /// Again, note that this approach to drawing is fine for the limited scope of this
     /// example, but larger scale games will likely need a more optimized render path
     /// using SpriteBatch or something similar that batches draw calls.
-    fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+    fn draw(&self, ctx: &mut Context) -> GameResult {
         // We first iterate through the body segments and draw them.
         for seg in self.body.iter() {
             // Again we set the color (in this case an orangey color)
-            // TODO: Fix colors
-            // graphics::set_color(ctx, )?;
             // and then draw the Rect that we convert that Segment's position into
             let rectangle = graphics::Mesh::new_rectangle(
                 ctx,
                 graphics::DrawMode::fill(),
                 seg.pos.into(),
-                [1.0, 0.5, 0.0, 1.0].into(),
+                [0.3, 0.3, 0.0, 1.0].into(),
             )?;
-            graphics::draw(ctx, &rectangle, (cgmath::Point2::new(0.0, 0.0),))?;
+            graphics::draw(ctx, &rectangle, (mint::Point2 { x: 0.0, y: 0.0 },))?;
         }
         // And then we do the same for the head, instead making it fully red to distinguish it.
-        // TODO: Fix colors
         let rectangle = graphics::Mesh::new_rectangle(
             ctx,
             graphics::DrawMode::fill(),
             self.head.pos.into(),
             [1.0, 0.5, 0.0, 1.0].into(),
         )?;
-        graphics::draw(ctx, &rectangle, (cgmath::Point2::new(0.0, 0.0),))?;
+        graphics::draw(ctx, &rectangle, (mint::Point2 { x: 0.0, y: 0.0 },))?;
         Ok(())
     }
 }
@@ -356,13 +340,10 @@ impl Snake {
 struct GameState {
     /// First we need a Snake
     snake: Snake,
-    /// A piee of food
+    /// A piece of food
     food: Food,
     /// Whether the game is over or not
     gameover: bool,
-    /// And we track the last time we updated so that we can limit
-    /// our update rate.
-    last_update: f64,
 }
 
 impl GameState {
@@ -371,6 +352,10 @@ impl GameState {
         // First we put our snake a quarter of the way across our grid in the x axis
         // and half way down the y axis. This works well since we start out moving to the right.
         let snake_pos = (GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into();
+        // And we seed our RNG with the system RNG.
+        let mut seed: [u8; 8] = [0; 8];
+        getrandom::getrandom(&mut seed[..]).expect("Could not create RNG seed");
+        qrand::srand(u64::from_ne_bytes(seed));
         // Then we choose a random place to put our piece of food using the helper we made
         // earlier.
         let food_pos = GridPosition::random(GRID_SIZE.0, GRID_SIZE.1);
@@ -379,21 +364,21 @@ impl GameState {
             snake: Snake::new(snake_pos),
             food: Food::new(food_pos),
             gameover: false,
-            last_update: good_web_game::timer::time(),
         }
     }
 }
 
 /// Now we implement EventHandler for GameState. This provides an interface
 /// that ggez will call automatically when different events happen.
-impl event::EventHandler for GameState {
+impl event::EventHandler<ggez::GameError> for GameState {
     /// Update will happen on every frame before it is drawn. This is where we update
     /// our game state to react to whatever is happening in the game world.
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        // First we check to see if enough time has elapsed since our last update based on
-        // the update rate we defined at the top.
-        if ggez::timer::time() - self.last_update >= SECONDS_PER_UPDATE {
-            // Then we check to see if the game is over. If not, we'll update. If so, we'll just do nothing.
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        // Rely on ggez's built-in timer for deciding when to update the game, and how many times.
+        // If the update is early, there will be no cycles, otherwises, the logic will run once for each
+        // frame fitting in the time since the last update.
+        while timer::check_update_time(ctx, DESIRED_FPS) {
+            // We check to see if the game is over. If not, we'll update. If so, we'll just do nothing.
             if !self.gameover {
                 // Here we do the actual updating of our game world. First we tell the snake to update itself,
                 // passing in a reference to our piece of food.
@@ -415,10 +400,8 @@ impl event::EventHandler for GameState {
                     }
                 }
             }
-            // If we updated, we set our last_update to be now
-            self.last_update = ggez::timer::time();
         }
-        // Finally we return `Ok` to indicate we didn't run into any errors
+
         Ok(())
     }
 
@@ -426,6 +409,7 @@ impl event::EventHandler for GameState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         // First we clear the screen to a nice (well, maybe pretty glaring ;)) green
         graphics::clear(ctx, [0.0, 1.0, 0.0, 1.0].into());
+
         // Then we tell the snake and the food to draw themselves
         self.snake.draw(ctx)?;
         self.food.draw(ctx)?;
@@ -447,23 +431,32 @@ impl event::EventHandler for GameState {
         // Here we attempt to convert the Keycode into a Direction using the helper
         // we defined earlier.
         if let Some(dir) = Direction::from_keycode(keycode) {
-            // If it succeeds, we check to make sure that the direction being pressed
-            // is not directly opposite to the way the snake was facing last update.
-            if dir.inverse() != self.snake.last_update_dir {
-                // If not, we set the snake's new direction to be the direction the user pressed.
+            // If it succeeds, we check if a new direction has already been set
+            // and make sure the new direction is different then `snake.dir`
+            if self.snake.dir != self.snake.last_update_dir && dir.inverse() != self.snake.dir {
+                self.snake.next_dir = Some(dir);
+            } else if dir.inverse() != self.snake.last_update_dir {
+                // If no new direction has been set and the direction is not the inverse
+                // of the `last_update_dir`, then set the snake's new direction to be the
+                // direction the user pressed.
                 self.snake.dir = dir;
             }
         }
     }
 }
 
-pub fn main() -> GameResult {
-    ggez::start(
-        ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
-            loading: ggez::conf::Loading::Embedded,
-            ..Default::default()
-        },
-        |_| Box::new(GameState::new()),
-    )
+fn main() -> GameResult {
+    // First we create a new instance of our GameState struct, which implements EventHandler
+    let state = GameState::new();
+    // Then we create a configuration for how to start the application
+    let conf = ggez::conf::Conf::default()
+        .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+        // We set up the window. This title will be displayed in the title bar of the window.
+        .window_title("Snake!".to_string())
+        // Now we get to set the size of the window, which we use our SCREEN_SIZE constant from earlier to help with
+        .window_width(SCREEN_SIZE.0)
+        .window_height(SCREEN_SIZE.1);
+
+    // And finally, we start the game!
+    ggez::start(conf, |_context| Box::new(state))
 }

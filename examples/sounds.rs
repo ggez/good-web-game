@@ -1,5 +1,5 @@
+extern crate glam;
 extern crate good_web_game as ggez;
-extern crate nalgebra as na;
 
 use ggez::audio;
 use ggez::event;
@@ -64,19 +64,30 @@ impl MainState {
     }
 }
 
-impl event::EventHandler for MainState {
+impl event::EventHandler<ggez::GameError> for MainState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
-
-        let text = graphics::Text::new((
-            "Press number keys 1-6 to play a sound, or escape to quit.",
-            30.,
-        ));
-        graphics::draw(ctx, &text, (na::Point2::new(100.0, 100.), graphics::WHITE))?;
+        /*
+                // TODO: this enables us to draw the text without error for some reason
+                let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
+                let r1 = graphics::Mesh::new_rectangle(
+                    ctx,
+                    graphics::DrawMode::fill(),
+                    rect,
+                    graphics::Color::WHITE,
+                )?;
+                graphics::draw(ctx, &r1, DrawParam::default())?;
+        */
+        let text = graphics::Text::new("Press number keys 1-6 to play a sound, or escape to quit.");
+        graphics::draw(
+            ctx,
+            &text,
+            (glam::Vec2::new(100.0, 100.), graphics::Color::WHITE),
+        )?;
 
         graphics::present(ctx)?;
         Ok(())
@@ -116,11 +127,8 @@ impl event::EventHandler for MainState {
 
 pub fn main() -> GameResult {
     ggez::start(
-        ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
-            loading: ggez::conf::Loading::Embedded,
-            ..Default::default()
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
         |ctx| Box::new(MainState::new(ctx).unwrap()),
     )
 }

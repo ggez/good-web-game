@@ -4,18 +4,18 @@
 //! The idea is that this game is simple but still
 //! non-trivial enough to be interesting.
 
+extern crate glam;
 extern crate good_web_game as ggez;
-extern crate nalgebra;
+
+use quad_rand as qrand;
 
 use ggez::event::{EventHandler, KeyCode, KeyMods};
 use ggez::graphics;
-use ggez::rand;
 use ggez::timer;
 use ggez::{Context, GameResult};
-use nalgebra as na;
 
-type Point2 = nalgebra::Point2<f32>;
-type Vector2 = nalgebra::Vector2<f32>;
+type Point2 = glam::Vec2;
+type Vector2 = glam::Vec2;
 
 /// *********************************************************************
 /// Basic stuff, make some helpers for vector functions.
@@ -33,8 +33,8 @@ fn vec_from_angle(angle: f32) -> Vector2 {
 
 /// Just makes a random `Vector2` with the given max magnitude.
 fn random_vec(max_magnitude: f32) -> Vector2 {
-    let angle = rand::gen_range::<f32>(0., 1.) * 2.0 * std::f32::consts::PI;
-    let mag = rand::gen_range::<f32>(0., 1.) * max_magnitude;
+    let angle = qrand::gen_range::<f32>(0., 1.) * 2.0 * std::f32::consts::PI;
+    let mag = qrand::gen_range::<f32>(0., 1.) * max_magnitude;
     vec_from_angle(angle) * (mag)
 }
 
@@ -86,9 +86,9 @@ const MAX_ROCK_VEL: f32 = 50.0;
 fn create_player() -> Actor {
     Actor {
         tag: ActorType::Player,
-        pos: Point2::origin(),
+        pos: Point2::ZERO,
         facing: 0.,
-        velocity: na::zero(),
+        velocity: Vector2::ZERO,
         ang_vel: 0.,
         bbox_size: PLAYER_BBOX,
         life: PLAYER_LIFE,
@@ -98,9 +98,9 @@ fn create_player() -> Actor {
 fn create_rock() -> Actor {
     Actor {
         tag: ActorType::Rock,
-        pos: Point2::origin(),
+        pos: Point2::ZERO,
         facing: 0.,
-        velocity: na::zero(),
+        velocity: Vector2::ZERO,
         ang_vel: 0.,
         bbox_size: ROCK_BBOX,
         life: ROCK_LIFE,
@@ -110,9 +110,9 @@ fn create_rock() -> Actor {
 fn create_shot() -> Actor {
     Actor {
         tag: ActorType::Shot,
-        pos: Point2::origin(),
+        pos: Point2::ZERO,
         facing: 0.,
-        velocity: na::zero(),
+        velocity: Vector2::ZERO,
         ang_vel: SHOT_ANG_VEL,
         bbox_size: SHOT_BBOX,
         life: SHOT_LIFE,
@@ -129,8 +129,8 @@ fn create_rocks(num: i32, exclusion: Point2, min_radius: f32, max_radius: f32) -
     assert!(max_radius > min_radius);
     let new_rock = |_| {
         let mut rock = create_rock();
-        let r_angle = rand::gen_range::<f32>(0., 1.) * 2.0 * std::f32::consts::PI;
-        let r_distance = rand::gen_range::<f32>(0., 1.) * (max_radius - min_radius) + min_radius;
+        let r_angle = qrand::gen_range::<f32>(0., 1.) * 2.0 * std::f32::consts::PI;
+        let r_distance = qrand::gen_range::<f32>(0., 1.) * (max_radius - min_radius) + min_radius;
         rock.pos = exclusion + vec_from_angle(r_angle) * r_distance;
         rock.velocity = random_vec(MAX_ROCK_VEL);
         rock
@@ -176,7 +176,7 @@ const MAX_PHYSICS_VEL: f32 = 250.0;
 
 fn update_actor_position(actor: &mut Actor, dt: f32) {
     // Clamp the velocity to the max efficiently
-    let norm_sq = actor.velocity.norm_squared();
+    let norm_sq = actor.velocity.length_squared();
     if norm_sq > MAX_PHYSICS_VEL.powi(2) {
         actor.velocity = actor.velocity / norm_sq.sqrt() * MAX_PHYSICS_VEL;
     }
@@ -342,8 +342,8 @@ impl MainState {
             level: 0,
             score: 0,
             assets,
-            screen_width: w as f32,
-            screen_height: h as f32,
+            screen_width: w,
+            screen_height: h,
             input: InputState::default(),
             player_shot_timeout: 0.0,
         };
@@ -377,12 +377,12 @@ impl MainState {
     fn handle_collisions(&mut self) {
         for rock in &mut self.rocks {
             let pdistance = rock.pos - self.player.pos;
-            if pdistance.norm() < (self.player.bbox_size + rock.bbox_size) {
+            if pdistance.length() < (self.player.bbox_size + rock.bbox_size) {
                 self.player.life = 0.0;
             }
             for shot in &mut self.shots {
                 let distance = shot.pos - rock.pos;
-                if distance.norm() < (shot.bbox_size + rock.bbox_size) {
+                if distance.length() < (shot.bbox_size + rock.bbox_size) {
                     shot.life = 0.0;
                     rock.life = 0.0;
                     self.score += 1;
@@ -449,7 +449,7 @@ fn draw_actor(
 /// ggez with callbacks for updating and drawing our game, as well as
 /// handling input events.
 /// **********************************************************************
-impl EventHandler for MainState {
+impl EventHandler<ggez::GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         const DESIRED_FPS: u32 = 60;
 
@@ -499,8 +499,8 @@ impl EventHandler for MainState {
             // I want to have a nice death screen eventually,
             // but for now we just quit.
             if self.player.life <= 0.0 {
-                //println!("Game over!");
-                //let _ = ggez::quit(ctx);
+                println!("Game over!");
+                ggez::event::quit(ctx);
             }
         }
 
@@ -510,7 +510,7 @@ impl EventHandler for MainState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         // Our drawing is quite simple.
         // Just clear the screen...
-        graphics::clear(ctx, graphics::BLACK);
+        graphics::clear(ctx, graphics::Color::BLACK);
 
         // Loop over all objects drawing them...
         {
@@ -537,8 +537,16 @@ impl EventHandler for MainState {
         let score_str = format!("Score: {}", self.score);
         let level_display = graphics::Text::new((level_str, self.assets.font, 32.0));
         let score_display = graphics::Text::new((score_str, self.assets.font, 32.0));
-        graphics::draw(ctx, &level_display, (level_dest, 0.0, graphics::WHITE))?;
-        graphics::draw(ctx, &score_display, (score_dest, 0.0, graphics::WHITE))?;
+        graphics::draw(
+            ctx,
+            &level_display,
+            (level_dest, 0.0, graphics::Color::WHITE),
+        )?;
+        graphics::draw(
+            ctx,
+            &score_display,
+            (score_dest, 0.0, graphics::Color::WHITE),
+        )?;
 
         // Then we flip the screen...
         graphics::present(ctx)?;
@@ -557,7 +565,7 @@ impl EventHandler for MainState {
     // and alter our input state appropriately.
     fn key_down_event(
         &mut self,
-        _ctx: &mut Context,
+        ctx: &mut Context,
         keycode: KeyCode,
         _keymod: KeyMods,
         _repeat: bool,
@@ -580,8 +588,8 @@ impl EventHandler for MainState {
                 // img.encode(ctx, graphics::ImageFormat::Png, "/screenshot.png")
                 //     .expect("Could not save screenshot");
             }
-            KeyCode::Escape => {} //ggez::quit(ctx),
-            _ => (),              // Do nothing
+            KeyCode::Escape => ggez::event::quit(ctx),
+            _ => (), // Do nothing
         }
     }
 
@@ -611,16 +619,13 @@ impl EventHandler for MainState {
 
 /// **********************************************************************
 /// Finally our main function!  Which merely sets up a config and calls
-/// `ggez::event::run()` with our `EventHandler` type.
+/// `good-web-game::start()` with our `EventHandler` type.
 /// **********************************************************************
 
 pub fn main() -> GameResult {
     ggez::start(
-        ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
-            loading: ggez::conf::Loading::Embedded,
-            ..Default::default()
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

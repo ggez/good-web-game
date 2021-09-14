@@ -1,3 +1,59 @@
+//! # Good Web Game
+//!
+//! good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset
+//! on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
+//!
+//! It has been recently updated to support much of the ggez 0.6.1 API. If you're already working with ggez
+//! you might use this library to port your game to the web (or perhaps even mobile).
+//! Since it also runs well on desktop it also offers an alternative implementation of ggez, which might
+//! come in handy if you experience bugs in ggez, which you can't work around for some reason. Canvases
+//! with multisampling are currently buggy in classic ggez while they work fine in good-web-game, for example.
+//!
+//! If you are looking for a properly maintained and supported minimal high-level engine on top of miniquad -
+//! check out [macroquad](https://github.com/not-fl3/macroquad/) instead.
+//!
+//! ## Status
+//!
+//! "good-web-game" implements the most important parts of the ggez 0.6.1 API.
+//!
+//! ### Missing / Not available:
+//!
+//! * filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
+//! * game pad support
+//! * writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
+//! * spatial audio (overall audio support is still relatively limited, but could be improved)
+//! * resolution control in fullscreen mode
+//! * setting window position / size (the latter is available on Windows, but buggy)
+//! * screenshot function
+//! * window icon
+//! * and custom shader support (yes, this is a big one, but if you need it and are familiar with `miniquad` please
+//!   consider starting a PR; `miniquad` has all the tools you need)
+//!
+//!
+//! ## Demo
+//!
+//! In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
+//!
+//! ![screen](https://i.imgur.com/TjvCNwa.jpg)
+//!
+//! ## Example
+//!
+//! To build and run an example as a native binary:
+//!
+//! ```rust
+//! cargo run --example astroblasto
+//! ```
+//!
+//! Building for web and mobile is currently a WIP (ironic, I know).
+//! If you want to try your luck anyway the [miniquad instructions for WASM](https://github.com/not-fl3/miniquad/#wasm)
+//! might be a good place to start.
+//!
+//! ## Architecture
+//!
+//! Here is how `good-web-game` fits into your rust-based game:
+//!
+//! ![software stack](about/gwg-stack.png?raw=true "good-web-game software stack")
+
 pub mod audio;
 pub mod conf;
 pub mod error;
@@ -10,86 +66,73 @@ pub mod timer;
 
 mod context;
 
-pub use crate::{
-    context::Context, error::GameError, error::GameResult, event::EventHandler,
-    goodies::matrix_transform_2d,
-};
-pub use cgmath;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate serde_derive;
 
+pub use crate::context::Context;
+pub use crate::error::*;
+
+pub use cgmath;
+pub extern crate mint;
+
+use crate::event::ErrorOrigin;
+use crate::filesystem::Filesystem;
+use crate::input::mouse;
 #[cfg(feature = "log-impl")]
 pub use miniquad::{debug, info, log, warn};
 
-pub mod rand {
-    use miniquad::rand;
-
-    pub trait RandomRange {
-        fn gen_range(low: Self, high: Self) -> Self;
-    }
-
-    impl RandomRange for f32 {
-        fn gen_range(low: Self, high: Self) -> Self {
-            let r = unsafe { rand() } as f32 / miniquad::RAND_MAX as f32;
-            low + (high - low) * r
-        }
-    }
-    impl RandomRange for i32 {
-        fn gen_range(low: i32, high: i32) -> Self {
-            let r = unsafe { rand() } as f32 / miniquad::RAND_MAX as f32;
-            let r = low as f32 + (high as f32 - low as f32) * r;
-            r as i32
-        }
-    }
-    impl RandomRange for i16 {
-        fn gen_range(low: i16, high: i16) -> Self {
-            let r = unsafe { rand() } as f32 / miniquad::RAND_MAX as f32;
-            let r = low as f32 + (high as f32 - low as f32) * r;
-            r as i16
-        }
-    }
-
-    impl RandomRange for usize {
-        fn gen_range(low: usize, high: usize) -> Self {
-            let r = unsafe { rand() } as f32 / miniquad::RAND_MAX as f32;
-            let r = low as f32 + (high as f32 - low as f32) * r;
-            r as usize
-        }
-    }
-
-    pub fn gen_range<T>(low: T, high: T) -> T
-    where
-        T: RandomRange,
-    {
-        T::gen_range(low, high)
-    }
-
-    pub trait ChooseRandom<T> {
-        fn choose(&mut self) -> Option<&mut T>;
-    }
-
-    impl<T> ChooseRandom<T> for Vec<T> {
-        fn choose(&mut self) -> Option<&mut T> {
-            let ix = gen_range(0, self.len());
-            self.get_mut(ix)
-        }
-    }
-}
-
-struct EventHandlerWrapper {
-    event_handler: Box<dyn event::EventHandler>,
+struct EventHandlerWrapper<E: std::error::Error> {
+    event_handler: Box<dyn event::EventHandler<E>>,
     context: Context,
 }
 
-impl miniquad::EventHandlerFree for EventHandlerWrapper {
+impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E> {
     fn update(&mut self) {
-        self.event_handler.update(&mut self.context).unwrap();
+        // if the program is to quit, quit
+        // (in ggez this is done before looking at any of the events of this frame, but this isn't
+        //  possible here, so this is the closest it can get)
+        if !self.context.continuing {
+            self.context.quad_ctx.quit();
+        }
+
+        // in ggez tick is called before update, so I moved this to the front
+        self.context.timer_context.tick();
+
+        // release all buffers that were kept alive for the previous frame
+        graphics::release_dropped_bindings();
+
+        // do ggez 0.6 style error handling
+        if let Err(e) = self.event_handler.update(&mut self.context) {
+            error!("Error on EventHandler::update(): {:?}", e); // TODO: maybe use miniquad-logging here instead, but I haven't looked into it yet
+            eprintln!("Error on EventHandler::update(): {:?}", e);
+            if self
+                .event_handler
+                .on_error(&mut self.context, ErrorOrigin::Update, e)
+            {
+                event::quit(&mut self.context);
+            }
+        }
         if let Some(ref mut mixer) = &mut *self.context.audio_context.mixer.borrow_mut() {
             mixer.frame();
         }
-        self.context.timer_context.tick();
     }
 
     fn draw(&mut self) {
-        self.event_handler.draw(&mut self.context).unwrap();
+        // do ggez 0.6 style error handling
+        if let Err(e) = self.event_handler.draw(&mut self.context) {
+            error!("Error on EventHandler::draw(): {:?}", e);
+            eprintln!("Error on EventHandler::draw(): {:?}", e);
+            if self
+                .event_handler
+                .on_error(&mut self.context, ErrorOrigin::Draw, e)
+            {
+                event::quit(&mut self.context);
+            }
+        }
+        // reset the mouse frame delta value
+        self.context.mouse_context.reset_delta();
     }
 
     fn resize_event(&mut self, width: f32, height: f32) {
@@ -97,26 +140,18 @@ impl miniquad::EventHandlerFree for EventHandlerWrapper {
             .resize_event(&mut self.context, width, height);
     }
 
-    fn key_down_event(
-        &mut self,
-        keycode: miniquad::KeyCode,
-        _keymods: miniquad::KeyMods,
-        repeat: bool,
-    ) {
-        self.event_handler.key_down_event(
-            &mut self.context,
-            keycode.into(),
-            crate::input::keyboard::KeyMods::NONE,
-            repeat,
-        );
-    }
-
-    fn key_up_event(&mut self, keycode: miniquad::KeyCode, _keymods: miniquad::KeyMods) {
-        self.event_handler.key_up_event(
-            &mut self.context,
-            keycode.into(),
-            crate::input::keyboard::KeyMods::NONE,
-        );
+    fn mouse_motion_event(&mut self, x: f32, y: f32) {
+        let old_pos = mouse::last_position(&self.context);
+        let dx = x - old_pos.x;
+        let dy = y - old_pos.y;
+        // update the frame delta value
+        let old_delta = mouse::delta(&self.context);
+        self.context
+            .mouse_context
+            .set_delta((old_delta.x + dx, old_delta.y + dy).into());
+        self.context.mouse_context.set_last_position((x, y).into());
+        self.event_handler
+            .mouse_motion_event(&mut self.context, x, y, dx, dy);
     }
 
     fn mouse_button_down_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
@@ -129,9 +164,28 @@ impl miniquad::EventHandlerFree for EventHandlerWrapper {
             .mouse_button_up_event(&mut self.context, button.into(), x, y);
     }
 
-    fn mouse_motion_event(&mut self, x: f32, y: f32) {
+    fn char_event(&mut self, character: char, _keymods: miniquad::KeyMods, _repeat: bool) {
         self.event_handler
-            .mouse_motion_event(&mut self.context, x, y, 0., 0.);
+            .text_input_event(&mut self.context, character);
+    }
+
+    fn key_down_event(
+        &mut self,
+        keycode: miniquad::KeyCode,
+        keymods: miniquad::KeyMods,
+        repeat: bool,
+    ) {
+        // first update the keyboard context state
+        self.context.keyboard_context.set_key(keycode, true);
+        // then hand it to the user
+        self.event_handler
+            .key_down_event(&mut self.context, keycode, keymods.into(), repeat);
+    }
+
+    fn key_up_event(&mut self, keycode: miniquad::KeyCode, keymods: miniquad::KeyMods) {
+        self.context.keyboard_context.set_key(keycode, false);
+        self.event_handler
+            .key_up_event(&mut self.context, keycode, keymods.into());
     }
 
     fn touch_event(&mut self, phase: miniquad::TouchPhase, id: u64, x: f32, y: f32) {
@@ -140,17 +194,26 @@ impl miniquad::EventHandlerFree for EventHandlerWrapper {
     }
 }
 
-pub fn start<F>(conf: conf::Conf, f: F) -> GameResult
+/// Starts the game. Takes a start configuration, allowing you to specify additional options like
+/// high-dpi behavior, as well as a function specifying how to create the event handler from the
+/// new context.
+pub fn start<F, E>(conf: conf::Conf, f: F) -> GameResult
 where
-    F: 'static + FnOnce(&mut Context) -> Box<dyn EventHandler>,
+    E: std::error::Error + 'static,
+    F: 'static + FnOnce(&mut Context) -> Box<dyn event::EventHandler<E>>,
 {
-    miniquad::start(miniquad::conf::Conf::default(), |ctx| {
-        let mut context = Context::new(ctx, conf);
+    let fs = Filesystem::new(&conf);
+    let quad_conf = conf.into();
 
-        let (w, h) = context.quad_ctx.screen_size();
+    miniquad::start(quad_conf, |ctx| {
+        let mut context = Context::new(ctx, fs);
+
+        // uncommenting this leads to wrong window sizes as `set_window_size` is currently buggy
+        //context.quad_ctx.set_window_size(800 as u32, 600 as u32);
+        let (d_w, d_h) = context.quad_ctx.screen_size();
         context
             .gfx_context
-            .set_screen_coordinates(graphics::Rect::new(0., 0., w as f32, h as f32));
+            .set_screen_coordinates(graphics::Rect::new(0., 0., d_w, d_h));
 
         let event_handler = f(&mut context);
 

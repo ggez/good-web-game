@@ -1,20 +1,23 @@
 //! https://github.com/ggez/ggez/blob/master/examples/03_drawing.rs
 //! A collection of semi-random shape and image drawing examples.
 
+extern crate glam;
 extern crate good_web_game as ggez;
-extern crate nalgebra;
 
 use ggez::event;
-use ggez::graphics::{self, Color, DrawMode, DrawParam};
+use ggez::graphics::{self, Color, DrawMode, DrawParam, FilterMode};
 use ggez::timer;
 use ggez::{Context, GameResult};
+use lyon::lyon_tessellation::FillOptions;
+use std::env;
+use std::path;
 
-type Point2 = nalgebra::Point2<f32>;
+type Point2 = glam::Vec2;
 
 struct MainState {
     image1: graphics::Image,
-    // image2_linear: graphics::Image,
-    // image2_nearest: graphics::Image,
+    image2_linear: graphics::Image,
+    image2_nearest: graphics::Image,
     meshes: Vec<graphics::Mesh>,
     zoomlevel: f32,
 }
@@ -22,15 +25,18 @@ struct MainState {
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
         let image1 = graphics::Image::new(ctx, "dragon1.png")?;
+        let image2_linear = graphics::Image::new(ctx, "shot.png")?;
+        let mut image2_nearest = graphics::Image::new(ctx, "shot.png")?;
+        //let image1 = graphics::Image::new(ctx, "dragon1.png")?;
         //let image2_linear = graphics::Image::new(ctx, "shot.png")?;
-        // let mut image2_nearest = graphics::Image::new(ctx, "shot.png")?;
-        // image2_nearest.set_filter(graphics::FilterMode::Nearest);
+        //let mut image2_nearest = graphics::Image::new(ctx, "shot.png")?;
+        image2_nearest.set_filter(graphics::FilterMode::Nearest);
 
         let meshes = vec![build_mesh(ctx)?, build_textured_triangle(ctx)?];
         let s = MainState {
             image1,
-            // image2_linear,
-            // image2_nearest,
+            image2_linear,
+            image2_nearest,
             meshes,
             zoomlevel: 1.0,
         };
@@ -96,12 +102,13 @@ fn build_textured_triangle(ctx: &mut Context) -> GameResult<graphics::Mesh> {
 
     let triangle_indices = vec![0, 1, 2];
 
-    let i = graphics::Image::new(ctx, "rock.png")?;
-    mb.from_raw(&triangle_verts, &triangle_indices, Some(i));
+    let mut i = graphics::Image::new(ctx, "rock.png")?;
+    i.set_filter(FilterMode::Nearest);
+    mb.raw(&triangle_verts, &triangle_indices, Some(i));
     mb.build(ctx)
 }
 
-impl event::EventHandler for MainState {
+impl event::EventHandler<ggez::GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         const DESIRED_FPS: u32 = 60;
 
@@ -117,12 +124,11 @@ impl event::EventHandler for MainState {
         // let src = graphics::Rect::one();
         let dst = cgmath::Point2::new(20.0, 20.0);
         graphics::draw(ctx, &self.image1, (dst,))?;
-        /*
+
         let dst = cgmath::Point2::new(200.0, 100.0);
         let dst2 = cgmath::Point2::new(400.0, 400.0);
         let scale = cgmath::Vector2::new(10.0, 10.0);
-        // let shear = graphics::Point::new(self.zoomlevel, self.zoomlevel);
-        // graphics::set_color(ctx, graphics::Color::new(1.0, 1.0, 1.0, 1.0));
+        //let shear = graphics::Point::new(self.zoomlevel, self.zoomlevel);
         graphics::draw(
             ctx,
             &self.image2_linear,
@@ -132,7 +138,7 @@ impl event::EventHandler for MainState {
                 .rotation(self.zoomlevel)
                 // offset: Point2::new(-16.0, 0.0),
                 .scale(scale)
-                // shear: shear,
+                .color(graphics::Color::new(1.0, 1.0, 1.0, 1.0)), // shear: shear,
         )?;
         graphics::draw(
             ctx,
@@ -142,25 +148,27 @@ impl event::EventHandler for MainState {
                 .dest(dst2)
                 .rotation(self.zoomlevel)
                 .offset(Point2::new(0.5, 0.5))
-                .scale(scale)
-                // shear: shear,
+                .scale(scale), // shear: shear,
         )?;
-        */
 
         let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
-        let r1 =
-            graphics::Mesh::new_rectangle(ctx, graphics::DrawMode::fill(), rect, graphics::WHITE)?;
+        let r1 = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            rect,
+            graphics::Color::WHITE,
+        )?;
         graphics::draw(ctx, &r1, DrawParam::default())?;
 
         let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
         let r2 = graphics::Mesh::new_rectangle(
             ctx,
-            graphics::DrawMode::stroke(1.0),
+            graphics::DrawMode::fill(),
             rect,
             graphics::Color::new(1.0, 0.0, 0.0, 1.0),
         )?;
         graphics::draw(ctx, &r2, DrawParam::default())?;
-        // graphics::rectangle(ctx, graphics::WHITE, graphics::DrawMode::fill(), rect)?;
+        //graphics::rectangle(ctx, graphics::WHITE, graphics::DrawMode::fill(), rect)?;
 
         // let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
         // graphics::rectangle(
@@ -180,12 +188,18 @@ impl event::EventHandler for MainState {
 }
 
 pub fn main() -> GameResult {
+    let resource_dir = if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
+        let mut path = path::PathBuf::from(manifest_dir);
+        path.push("resources");
+        path
+    } else {
+        path::PathBuf::from("./resources")
+    };
+
     ggez::start(
-        ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
-            loading: ggez::conf::Loading::Embedded,
-            ..Default::default()
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+            .physical_root_dir(Some(resource_dir)),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

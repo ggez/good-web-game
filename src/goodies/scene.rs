@@ -194,7 +194,7 @@ impl<C> SceneStack<C> {
     ///
     /// This allows for layering GUI's and such.
     fn draw_scenes(scenes: &mut [Box<dyn Scene<C>>], world: &mut C, ctx: &mut crate::Context) {
-        assert!(scenes.len() > 0);
+        assert!(!scenes.is_empty());
         if let Some((current, rest)) = scenes.split_last_mut() {
             if current.draw_previous() {
                 SceneStack::draw_scenes(rest, world, ctx);
@@ -211,13 +211,13 @@ impl<C> SceneStack<C> {
     }
 }
 
-impl<C> crate::event::EventHandler for SceneStack<C> {
-    fn update(&mut self, ctx: &mut crate::Context) -> crate::error::GameResult {
+impl<C, E: std::error::Error> crate::event::EventHandler<E> for SceneStack<C> {
+    fn update(&mut self, ctx: &mut crate::Context) -> Result<(), E> {
         self.update(ctx);
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut crate::Context) -> crate::error::GameResult {
+    fn draw(&mut self, ctx: &mut crate::Context) -> Result<(), E> {
         self.draw(ctx);
         Ok(())
     }

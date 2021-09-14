@@ -1,12 +1,29 @@
 # Good Web Game
 
-good-web-game is a native wasm32-unknown-unknown implementation of some mininimal [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
+good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
 
-## Deprecation status
+It has been recently updated to support much of the ggez 0.6.1 API. If you're already working with ggez you might use this library to port your game to the web (or perhaps even mobile).
+Since it also runs well on desktop it also offers an alternative implementation of ggez, which might come in handy if you experience bugs in ggez, which you can't work around for some reason. Canvases with multisampling are currently buggy in classic ggez while they work fine in good-web-game, for example.
 
-"good-web-game" is a last-resort option to port big ggez project to web or mobiles. However it is pretty much unmaintained and is more of a code reference than a ready to use thing.
+If you are looking for a properly maintained and supported minimal high-level engine on top of miniquad - check out [macroquad](https://github.com/not-fl3/macroquad/) instead.
 
-If you are looking for maintained and supported minimal high-level engine on top of miniquad - check out [macroquad](https://github.com/not-fl3/macroquad/).
+## Status
+
+"good-web-game" implements the most important parts of the ggez 0.6.1 API.
+
+### Missing / Not available:
+
+* filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
+* game pad support
+* writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
+* spatial audio (overall audio support is still relatively limited, but could be improved)
+* resolution control in fullscreen mode
+* setting window position / size (the latter is available on Windows, but buggy)
+* screenshot function
+* window icon
+* and custom shader support (yes, this is a big one, but if you need it and are familiar with `miniquad` please
+  consider starting a PR; `miniquad` has all the tools you need)
+  
  
 ## Demo 
 
@@ -22,7 +39,9 @@ To build and run an example as a native binary:
 cargo run --example astroblasto
 ```
 
-To build and run a web version follow [miniquad instructions](https://github.com/not-fl3/miniquad/#wasm)
+Building for web and mobile is currently a WIP (ironic, I know).
+If you want to try your luck anyway the [miniquad instructions for WASM](https://github.com/not-fl3/miniquad/#wasm)
+might be a good place to start.
 
 ## Architecture
 

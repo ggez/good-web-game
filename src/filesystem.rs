@@ -1,9 +1,7 @@
 use std::{collections::HashMap, io, path};
 
-use crate::{
-    conf::{Cache, Conf},
-    Context, GameResult,
-};
+use crate::{conf::Conf, Context, GameError, GameResult};
+use std::panic::panic_any;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -27,18 +25,19 @@ impl Filesystem {
     pub(crate) fn new(conf: &Conf) -> Filesystem {
         let mut files = HashMap::new();
 
-        if let Cache::Tar(ref tar_file) = conf.cache {
-            let mut archive = tar::Archive::new(tar_file.as_slice());
+        if let miniquad::conf::Cache::Tar(tar_file) = conf.quad_conf.cache {
+            let mut archive = tar::Archive::new(tar_file);
 
-            for file in archive.entries().unwrap_or_else(|e| panic!(e)) {
+            for file in archive.entries().unwrap_or_else(|e| panic_any(e)) {
                 use std::io::Read;
 
-                let mut file = file.unwrap_or_else(|e| panic!(e));
-                let filename = std::path::PathBuf::from(file.path().unwrap_or_else(|e| panic!(e)));
+                let mut file = file.unwrap_or_else(|e| panic_any(e));
+                let filename =
+                    std::path::PathBuf::from(file.path().unwrap_or_else(|e| panic_any(e)));
                 let mut buf = vec![];
 
-                file.read_to_end(&mut buf).unwrap_or_else(|e| panic!(e));
-                if buf.len() != 0 {
+                file.read_to_end(&mut buf).unwrap_or_else(|e| panic_any(e));
+                if !buf.is_empty() {
                     files.insert(
                         filename,
                         File {
@@ -50,7 +49,7 @@ impl Filesystem {
         }
 
         let root = conf.physical_root_dir.clone();
-        Filesystem { files, root }
+        Filesystem { root, files }
     }
 
     /// Opens the given `path` and returns the resulting `File`
@@ -58,7 +57,7 @@ impl Filesystem {
     pub fn open<P: AsRef<path::Path>>(&mut self, path: P) -> GameResult<File> {
         let mut path = path::PathBuf::from(path.as_ref());
 
-        // workaround for ggez-style pathes: in ggez pathes starts with "/", while in the cache
+        // workaround for ggez-style pathes: in ggez paths starts with "/", while in the cache
         // dictionary they are presented without "/"
         if let Ok(stripped) = path.strip_prefix("/") {
             path = path::PathBuf::from(stripped);
@@ -75,12 +74,17 @@ impl Filesystem {
         }
 
         if !self.files.contains_key(&path) {
-            panic!("No such file: {:?}", &path)
+            return Err(GameError::FilesystemError(format!(
+                "No such file: {:?}",
+                &path
+            )));
         }
         Ok(self.files[&path].clone())
     }
 }
 
+/// Opens the given path and returns the resulting `File`
+/// in read-only mode.
 pub fn open<P: AsRef<path::Path>>(ctx: &mut Context, path: P) -> GameResult<File> {
     ctx.filesystem.open(path)
 }

@@ -1,9 +1,9 @@
 use crate::{
-    conf::NumSamples,
     graphics::{BlendMode, DrawParam, Drawable, FilterMode, Image, Rect},
     Context, GameResult,
 };
 
+use crate::graphics::drawparam::Transform;
 use miniquad::{RenderPass, Texture, TextureFormat, TextureParams};
 
 #[derive(Clone, Debug)]
@@ -13,12 +13,8 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    pub fn new(
-        ctx: &mut Context,
-        width: u16,
-        height: u16,
-        _samples: NumSamples,
-    ) -> GameResult<Canvas> {
+    /// Create a new `Canvas` with the specified size.
+    pub fn new(ctx: &mut Context, width: u16, height: u16) -> GameResult<Canvas> {
         let texture = Texture::new_render_texture(
             &mut ctx.quad_ctx,
             TextureParams {
@@ -29,9 +25,8 @@ impl Canvas {
             },
         );
 
-        // let framebuffer = Framebuffer::new(ctx, &texture)
-        //     .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
-        let image = Image::from_texture(&mut ctx.quad_ctx, texture)?;
+        let image =
+            Image::from_texture(&mut ctx.quad_ctx, texture, ctx.gfx_context.default_filter)?;
 
         let offscreen_pass = RenderPass::new(&mut ctx.quad_ctx, texture, None);
 
@@ -46,14 +41,27 @@ impl Canvas {
         use crate::graphics;
         let (w, h) = graphics::drawable_size(ctx);
         // Default to no multisampling
-        // TODO: Use winit's into() to translate f64's more accurately
-        // ...where the heck IS winit's into()?  wth was I referring to?
-        Canvas::new(ctx, w as u16, h as u16, NumSamples::One)
+        Canvas::new(ctx, w as u16, h as u16)
     }
 
     /// Gets the backend `Image` that is being rendered to.
     pub fn image(&self) -> &Image {
         &self.image
+    }
+
+    /// Return the width of the canvas.
+    pub fn width(&self) -> u16 {
+        self.image.width
+    }
+
+    /// Return the height of the canvas.
+    pub fn height(&self) -> u16 {
+        self.image.height
+    }
+
+    /// Returns the dimensions of the canvas.
+    pub fn dimensions(&self) -> Rect {
+        Rect::new(0.0, 0.0, f32::from(self.width()), f32::from(self.height()))
     }
 
     /// Get the filter mode for the image.
@@ -76,12 +84,30 @@ impl Canvas {
 
 impl Drawable for Canvas {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+        // We have to mess with the scale to make everything
+        // be its-unit-size-in-pixels.
+        let scale_x = param.src.w * f32::from(self.width());
+        let scale_y = param.src.h * f32::from(self.height());
+
+        let scaled_param = match param.trans {
+            Transform::Values { scale, .. } => {
+                let s_param = param.scale(mint::Vector2 {
+                    x: scale.x * scale_x,
+                    y: scale.y * scale_y,
+                });
+                s_param.transform(s_param.trans.to_bare_matrix())
+            }
+            Transform::Matrix(m) => param.transform(
+                cgmath::Matrix4::from(m)
+                    * cgmath::Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
+            ),
+        };
+
         // Gotta flip the image on the Y axis here
         // to account for OpenGL's origin being at the bottom-left.
-        let mut flipped_param = param;
-        flipped_param.scale.y *= -1.0;
-        flipped_param.dest.y += self.image.height() as f32 * param.scale.y;
-        self.image.draw(ctx, flipped_param)
+        let new_param = flip_draw_param_vertical(scaled_param);
+
+        self.image.draw_image_raw(ctx, new_param)
     }
 
     fn set_blend_mode(&mut self, blend_mode: Option<BlendMode>) {
@@ -95,6 +121,32 @@ impl Drawable for Canvas {
     fn dimensions(&self, _: &mut Context) -> Option<Rect> {
         Some(self.image.dimensions())
     }
+}
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+/// equal to
+///
+/// Matrix4::from_translation(cgmath::vec3(0.0, 1.0, 0.0)) * Matrix4::from_nonuniform_scale(1.0, -1.0, 1.0),
+const FLIP_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, -1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 1.0, 0.0, 1.0,
+);
+
+fn flip_draw_param_vertical(param: DrawParam) -> DrawParam {
+    let param = if let Transform::Matrix(mat) = param.trans {
+        param.transform(cgmath::Matrix4::from(mat) * FLIP_MATRIX)
+    } else {
+        panic!("Can not be called with a non-matrix DrawParam");
+    };
+    let new_src = Rect {
+        x: param.src.x,
+        y: (1.0 - param.src.h) - param.src.y,
+        w: param.src.w,
+        h: param.src.h,
+    };
+    param.src(new_src)
 }
 
 /// Set the `Canvas` to render to. Specifying `Option::None` will cause all

@@ -1,8 +1,8 @@
 use crate::{
     error::GameResult,
     graphics::{
-        self, context::batch_shader, image::param_to_instance_transform, transform_rect, BlendMode,
-        DrawParam, FilterMode, InstanceAttributes, Rect,
+        self, context::batch_shader, transform_rect, BlendMode, DrawParam, FilterMode,
+        InstanceAttributes, Rect,
     },
     Context,
 };
@@ -17,7 +17,6 @@ pub struct SpriteBatch {
     image: RefCell<graphics::Image>,
     sprites: Vec<DrawParam>,
     gpu_sprites: RefCell<Vec<InstanceAttributes>>,
-    blend_mode: Option<BlendMode>,
 }
 
 /// An index of a particular sprite in a `SpriteBatch`.
@@ -34,7 +33,6 @@ impl SpriteBatch {
         Self {
             image: RefCell::new(image),
             sprites: vec![],
-            blend_mode: None,
             gpu_sprites: RefCell::new(vec![]),
         }
     }
@@ -79,6 +77,21 @@ impl SpriteBatch {
 
 impl graphics::Drawable for SpriteBatch {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+        // scale the offset according to the dimensions of the spritebatch
+        // but only if there is an offset (it's too expensive to calculate the dimensions to always to this)
+        let mut param = param;
+        if let crate::graphics::Transform::Values { offset, .. } = param.trans {
+            if offset != [0.0, 0.0].into() {
+                if let Some(dim) = self.dimensions(ctx) {
+                    let new_offset = mint::Vector2 {
+                        x: offset.x * dim.w + dim.x,
+                        y: offset.y * dim.h + dim.y,
+                    };
+                    param = param.offset(new_offset);
+                }
+            }
+        }
+
         let mut image = self.image.borrow_mut();
         let mut gpu_sprites = self.gpu_sprites.borrow_mut();
 
@@ -101,17 +114,28 @@ impl graphics::Drawable for SpriteBatch {
         }
 
         for (n, param) in self.sprites.iter().enumerate() {
-            let mut new_param = param.clone();
+            let mut new_param = *param;
             let src_width = param.src.w;
             let src_height = param.src.h;
-            let real_scale = graphics::Vector2::new(
-                src_width * param.scale.x * f32::from(image.width),
-                src_height * param.scale.y * f32::from(image.height),
-            );
-            new_param.scale = real_scale.into();
+            // We have to mess with the scale to make everything
+            // be its-unit-size-in-pixels.
+            let scale_x = src_width * f32::from(image.width);
+            let scale_y = src_height * f32::from(image.height);
+
+            use crate::graphics::Transform;
+            new_param = match new_param.trans {
+                Transform::Values { scale, .. } => new_param.scale(mint::Vector2 {
+                    x: scale.x * scale_x,
+                    y: scale.y * scale_y,
+                }),
+                Transform::Matrix(m) => new_param.transform(
+                    cgmath::Matrix4::from(m)
+                        * cgmath::Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
+                ),
+            };
 
             let instance = InstanceAttributes {
-                model: param_to_instance_transform(&new_param),
+                model: new_param.trans.to_bare_matrix().into(),
                 source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
                 color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
             };
@@ -129,10 +153,22 @@ impl graphics::Drawable for SpriteBatch {
 
         let uniforms = batch_shader::Uniforms {
             projection: ctx.gfx_context.projection,
-            model: param_to_instance_transform(&param),
+            model: param.trans.to_bare_matrix().into(),
         };
         ctx.quad_ctx.apply_uniforms(&uniforms);
+
+        let mut custom_blend = false;
+        if let Some(blend_mode) = self.blend_mode() {
+            custom_blend = true;
+            crate::graphics::set_current_blend_mode(ctx, blend_mode)
+        }
+
         ctx.quad_ctx.draw(0, 6, self.sprites.len() as i32);
+
+        // restore default blend mode
+        if custom_blend {
+            crate::graphics::restore_blend_mode(ctx);
+        }
 
         ctx.quad_ctx.end_render_pass();
 
@@ -157,11 +193,10 @@ impl graphics::Drawable for SpriteBatch {
     }
 
     fn set_blend_mode(&mut self, mode: Option<BlendMode>) {
-        // TODO
-        self.blend_mode = mode;
+        self.image.get_mut().set_blend_mode(mode);
     }
 
     fn blend_mode(&self) -> Option<BlendMode> {
-        self.blend_mode
+        self.image.borrow().blend_mode()
     }
 }

@@ -25,7 +25,7 @@ impl MainState {
     }
 }
 
-impl event::EventHandler for MainState {
+impl event::EventHandler<ggez::GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         if timer::ticks(ctx) % 100 == 0 {
             println!("Delta frame time: {:?} ", timer::delta(ctx));
@@ -35,7 +35,7 @@ impl event::EventHandler for MainState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, graphics::BLACK);
+        graphics::clear(ctx, graphics::Color::BLACK);
 
         let time = (timer::duration_to_f64(timer::time_since_start(ctx)) * 1000.0) as u32;
         let cycle = 10_000;
@@ -59,10 +59,11 @@ impl event::EventHandler for MainState {
                 self.spritebatch.add(p);
             }
         }
+        /*
         let param = graphics::DrawParam::new()
             .dest(Point2::new(
-                ((time % cycle) as f32 / cycle as f32 * 6.28).cos() * 50.0 - 350.0,
-                ((time % cycle) as f32 / cycle as f32 * 6.28).sin() * 50.0 - 450.0,
+                ((time % cycle) as f32 / cycle as f32 * 6.28).cos() * 50.0 - 150.0,
+                ((time % cycle) as f32 / cycle as f32 * 6.28).sin() * 50.0 - 150.0,
             ))
             .scale(Vector2::new(
                 ((time % cycle) as f32 / cycle as f32 * 6.28).sin().abs() * 2.0 + 1.0,
@@ -70,6 +71,21 @@ impl event::EventHandler for MainState {
             ))
             .rotation((time % cycle) as f32 / cycle as f32 * 6.28)
             .offset(Point2::new(750.0, 750.0));
+         */
+        let param = graphics::DrawParam::new()
+            .dest(Point2::new(
+                ((time % cycle) as f32 / cycle as f32 * 6.28).cos() * 50.0 + 250.0,
+                ((time % cycle) as f32 / cycle as f32 * 6.28).sin() * 50.0 + 150.0,
+            ))
+            .scale(Vector2::new(
+                ((time % cycle) as f32 / cycle as f32 * 6.28).sin().abs() * 2.0 + 1.0,
+                ((time % cycle) as f32 / cycle as f32 * 6.28).sin().abs() * 2.0 + 1.0,
+            ))
+            .rotation((time % cycle) as f32 / cycle as f32 * 6.28);
+        // WARNING: Using an offset != (0.,0.) on a spritebatch may come with a significant performance cost.
+        // This is due to the fact that the total dimensions of everything drawn by it have to be calculated.
+        // See SpriteBatch::draw and SpriteBatch::dimensions for more information.
+        //.offset(Point2::new(0.5, 0.5));
         graphics::draw(ctx, &self.spritebatch, param)?;
         self.spritebatch.clear();
 
@@ -80,11 +96,8 @@ impl event::EventHandler for MainState {
 
 pub fn main() -> GameResult {
     ggez::start(
-        ggez::conf::Conf {
-            cache: ggez::conf::Cache::Tar(include_bytes!("resources.tar").to_vec()),
-            loading: ggez::conf::Loading::Embedded,
-            ..Default::default()
-        },
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

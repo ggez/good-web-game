@@ -5,7 +5,7 @@ pub type Vector2 = cgmath::Vector2<f32>;
 ///
 /// The origin of the rectangle is at the top-left,
 /// with x increasing to the right and y increasing down.
-#[derive(Copy, Clone, PartialEq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
 pub struct Rect {
     /// X coordinate of the left edge of the rect.
     pub x: f32,
@@ -167,6 +167,39 @@ impl Rect {
     }
 }
 
+impl approx::AbsDiffEq for Rect {
+    type Epsilon = f32;
+
+    fn default_epsilon() -> Self::Epsilon {
+        f32::default_epsilon()
+    }
+
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        f32::abs_diff_eq(&self.x, &other.x, epsilon)
+            && f32::abs_diff_eq(&self.y, &other.y, epsilon)
+            && f32::abs_diff_eq(&self.w, &other.w, epsilon)
+            && f32::abs_diff_eq(&self.h, &other.h, epsilon)
+    }
+}
+
+impl approx::RelativeEq for Rect {
+    fn default_max_relative() -> Self::Epsilon {
+        f32::default_max_relative()
+    }
+
+    fn relative_eq(
+        &self,
+        other: &Self,
+        epsilon: Self::Epsilon,
+        max_relative: Self::Epsilon,
+    ) -> bool {
+        f32::relative_eq(&self.x, &other.x, epsilon, max_relative)
+            && f32::relative_eq(&self.y, &other.y, epsilon, max_relative)
+            && f32::relative_eq(&self.w, &other.w, epsilon, max_relative)
+            && f32::relative_eq(&self.h, &other.h, epsilon, max_relative)
+    }
+}
+
 impl From<[f32; 4]> for Rect {
     fn from(val: [f32; 4]) -> Self {
         Rect::new(val[0], val[1], val[2], val[3])
@@ -194,23 +227,71 @@ pub struct Color {
     pub a: f32,
 }
 
-/// White
-pub const WHITE: Color = Color {
-    r: 1.0,
-    g: 1.0,
-    b: 1.0,
-    a: 1.0,
-};
-
-/// Black
-pub const BLACK: Color = Color {
-    r: 0.0,
-    g: 0.0,
-    b: 0.0,
-    a: 1.0,
-};
-
 impl Color {
+    /// White (#FFFFFFFF)
+    pub const WHITE: Color = Color {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+
+    /// Black (#000000FF)
+    pub const BLACK: Color = Color {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+
+    /// Red
+    pub const RED: Color = Color {
+        r: 1.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+
+    /// Green
+    pub const GREEN: Color = Color {
+        r: 0.0,
+        g: 1.0,
+        b: 0.0,
+        a: 1.0,
+    };
+
+    /// Blue
+    pub const BLUE: Color = Color {
+        r: 0.0,
+        g: 0.0,
+        b: 1.0,
+        a: 1.0,
+    };
+
+    /// Cyan
+    pub const CYAN: Color = Color {
+        r: 0.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+
+    /// Magenta
+    pub const MAGENTA: Color = Color {
+        r: 1.0,
+        g: 0.0,
+        b: 1.0,
+        a: 1.0,
+    };
+
+    /// Yellow
+    pub const YELLOW: Color = Color {
+        r: 1.0,
+        g: 1.0,
+        b: 0.0,
+        a: 1.0,
+    };
+
     /// Create a new `Color` from four `f32`'s in the range `[0.0-1.0]`
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Color { r, g, b, a }
@@ -351,6 +432,66 @@ impl Into<String> for Color {
             (self.b * 255.) as i32,
             (self.a * 255.) as i32
         )
+    }
+}
+
+/// A RGBA color in the *linear* color space,
+/// suitable for shoving into a shader.
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub(crate) struct LinearColor {
+    /// Red component
+    pub r: f32,
+    /// Green component
+    pub g: f32,
+    /// Blue component
+    pub b: f32,
+    /// Alpha component
+    pub a: f32,
+}
+
+impl From<Color> for LinearColor {
+    /// Convert an (sRGB) Color into a linear color,
+    /// per https://en.wikipedia.org/wiki/Srgb#The_reverse_transformation
+    fn from(c: Color) -> Self {
+        fn f(component: f32) -> f32 {
+            let a = 0.055;
+            if component <= 0.04045 {
+                component / 12.92
+            } else {
+                ((component + a) / (1.0 + a)).powf(2.4)
+            }
+        }
+        LinearColor {
+            r: f(c.r),
+            g: f(c.g),
+            b: f(c.b),
+            a: c.a,
+        }
+    }
+}
+
+impl From<LinearColor> for Color {
+    fn from(c: LinearColor) -> Self {
+        fn f(component: f32) -> f32 {
+            let a = 0.055;
+            if component <= 0.003_130_8 {
+                component * 12.92
+            } else {
+                (1.0 + a) * component.powf(1.0 / 2.4)
+            }
+        }
+        Color {
+            r: f(c.r),
+            g: f(c.g),
+            b: f(c.b),
+            a: c.a,
+        }
+    }
+}
+
+impl From<LinearColor> for [f32; 4] {
+    fn from(color: LinearColor) -> Self {
+        [color.r, color.g, color.b, color.a]
     }
 }
 

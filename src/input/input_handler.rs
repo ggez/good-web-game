@@ -60,7 +60,7 @@ impl InputHandler {
 
     pub fn handle_key_down(&mut self, key: String) {
         self.keys.insert(key.clone());
-        self.frame_keys.insert(key.clone());
+        self.frame_keys.insert(key);
     }
 
     pub fn handle_end_frame(&mut self) {

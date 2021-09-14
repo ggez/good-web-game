@@ -156,7 +156,7 @@ pub fn set_default_filter(ctx: &mut Context, mode: FilterMode) {
 
 /// Get the default filter mode for new images.
 pub fn default_filter(ctx: &Context) -> FilterMode {
-    ctx.gfx_context.default_filter.clone()
+    ctx.gfx_context.default_filter
 }
 
 /// makes this blend mode current
@@ -167,7 +167,7 @@ pub(crate) fn set_current_blend_mode(ctx: &mut Context, blend_mode: BlendMode) {
 
 /// makes the global blend mode the current one
 pub(crate) fn restore_blend_mode(ctx: &mut Context) {
-    set_current_blend_mode(ctx, ctx.gfx_context.blend_mode.into())
+    set_current_blend_mode(ctx, ctx.gfx_context.blend_mode)
 }
 
 /// Tells the graphics system to actually put everything on the screen.
@@ -188,7 +188,7 @@ pub fn set_fullscreen(context: &mut Context, fullscreen: bool) {
 
 /// Sets the window size (in physical pixels) / resolution to the specified width and height.
 ///
-/// Note:   These dimensions are only interpreted as resolutions in true fullscreen mode.
+/// Note: Currently only available on Windows and currently buggy as well (sets window to a slightly wrong size).
 pub fn set_drawable_size(context: &mut Context, width: u32, height: u32) {
     context.quad_ctx.set_window_size(width, height);
 }

@@ -1,3 +1,59 @@
+//! # Good Web Game
+//!
+//! good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset
+//! on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
+//!
+//! It has been recently updated to support much of the ggez 0.6.1 API. If you're already working with ggez
+//! you might use this library to port your game to the web (or perhaps even mobile).
+//! Since it also runs well on desktop it also offers an alternative implementation of ggez, which might
+//! come in handy if you experience bugs in ggez, which you can't work around for some reason. Canvases
+//! with multisampling are currently buggy in classic ggez while they work fine in good-web-game, for example.
+//!
+//! If you are looking for a properly maintained and supported minimal high-level engine on top of miniquad -
+//! check out [macroquad](https://github.com/not-fl3/macroquad/) instead.
+//!
+//! ## Status
+//!
+//! "good-web-game" implements the most important parts of the ggez 0.6.1 API.
+//!
+//! ### Missing / Not available:
+//!
+//! * filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
+//! * game pad support
+//! * writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
+//! * spatial audio (overall audio support is still relatively limited, but could be improved)
+//! * resolution control in fullscreen mode
+//! * setting window position / size (the latter is available on Windows, but buggy)
+//! * screenshot function
+//! * window icon
+//! * and custom shader support (yes, this is a big one, but if you need it and are familiar with `miniquad` please
+//!   consider starting a PR; `miniquad` has all the tools you need)
+//!
+//!
+//! ## Demo
+//!
+//! In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
+//!
+//! ![screen](https://i.imgur.com/TjvCNwa.jpg)
+//!
+//! ## Example
+//!
+//! To build and run an example as a native binary:
+//!
+//! ```rust
+//! cargo run --example astroblasto
+//! ```
+//!
+//! Building for web and mobile is currently a WIP (ironic, I know).
+//! If you want to try your luck anyway the [miniquad instructions for WASM](https://github.com/not-fl3/miniquad/#wasm)
+//! might be a good place to start.
+//!
+//! ## Architecture
+//!
+//! Here is how `good-web-game` fits into your rust-based game:
+//!
+//! ![software stack](about/gwg-stack.png?raw=true "good-web-game software stack")
+
 pub mod audio;
 pub mod conf;
 pub mod error;
@@ -15,12 +71,11 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
+pub use crate::context::Context;
 pub use crate::error::*;
-pub use crate::{
-    context::Context, error::GameError, error::GameResult, event::EventHandler,
-    goodies::matrix_transform_2d,
-};
+
 pub use cgmath;
+pub extern crate mint;
 
 use crate::event::ErrorOrigin;
 use crate::filesystem::Filesystem;
@@ -139,10 +194,13 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
     }
 }
 
+/// Starts the game. Takes a start configuration, allowing you to specify additional options like
+/// high-dpi behavior, as well as a function specifying how to create the event handler from the
+/// new context.
 pub fn start<F, E>(conf: conf::Conf, f: F) -> GameResult
 where
     E: std::error::Error + 'static,
-    F: 'static + FnOnce(&mut Context) -> Box<dyn EventHandler<E>>,
+    F: 'static + FnOnce(&mut Context) -> Box<dyn event::EventHandler<E>>,
 {
     let fs = Filesystem::new(&conf);
     let quad_conf = conf.into();

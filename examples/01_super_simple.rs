@@ -1,18 +1,18 @@
+//! This has been created as a test for the mouse input functions, but it's simple enough, so why not
+
 extern crate good_web_game as ggez;
 
-//use ggez::input::mouse::set_cursor_grabbed;
+use ggez::input::mouse::set_cursor_grabbed;
 use ggez::{event::EventHandler, Context, GameError, GameResult};
 
 fn main() -> GameResult<()> {
-    //let (mut ctx, event_loop) = ContextBuilder::new("game_name", "author_name")
-    //    .build()
-    //    .unwrap();
-    //set_cursor_grabbed(&mut ctx, true);
-
     ggez::start(
         ggez::conf::Conf::default()
             .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
-        |_| Box::new(MousePos(0., 0.)),
+        |context| {
+            set_cursor_grabbed(context, true);
+            Box::new(MousePos(0., 0.))
+        },
     )
 }
 

@@ -60,6 +60,6 @@ impl Context {
         self.gfx_context
             .canvas
             .as_ref()
-            .map(|canvas| canvas.offscreen_pass.clone())
+            .map(|canvas| canvas.offscreen_pass)
     }
 }

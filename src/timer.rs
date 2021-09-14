@@ -1,17 +1,8 @@
 //! Timing and measurement functions.
 //!
-//! ggez does not try to do any framerate limitation by default. If
-//! you want to run at anything other than full-bore max speed all the
-//! time, call [`thread::yield_now()`](https://doc.rust-lang.org/std/thread/fn.yield_now.html)
-//! (or [`timer::yield_now()`](fn.yield_now.html) which does the same
-//! thing) to yield to the OS so it has a chance to breathe before continuing
-//! with your game. This should prevent it from using 100% CPU as much unless it
-//! really needs to.  Enabling vsync by setting
-//! [`conf.window_setup.vsync`](../conf/struct.WindowSetup.html#structfield.vsync)
-//! in your [`Conf`](../conf/struct.Conf.html) object is generally the best
-//! way to cap your displayed framerate.
+//! good-web-game does not try to do any framerate limitation by default (because it can't).
 //!
-//! For a more detailed tutorial in how to handle frame timings in games,
+//! For a detailed tutorial in how to handle frame timings in games,
 //! see <http://gafferongames.com/game-physics/fix-your-timestep/>
 
 use crate::context::Context;
@@ -23,6 +14,7 @@ use std::time::Duration;
 
 type Instant = f64;
 
+/// Returns the system time.
 pub fn time() -> f64 {
     miniquad::date::now()
 }

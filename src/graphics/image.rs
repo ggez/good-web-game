@@ -58,7 +58,7 @@ impl Image {
     }
 
     pub fn from_png_bytes(ctx: &mut Context, bytes: &[u8]) -> GameResult<Self> {
-        match image::load_from_memory(&bytes) {
+        match image::load_from_memory(bytes) {
             Ok(img) => {
                 let rgba = img.to_rgba();
 
@@ -83,7 +83,11 @@ impl Image {
         Self::from_texture(&mut ctx.quad_ctx, texture, ctx.gfx_context.default_filter)
     }
 
-    pub fn from_texture(ctx: &mut miniquad::Context, texture: Texture, filter: FilterMode) -> GameResult<Image> {
+    pub fn from_texture(
+        ctx: &mut miniquad::Context,
+        texture: Texture,
+        filter: FilterMode,
+    ) -> GameResult<Image> {
         #[rustfmt::skip]
         let vertices: [f32; 8] = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
         let vertex_buffer = Buffer::immutable(ctx, BufferType::VertexBuffer, &vertices);

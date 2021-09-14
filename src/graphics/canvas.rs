@@ -13,6 +13,7 @@ pub struct Canvas {
 }
 
 impl Canvas {
+    /// Create a new `Canvas` with the specified size.
     pub fn new(ctx: &mut Context, width: u16, height: u16) -> GameResult<Canvas> {
         let texture = Texture::new_render_texture(
             &mut ctx.quad_ctx,
@@ -24,9 +25,8 @@ impl Canvas {
             },
         );
 
-        // let framebuffer = Framebuffer::new(ctx, &texture)
-        //     .ok_or_else(|| GameError::UnknownError("Couldn't create a Framebuffer"))?;
-        let image = Image::from_texture(&mut ctx.quad_ctx, texture, ctx.gfx_context.default_filter)?;
+        let image =
+            Image::from_texture(&mut ctx.quad_ctx, texture, ctx.gfx_context.default_filter)?;
 
         let offscreen_pass = RenderPass::new(&mut ctx.quad_ctx, texture, None);
 

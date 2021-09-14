@@ -8,6 +8,9 @@ pub struct MouseContext {
     pub(crate) input_handler: InputHandler,
     last_position: Point2,
     delta: Point2,
+    cursor_grabbed: bool,
+    cursor_hidden: bool,
+    cursor_type: miniquad::CursorIcon,
 }
 
 impl MouseContext {
@@ -16,6 +19,9 @@ impl MouseContext {
             input_handler,
             last_position: Point2::new(0., 0.),
             delta: Point2::new(0., 0.),
+            cursor_grabbed: false,
+            cursor_hidden: false,
+            cursor_type: miniquad::CursorIcon::Default,
         }
     }
 
@@ -47,10 +53,12 @@ impl MouseContext {
     }
 }
 
+/// The current mouse position in pixels.
 pub fn position(ctx: &Context) -> cgmath::Point2<f32> {
     ctx.mouse_context.mouse_position()
 }
 
+/// Whether a certain mouse button is currently pressed.
 pub fn button_pressed(ctx: &Context, button: MouseButton) -> bool {
     ctx.mouse_context.button_pressed(button)
 }
@@ -64,6 +72,40 @@ pub fn delta(ctx: &Context) -> mint::Point2<f32> {
     ctx.mouse_context.delta.into()
 }
 
+/// The position the mouse had during the latest `mouse_motion_event`
 pub fn last_position(ctx: &Context) -> mint::Point2<f32> {
     ctx.mouse_context.last_position.into()
+}
+
+/// Get whether or not the mouse is grabbed (confined to the window)
+pub fn cursor_grabbed(ctx: &Context) -> bool {
+    ctx.mouse_context.cursor_grabbed
+}
+
+/// Set whether or not the mouse is grabbed (confined to the window)
+pub fn set_cursor_grabbed(ctx: &mut Context, grabbed: bool) {
+    ctx.mouse_context.cursor_grabbed = grabbed;
+    ctx.quad_ctx.set_cursor_grab(grabbed);
+}
+
+/// Returns the current mouse cursor type of the window.
+pub fn cursor_type(ctx: &Context) -> miniquad::CursorIcon {
+    ctx.mouse_context.cursor_type
+}
+
+/// Modifies the mouse cursor type of the window.
+pub fn set_cursor_type(ctx: &mut Context, cursor_type: miniquad::CursorIcon) {
+    ctx.mouse_context.cursor_type = cursor_type;
+    ctx.quad_ctx.set_mouse_cursor(cursor_type);
+}
+
+/// Set whether or not the mouse is hidden (invisible)
+pub fn cursor_hidden(ctx: &Context) -> bool {
+    ctx.mouse_context.cursor_hidden
+}
+
+/// Set whether or not the mouse is hidden (invisible).
+pub fn set_cursor_hidden(ctx: &mut Context, hidden: bool) {
+    ctx.mouse_context.cursor_hidden = hidden;
+    ctx.quad_ctx.show_mouse(!hidden);
 }

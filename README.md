@@ -15,10 +15,10 @@ If you are looking for a properly maintained and supported minimal high-level en
 
 * filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
 * game pad support
-* hiding / grabbing the cursor (should be possible with miniquad though, might be added)
 * writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
 * spatial audio (overall audio support is still relatively limited, but could be improved)
 * resolution control in fullscreen mode
+* setting window position / size (the latter is available on Windows, but buggy)
 * screenshot function
 * window icon
 * and custom shader support (yes, this is a big one, but if you need it and are familiar with `miniquad` please

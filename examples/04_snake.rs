@@ -352,10 +352,10 @@ impl GameState {
         // First we put our snake a quarter of the way across our grid in the x axis
         // and half way down the y axis. This works well since we start out moving to the right.
         let snake_pos = (GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into();
-        // And we seed our RNG with the system RNG.
-        let mut seed: [u8; 8] = [0; 8];
-        getrandom::getrandom(&mut seed[..]).expect("Could not create RNG seed");
-        qrand::srand(u64::from_ne_bytes(seed));
+        // And we seed our RNG manually. (using the system rng would require getrandom, which needs wasm-bindgen)
+        // let mut seed: [u8; 8] = [0; 8];
+        //getrandom::getrandom(&mut seed[..]).expect("Could not create RNG seed");
+        qrand::srand(12345);
         // Then we choose a random place to put our piece of food using the helper we made
         // earlier.
         let food_pos = GridPosition::random(GRID_SIZE.0, GRID_SIZE.1);

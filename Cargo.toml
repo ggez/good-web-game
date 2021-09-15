@@ -35,7 +35,7 @@ jpeg = [ "image/jpeg" ]
 [dev-dependencies]
 quad-rand = "0.2.1"
 oorandom = "11"
-getrandom = { version = "0.2", features = ["js"] }
+#getrandom = { version = "0.2", features = ["js"] }
 glam = { version = "0.17.3", features = ["mint"]}
 keyframe = "1.0.4"
 keyframe_derive = "1.0.0"

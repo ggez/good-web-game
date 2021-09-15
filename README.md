@@ -16,7 +16,6 @@ If you are looking for a properly maintained and supported minimal high-level en
 ### Missing / Not available:
 
 * filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
-* game pad support
 * writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
 * spatial audio (overall audio support is still relatively limited, but could be improved)
 * resolution control in fullscreen mode

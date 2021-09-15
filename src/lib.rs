@@ -79,6 +79,7 @@ pub extern crate mint;
 
 use crate::event::ErrorOrigin;
 use crate::filesystem::Filesystem;
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
 use crate::input::gamepad::GamepadId;
 use crate::input::mouse;
 #[cfg(feature = "log-impl")]
@@ -96,6 +97,8 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
         //  possible here, so this is the closest it can get)
         if !self.context.continuing {
             self.context.quad_ctx.quit();
+            // TODO: Even after this has been called the app might continue on executing into `EventHandler::update`
+            //       starting another game logic cycle. This could be pretty bad...
         }
 
         // in ggez tick is called before update, so I moved this to the front
@@ -105,31 +108,36 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
         graphics::release_dropped_bindings();
 
         // before running the game logic update the gamepad state
-        while let Some(gilrs::Event { id, event, .. }) = self.context.gamepad_context.next_event() {
-            match event {
-                gilrs::EventType::ButtonPressed(button, _) => {
-                    self.event_handler.gamepad_button_down_event(
-                        &mut self.context,
-                        button,
-                        GamepadId(id),
-                    );
+        #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
+        {
+            while let Some(gilrs::Event { id, event, .. }) =
+                self.context.gamepad_context.next_event()
+            {
+                match event {
+                    gilrs::EventType::ButtonPressed(button, _) => {
+                        self.event_handler.gamepad_button_down_event(
+                            &mut self.context,
+                            button,
+                            GamepadId(id),
+                        );
+                    }
+                    gilrs::EventType::ButtonReleased(button, _) => {
+                        self.event_handler.gamepad_button_up_event(
+                            &mut self.context,
+                            button,
+                            GamepadId(id),
+                        );
+                    }
+                    gilrs::EventType::AxisChanged(axis, value, _) => {
+                        self.event_handler.gamepad_axis_event(
+                            &mut self.context,
+                            axis,
+                            value,
+                            GamepadId(id),
+                        );
+                    }
+                    _ => {}
                 }
-                gilrs::EventType::ButtonReleased(button, _) => {
-                    self.event_handler.gamepad_button_up_event(
-                        &mut self.context,
-                        button,
-                        GamepadId(id),
-                    );
-                }
-                gilrs::EventType::AxisChanged(axis, value, _) => {
-                    self.event_handler.gamepad_axis_event(
-                        &mut self.context,
-                        axis,
-                        value,
-                        GamepadId(id),
-                    );
-                }
-                _ => {}
             }
         }
 

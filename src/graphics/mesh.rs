@@ -887,7 +887,6 @@ fn bbox_for_vertices(verts: &[Vertex]) -> Option<Rect> {
     })
 }
 
-// TODO: implement MeshBatch
 /// An index of a particular instance in a `MeshBatch`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MeshIdx(pub usize);

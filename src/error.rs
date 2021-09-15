@@ -87,6 +87,7 @@ impl From<zip::result::ZipError> for GameError {
     }
 }
 
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
 impl From<gilrs::Error> for GameError {
     fn from(s: gilrs::Error) -> GameError {
         let errstr = format!("Gamepad error: {}", s);

@@ -92,64 +92,66 @@ impl graphics::Drawable for SpriteBatch {
             }
         }
 
-        let mut image = self.image.borrow_mut();
-        let mut gpu_sprites = self.gpu_sprites.borrow_mut();
+        {
+            let mut image = self.image.borrow_mut();
+            let mut gpu_sprites = self.gpu_sprites.borrow_mut();
 
-        if self.sprites.len() > gpu_sprites.len() {
-            gpu_sprites.resize(self.sprites.len(), InstanceAttributes::default());
+            if self.sprites.len() > gpu_sprites.len() {
+                gpu_sprites.resize(self.sprites.len(), InstanceAttributes::default());
 
-            let buffer = Buffer::stream(
-                &mut ctx.quad_ctx,
-                BufferType::VertexBuffer,
-                std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
-            );
+                let buffer = Buffer::stream(
+                    &mut ctx.quad_ctx,
+                    BufferType::VertexBuffer,
+                    std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
+                );
 
-            if image.bindings.vertex_buffers.len() <= 1 {
-                image.bindings.vertex_buffers.push(buffer);
-            } else {
-                image.bindings.vertex_buffers[1].delete();
+                if image.bindings.vertex_buffers.len() <= 1 {
+                    image.bindings.vertex_buffers.push(buffer);
+                } else {
+                    image.bindings.vertex_buffers[1].delete();
 
-                image.bindings.vertex_buffers[1] = buffer;
+                    image.bindings.vertex_buffers[1] = buffer;
+                }
             }
+
+            for (n, param) in self.sprites.iter().enumerate() {
+                let mut new_param = *param;
+                let src_width = param.src.w;
+                let src_height = param.src.h;
+                // We have to mess with the scale to make everything
+                // be its-unit-size-in-pixels.
+                let scale_x = src_width * f32::from(image.width);
+                let scale_y = src_height * f32::from(image.height);
+
+                use crate::graphics::Transform;
+                new_param = match new_param.trans {
+                    Transform::Values { scale, .. } => new_param.scale(mint::Vector2 {
+                        x: scale.x * scale_x,
+                        y: scale.y * scale_y,
+                    }),
+                    Transform::Matrix(m) => new_param.transform(
+                        cgmath::Matrix4::from(m)
+                            * cgmath::Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
+                    ),
+                };
+
+                let instance = InstanceAttributes {
+                    model: new_param.trans.to_bare_matrix().into(),
+                    source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
+                    color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
+                };
+                gpu_sprites[n] = instance;
+            }
+
+            image.bindings.vertex_buffers[1]
+                .update(&mut ctx.quad_ctx, &gpu_sprites[0..self.sprites.len()]);
+
+            let pass = ctx.framebuffer();
+            ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
+            ctx.quad_ctx
+                .apply_pipeline(&ctx.gfx_context.sprite_pipeline);
+            ctx.quad_ctx.apply_bindings(&image.bindings);
         }
-
-        for (n, param) in self.sprites.iter().enumerate() {
-            let mut new_param = *param;
-            let src_width = param.src.w;
-            let src_height = param.src.h;
-            // We have to mess with the scale to make everything
-            // be its-unit-size-in-pixels.
-            let scale_x = src_width * f32::from(image.width);
-            let scale_y = src_height * f32::from(image.height);
-
-            use crate::graphics::Transform;
-            new_param = match new_param.trans {
-                Transform::Values { scale, .. } => new_param.scale(mint::Vector2 {
-                    x: scale.x * scale_x,
-                    y: scale.y * scale_y,
-                }),
-                Transform::Matrix(m) => new_param.transform(
-                    cgmath::Matrix4::from(m)
-                        * cgmath::Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
-                ),
-            };
-
-            let instance = InstanceAttributes {
-                model: new_param.trans.to_bare_matrix().into(),
-                source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
-                color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
-            };
-            gpu_sprites[n] = instance;
-        }
-
-        image.bindings.vertex_buffers[1]
-            .update(&mut ctx.quad_ctx, &gpu_sprites[0..self.sprites.len()]);
-
-        let pass = ctx.framebuffer();
-        ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx
-            .apply_pipeline(&ctx.gfx_context.sprite_pipeline);
-        ctx.quad_ctx.apply_bindings(&image.bindings);
 
         let uniforms = batch_shader::Uniforms {
             projection: ctx.gfx_context.projection,

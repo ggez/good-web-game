@@ -6,8 +6,12 @@ extern crate good_web_game as ggez;
 use ggez::event::{self, KeyCode, KeyMods, MouseButton};
 use ggez::graphics::{self, Color, DrawMode};
 use ggez::input;
-use ggez::input::gamepad::gilrs::{Axis, Button};
-use ggez::input::gamepad::GamepadId;
+
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
+use ggez::input::gamepad::{
+    gilrs::{Axis, Button},
+    GamepadId,
+};
 use ggez::{Context, GameResult};
 use glam::*;
 
@@ -121,14 +125,17 @@ impl event::EventHandler<ggez::GameError> for MainState {
         println!("Text input: {}", ch);
     }
 
+    #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
     fn gamepad_button_down_event(&mut self, _ctx: &mut Context, btn: Button, id: GamepadId) {
         println!("Gamepad button pressed: {:?} Gamepad_Id: {:?}", btn, id);
     }
 
+    #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
     fn gamepad_button_up_event(&mut self, _ctx: &mut Context, btn: Button, id: GamepadId) {
         println!("Gamepad button released: {:?} Gamepad_Id: {:?}", btn, id);
     }
 
+    #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
     fn gamepad_axis_event(&mut self, _ctx: &mut Context, axis: Axis, value: f32, id: GamepadId) {
         println!(
             "Axis Event: {:?} Value: {} Gamepad_Id: {:?}",

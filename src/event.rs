@@ -1,8 +1,10 @@
 use crate::context::Context;
 
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
 use crate::input::gamepad::GamepadId;
 pub use crate::input::keyboard::KeyMods;
 pub use crate::input::MouseButton;
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
 use gilrs::{Axis, Button};
 pub use miniquad::{KeyCode, TouchPhase};
 
@@ -100,16 +102,19 @@ where
     /// This is the intended way of facilitating text input.
     fn text_input_event(&mut self, _ctx: &mut Context, _character: char) {}
 
+    #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
     /// A gamepad button was pressed; `id` identifies which gamepad.
     /// Use [`input::gamepad()`](../input/fn.gamepad.html) to get more info about
     /// the gamepad.
     fn gamepad_button_down_event(&mut self, _ctx: &mut Context, _btn: Button, _id: GamepadId) {}
 
+    #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
     /// A gamepad button was released; `id` identifies which gamepad.
     /// Use [`input::gamepad()`](../input/fn.gamepad.html) to get more info about
     /// the gamepad.
     fn gamepad_button_up_event(&mut self, _ctx: &mut Context, _btn: Button, _id: GamepadId) {}
 
+    #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
     /// A gamepad axis moved; `id` identifies which gamepad.
     /// Use [`input::gamepad()`](../input/fn.gamepad.html) to get more info about
     /// the gamepad.

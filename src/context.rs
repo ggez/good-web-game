@@ -1,3 +1,4 @@
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
 use crate::input::gamepad;
 use crate::{
     audio,
@@ -39,6 +40,7 @@ pub struct Context {
     pub mouse_context: MouseContext,
     /// Keyboard context
     pub keyboard_context: KeyboardContext,
+    #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
     /// Gamepad context
     pub gamepad_context: Box<dyn gamepad::GamepadContext>,
     /// Timer state
@@ -53,23 +55,39 @@ pub struct Context {
 impl Context {
     pub(crate) fn new(mut quad_ctx: miniquad::Context, filesystem: Filesystem) -> Context {
         let input_handler = InputHandler::new();
-        let gamepad_context: Box<dyn gamepad::GamepadContext> =
-            if let Ok(g_context) = gamepad::GilrsGamepadContext::new() {
-                Box::new(g_context)
-            } else {
-                Box::new(gamepad::NullGamepadContext::default())
-            };
+        #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
+        {
+            let gamepad_context: Box<dyn gamepad::GamepadContext> =
+                if let Ok(g_context) = gamepad::GilrsGamepadContext::new() {
+                    Box::new(g_context)
+                } else {
+                    Box::new(gamepad::NullGamepadContext::default())
+                };
 
-        Context {
-            filesystem,
-            gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
-            audio_context: audio::AudioContext::new(),
-            mouse_context: MouseContext::new(input_handler),
-            keyboard_context: KeyboardContext::new(),
-            gamepad_context,
-            timer_context: TimeContext::new(),
-            quad_ctx,
-            continuing: true,
+            Context {
+                filesystem,
+                gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
+                audio_context: audio::AudioContext::new(),
+                mouse_context: MouseContext::new(input_handler),
+                keyboard_context: KeyboardContext::new(),
+                gamepad_context,
+                timer_context: TimeContext::new(),
+                quad_ctx,
+                continuing: true,
+            }
+        }
+        #[cfg(any(target_arch = "wasm32", target_os = "ios", target_os = "android",))]
+        {
+            Context {
+                filesystem,
+                gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
+                audio_context: audio::AudioContext::new(),
+                mouse_context: MouseContext::new(input_handler),
+                keyboard_context: KeyboardContext::new(),
+                timer_context: TimeContext::new(),
+                quad_ctx,
+                continuing: true,
+            }
         }
     }
 

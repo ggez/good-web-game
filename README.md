@@ -33,6 +33,8 @@ In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
 
 ![screen](https://i.imgur.com/TjvCNwa.jpg)
 
+For a demo of the current version of good-web-game check out [astroblasto running on the web](https://psteinhaus.github.io/gwg-example/).
+
 ## Example
 
 To build and run an example as a native binary:

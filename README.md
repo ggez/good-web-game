@@ -22,6 +22,7 @@ If you are looking for a properly maintained and supported minimal high-level en
 * setting window position / size (the latter is available on Windows, but buggy)
 * screenshot function
 * window icon
+* gamepad support on WASM (as `gilrs` depends on wasm-bindgen)
 * and custom shader support (yes, this is a big one, but if you need it and are familiar with `miniquad` please
   consider starting a PR; `miniquad` has all the tools you need)
   
@@ -40,9 +41,7 @@ To build and run an example as a native binary:
 cargo run --example 05_astroblasto
 ```
 
-Building for web and mobile is currently a WIP (ironic, I know).
-If you want to try your luck anyway the [miniquad instructions for WASM](https://github.com/not-fl3/miniquad/#wasm)
-might be a good place to start.
+If you want to build for WASM take a look at the [miniquad instructions for WASM](https://github.com/not-fl3/miniquad/#wasm).
 
 ## Architecture
 

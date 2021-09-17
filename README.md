@@ -26,6 +26,16 @@ If you are looking for a properly maintained and supported minimal high-level en
 * and custom shader support (yes, this is a big one, but if you need it and are familiar with `miniquad` please
   consider starting a PR; `miniquad` has all the tools you need)
   
+### On blurry graphics
+ 
+You may run into somewhat blurry graphics. This is caused by high-dpi rendering:
+
+When run on a system with a scaling factor unequal to 1 the graphics may appear blurry, due to the drawbuffer being scaled up, to achieve a window of the size requested by your OS.
+This size is usually "the size you specified in `Conf`" * "your OS scaling factor".
+
+To avoid this set `Conf::high_dpi` to `true`. This leads to the drawbuffer being the size of your actual physical window. It also means though that you can't be sure how big your drawable space will actually be, as this will then depend on where the program is being run.
+
+We aim towards changing this, so that windows are always created with the physical size specified in `Conf`, but that's not directly supported by miniquad currently.
  
 ## Demo 
 
@@ -33,7 +43,7 @@ In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
 
 ![screen](https://i.imgur.com/TjvCNwa.jpg)
 
-For a demo of the current version of good-web-game check out [astroblasto running on the web](https://psteinhaus.github.io/gwg-example/) ([source](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/gwg-example)).
+For a tiny demo of the current version of good-web-game check out [astroblasto running on the web](https://psteinhaus.github.io/gwg-example/) ([source](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/gwg-example)).
 
 ## Example
 

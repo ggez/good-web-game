@@ -99,6 +99,9 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
             self.context.quad_ctx.quit();
             // TODO: Even after this has been called the app might continue on executing into `EventHandler::update`
             //       starting another game logic cycle. This could be pretty bad...
+            //       for now we somewhat fix this by yielding the time slice and simply returning
+            std::thread::yield_now();
+            return;
         }
 
         // in ggez tick is called before update, so I moved this to the front

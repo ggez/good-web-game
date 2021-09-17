@@ -10,8 +10,9 @@ extern crate good_web_game as ggez;
 use quad_rand as qrand;
 
 use ggez::event::{EventHandler, KeyCode, KeyMods};
-use ggez::graphics;
+use ggez::graphics::DrawParam;
 use ggez::timer;
+use ggez::{audio, graphics};
 use ggez::{Context, GameResult};
 
 type Point2 = glam::Vec2;
@@ -19,8 +20,6 @@ type Vector2 = glam::Vec2;
 
 /// *********************************************************************
 /// Basic stuff, make some helpers for vector functions.
-/// ggez includes the nalgebra math library to provide lots of
-/// math stuff  We just add some helpers.
 /// **********************************************************************
 
 /// Create a unit vector representing the
@@ -239,9 +238,8 @@ struct Assets {
     shot_image: graphics::Image,
     rock_image: graphics::Image,
     font: graphics::Font,
-    // Todo: add a music track to show non-spatial audio?
-    // shot_sound: audio::SpatialSource,
-    // hit_sound: audio::SpatialSource,
+    shot_sound: audio::Source,
+    hit_sound: audio::Source,
 }
 
 impl Assets {
@@ -257,13 +255,16 @@ impl Assets {
         // shot_sound.set_ears([-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]);
         // hit_sound.set_ears([-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]);
 
+        let shot_sound = audio::Source::new(ctx, "/pew.ogg")?;
+        let hit_sound = audio::Source::new(ctx, "/boom.ogg")?;
+
         Ok(Assets {
             player_image,
             shot_image,
             rock_image,
             font,
-            // shot_sound,
-            // hit_sound,
+            shot_sound,
+            hit_sound,
         })
     }
 
@@ -320,6 +321,7 @@ struct MainState {
     screen_height: f32,
     input: InputState,
     player_shot_timeout: f32,
+    game_over: bool,
 }
 
 impl MainState {
@@ -346,7 +348,10 @@ impl MainState {
             screen_height: h,
             input: InputState::default(),
             player_shot_timeout: 0.0,
+            game_over: false,
         };
+
+        audio::maybe_create_soundmixer(ctx);
 
         Ok(s)
     }
@@ -367,6 +372,11 @@ impl MainState {
         // let pos = world_to_audio_coords(self.screen_width, self.screen_height, player.pos);
         // self.assets.shot_sound.set_position(pos);
         // let _ = self.assets.shot_sound.play();
+
+        self.assets
+            .shot_sound
+            .play()
+            .expect("couldn't play sound for some reason");
     }
 
     fn clear_dead_stuff(&mut self) {
@@ -391,6 +401,11 @@ impl MainState {
                     //     world_to_audio_coords(self.screen_width, self.screen_height, rock.pos);
                     // self.assets.shot_sound.set_position(pos);
                     // let _ = self.assets.hit_sound.play();
+
+                    self.assets
+                        .hit_sound
+                        .play()
+                        .expect("couldn't play sound for some reason");
                 }
             }
         }
@@ -453,7 +468,7 @@ impl EventHandler<ggez::GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         const DESIRED_FPS: u32 = 60;
 
-        while timer::check_update_time(ctx, DESIRED_FPS) {
+        while timer::check_update_time(ctx, DESIRED_FPS) && !self.game_over {
             let seconds = 1.0 / (DESIRED_FPS as f32);
 
             // Update the player state based on the user input.
@@ -500,6 +515,7 @@ impl EventHandler<ggez::GameError> for MainState {
             // but for now we just quit.
             if self.player.life <= 0.0 {
                 println!("Game over!");
+                self.game_over = true; // this is mostly relevant for WASM, as `quit` won't do anything there
                 ggez::event::quit(ctx);
             }
         }
@@ -547,6 +563,20 @@ impl EventHandler<ggez::GameError> for MainState {
             &score_display,
             (score_dest, 0.0, graphics::Color::WHITE),
         )?;
+        if self.game_over {
+            // this only really matters on Wasm, as desktop versions of this app will just quit on game over
+            let game_over_dest = graphics::screen_coordinates(ctx).center();
+            let game_over_display =
+                graphics::Text::new(("GAME OVER".to_string(), self.assets.font, 32.0));
+            graphics::draw(
+                ctx,
+                &game_over_display,
+                DrawParam::new()
+                    .dest(game_over_dest)
+                    .offset([0.5, 0.5])
+                    .color(graphics::Color::WHITE),
+            )?;
+        }
 
         // Then we flip the screen...
         graphics::present(ctx)?;
@@ -555,9 +585,9 @@ impl EventHandler<ggez::GameError> for MainState {
         // This tells the OS that we're done using the CPU but it should
         // get back to this program as soon as it can.
         // This ideally prevents the game from using 100% CPU all the time
-        // even if vsync is off.
+        // if vsync is off.
         // The actual behavior can be a little platform-specific.
-        //timer::yield_now();
+        //std::thread::yield_now();
         Ok(())
     }
 

@@ -131,6 +131,9 @@ where
 /// Terminates the [`ggez::event::run()`](fn.run.html) loop by setting
 /// [`Context.continuing`](struct.Context.html#structfield.continuing)
 /// to `false`.
+///
+/// NOTE: Doesn't end the application on Wasm, as that's not really possible,
+/// but stops the `update` function from running.
 pub fn quit(ctx: &mut Context) {
     ctx.continuing = false;
 }

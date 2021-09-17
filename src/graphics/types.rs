@@ -62,6 +62,14 @@ impl Rect {
         }
     }
 
+    /// Returns the center of the `Rect` as a `Point2`.
+    pub fn center(&self) -> mint::Point2<f32> {
+        mint::Point2 {
+            x: self.x + self.w / 2.,
+            y: self.y + self.h / 2.,
+        }
+    }
+
     /// Returns the left edge of the `Rect`
     pub fn left(&self) -> f32 {
         self.x

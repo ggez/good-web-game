@@ -92,7 +92,7 @@ impl Source {
 }
 
 /// This function should be called in one of the interaction event callbacks before any usages of audio
-/// Because web.
+/// Because web: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices
 pub fn maybe_create_soundmixer(ctx: &mut Context) {
     let mut mixer = ctx.audio_context.mixer.borrow_mut();
     if mixer.is_none() {

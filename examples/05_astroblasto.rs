@@ -351,8 +351,6 @@ impl MainState {
             game_over: false,
         };
 
-        audio::maybe_create_soundmixer(ctx);
-
         Ok(s)
     }
 
@@ -600,6 +598,9 @@ impl EventHandler<ggez::GameError> for MainState {
         _keymod: KeyMods,
         _repeat: bool,
     ) {
+        // creating the mixer on user interaction might be necessary for web
+        audio::maybe_create_soundmixer(ctx);
+
         match keycode {
             KeyCode::Up => {
                 self.input.yaxis = 1.0;

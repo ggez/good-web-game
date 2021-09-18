@@ -28,7 +28,7 @@ impl From<QuadMouseButton> for MouseButton {
 pub struct InputHandler {
     pub keys: HashSet<String>,
     pub frame_keys: HashSet<String>,
-    pub mouse_position: Point2<f64>,
+    pub mouse_position: Point2<f32>,
     pub mouse_keys: HashSet<MouseButton>,
     pub wheel: f32,
 }
@@ -44,19 +44,17 @@ impl InputHandler {
         }
     }
 
-    pub fn handle_mouse_move(&mut self, mouse_x: i32, mouse_y: i32) {
-        let mouse = Point2::new(mouse_x as f64, mouse_y as f64);
-
-        self.mouse_position = mouse;
+    pub fn handle_mouse_move(&mut self, mouse_x: f32, mouse_y: f32) {
+        self.mouse_position = Point2::new(mouse_x, mouse_y);
     }
 
-    // pub fn handle_mouse_down(&mut self, button: WebMouseButton) {
-    //     self.mouse_keys.insert(MouseButton::from(&button));
-    // }
+    pub fn handle_mouse_down(&mut self, button: miniquad::MouseButton) {
+        self.mouse_keys.insert(MouseButton::from(button));
+    }
 
-    // pub fn handle_mouse_up(&mut self, button: WebMouseButton) {
-    //     self.mouse_keys.remove(&MouseButton::from(&button));
-    // }
+    pub fn handle_mouse_up(&mut self, button: miniquad::MouseButton) {
+        self.mouse_keys.remove(&MouseButton::from(button));
+    }
 
     pub fn handle_key_down(&mut self, key: String) {
         self.keys.insert(key.clone());

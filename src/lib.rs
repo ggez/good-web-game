@@ -182,6 +182,10 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
     }
 
     fn mouse_motion_event(&mut self, x: f32, y: f32) {
+        self.context
+            .mouse_context
+            .input_handler
+            .handle_mouse_move(x, y);
         let old_pos = mouse::last_position(&self.context);
         let dx = x - old_pos.x;
         let dy = y - old_pos.y;
@@ -196,11 +200,19 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
     }
 
     fn mouse_button_down_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
+        self.context
+            .mouse_context
+            .input_handler
+            .handle_mouse_down(button);
         self.event_handler
             .mouse_button_down_event(&mut self.context, button.into(), x, y);
     }
 
     fn mouse_button_up_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
+        self.context
+            .mouse_context
+            .input_handler
+            .handle_mouse_up(button);
         self.event_handler
             .mouse_button_up_event(&mut self.context, button.into(), x, y);
     }

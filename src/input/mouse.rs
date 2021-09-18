@@ -41,7 +41,7 @@ impl MouseContext {
     }
 
     pub fn mouse_position(&self) -> cgmath::Point2<f32> {
-        self.input_handler.mouse_position.cast::<f32>().unwrap()
+        self.input_handler.mouse_position
     }
 
     pub fn button_pressed(&self, button: MouseButton) -> bool {
@@ -54,8 +54,8 @@ impl MouseContext {
 }
 
 /// The current mouse position in pixels.
-pub fn position(ctx: &Context) -> cgmath::Point2<f32> {
-    ctx.mouse_context.mouse_position()
+pub fn position(ctx: &Context) -> mint::Point2<f32> {
+    ctx.mouse_context.mouse_position().into()
 }
 
 /// Whether a certain mouse button is currently pressed.

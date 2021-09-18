@@ -11,9 +11,11 @@ use quad_rand as qrand;
 
 use ggez::event::{EventHandler, KeyCode, KeyMods};
 use ggez::graphics::DrawParam;
+use ggez::input::MouseButton;
 use ggez::timer;
 use ggez::{audio, graphics};
 use ggez::{Context, GameResult};
+use std::f32::consts::PI;
 
 type Point2 = glam::Vec2;
 type Vector2 = glam::Vec2;
@@ -157,7 +159,40 @@ const PLAYER_TURN_RATE: f32 = 3.0;
 // Seconds between shots
 const PLAYER_SHOT_TIME: f32 = 0.5;
 
-fn player_handle_input(actor: &mut Actor, input: &InputState, dt: f32) {
+fn player_handle_input(
+    ctx: &Context,
+    actor: &mut Actor,
+    input: &mut InputState,
+    dt: f32,
+    screen_size: (f32, f32),
+) {
+    // optional mouse controls, useful for web and mobile
+    fn angle_from_to(source_angle: f32, target_angle: f32) -> f32 {
+        let diff = target_angle - source_angle;
+
+        ((diff + PI) % (2. * PI) + (2. * PI)) % (2. * PI) - PI
+    }
+    use ggez::input::mouse;
+    if mouse::button_pressed(ctx, MouseButton::Left) {
+        let mouse_pos = mouse::position(ctx);
+        let pos = world_to_screen_coords(screen_size.0, screen_size.1, actor.pos);
+        let (x, y) = (mouse_pos.x, mouse_pos.y);
+        // calculate whether to turn left or right
+        let target_angle = f32::atan2(pos.y - y, x - pos.x);
+        let diff_angle = angle_from_to(-actor.facing + PI / 2., target_angle);
+        match diff_angle {
+            d if d > 0. => input.xaxis = -1.0,
+            d if d < 0. => input.xaxis = 1.0,
+            _ => {}
+        }
+        // accelerate if the mouse is in front of the player ship
+        if diff_angle.abs() < PI / 4. {
+            input.yaxis = 1.0;
+        }
+        // simply always fire when touched
+        input.fire = true;
+    }
+
     actor.facing += dt * PLAYER_TURN_RATE * input.xaxis;
 
     if input.yaxis > 0.0 {
@@ -470,7 +505,13 @@ impl EventHandler<ggez::GameError> for MainState {
             let seconds = 1.0 / (DESIRED_FPS as f32);
 
             // Update the player state based on the user input.
-            player_handle_input(&mut self.player, &self.input, seconds);
+            player_handle_input(
+                ctx,
+                &mut self.player,
+                &mut self.input,
+                seconds,
+                (self.screen_width, self.screen_height),
+            );
             self.player_shot_timeout -= seconds;
             if self.input.fire && self.player_shot_timeout < 0.0 {
                 self.fire_player_shot();
@@ -639,6 +680,26 @@ impl EventHandler<ggez::GameError> for MainState {
         }
     }
 
+    fn mouse_button_down_event(
+        &mut self,
+        ctx: &mut Context,
+        _button: MouseButton,
+        _x: f32,
+        _y: f32,
+    ) {
+        // creating the mixer on user interaction might be necessary for web
+        audio::maybe_create_soundmixer(ctx);
+    }
+
+    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {
+        if let MouseButton::Left = button {
+            // stop shooting and accelerating
+            self.input.yaxis = 0.0;
+            self.input.xaxis = 0.0;
+            self.input.fire = false;
+        }
+    }
+
     fn resize_event(&mut self, context: &mut Context, w: f32, h: f32) {
         self.screen_width = w;
         self.screen_height = h;
@@ -654,6 +715,9 @@ impl EventHandler<ggez::GameError> for MainState {
 /// **********************************************************************
 
 pub fn main() -> GameResult {
+    // seed the rng
+    qrand::srand(1234);
+
     ggez::start(
         ggez::conf::Conf::default()
             .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),

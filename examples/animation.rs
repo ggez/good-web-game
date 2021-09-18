@@ -283,6 +283,12 @@ impl event::EventHandler<ggez::GameError> for MainState {
             format!("Duration: {:.2} s", self.duration),
             [300.0, 160.0].into(),
         )?;
+        // draw info about the controls for web
+        draw_info(
+            ctx,
+            "Controls: Up/Down, Left/Right, W/S".to_string(),
+            [44.0, 520.0].into(),
+        )?;
 
         // draw the animated ball
         let ball = graphics::Mesh::new_circle(

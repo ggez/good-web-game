@@ -106,10 +106,11 @@ impl event::EventHandler<ggez::GameError> for MainState {
 
         // Draw the batch
         let param = graphics::DrawParam::default();
-        //let param = param.offset([0.5, 0.5]); // Uncomment this line to see the effect of an offset on a MeshBatch
-                                                // This is somewhat expensive though, as it results in the MeshBatch
-                                                // having to calculate its drawn dimensions every frame, to be able
-                                                // to apply the offset based on that.
+        // Uncomment this line to see the effect of an offset on a MeshBatch
+        // This is somewhat expensive though, as it results in the MeshBatch
+        // having to calculate its drawn dimensions every frame, to be able
+        // to apply the offset based on that.
+        //let param = param.offset([0.5, 0.5]);
         self.mesh_batch.draw(ctx, param)?;
 
         graphics::present(ctx)?;

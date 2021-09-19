@@ -1,7 +1,3 @@
-//use miniquad::{Equation, BlendValue, BlendFactor};
-
-//type Blend = Option<(Equation, BlendFactor, BlendFactor)>;
-
 use miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 
 /// An enum for specifying default and custom blend modes

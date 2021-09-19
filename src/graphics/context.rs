@@ -76,11 +76,7 @@ impl GraphicsContext {
         let image_pipeline = miniquad::Pipeline::with_params(
             ctx,
             &[BufferLayout::default()],
-            &[VertexAttribute::with_buffer(
-                "position",
-                VertexFormat::Float2,
-                0,
-            )],
+            &[VertexAttribute::new("position", VertexFormat::Float2)],
             image_shader,
             PipelineParams {
                 color_blend: Some(color_blend),

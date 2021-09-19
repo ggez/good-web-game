@@ -47,12 +47,32 @@ where
     /// and relative x and y coordinates compared to its last position.
     fn mouse_motion_event(&mut self, _ctx: &mut Context, _x: f32, _y: f32, _dx: f32, _dy: f32) {}
     fn touch_event(&mut self, ctx: &mut Context, phase: TouchPhase, _id: u64, x: f32, y: f32) {
-        if phase == TouchPhase::Started {
-            self.mouse_button_down_event(ctx, MouseButton::Left, x, y);
-        }
-
-        if phase == TouchPhase::Ended {
-            self.mouse_button_up_event(ctx, MouseButton::Left, x, y);
+        ctx.mouse_context.input_handler.handle_mouse_move(x, y);
+        // TODO: this is ugly code duplication; I'll fix it later when getting rid of the `InputHandler`
+        let old_pos = crate::mouse::last_position(ctx);
+        let dx = x - old_pos.x;
+        let dy = y - old_pos.y;
+        // update the frame delta value
+        let old_delta = crate::mouse::delta(ctx);
+        ctx.mouse_context
+            .set_delta((old_delta.x + dx, old_delta.y + dy).into());
+        ctx.mouse_context.set_last_position((x, y).into());
+        match phase {
+            TouchPhase::Started => {
+                ctx.mouse_context
+                    .input_handler
+                    .handle_mouse_down(miniquad::MouseButton::Left);
+                self.mouse_button_down_event(ctx, MouseButton::Left, x, y);
+            }
+            TouchPhase::Moved => {
+                self.mouse_motion_event(ctx, x, y, dx, dy);
+            }
+            TouchPhase::Ended | TouchPhase::Cancelled => {
+                ctx.mouse_context
+                    .input_handler
+                    .handle_mouse_up(miniquad::MouseButton::Left);
+                self.mouse_button_up_event(ctx, MouseButton::Left, x, y);
+            }
         }
     }
     /// The mousewheel was scrolled, vertically (y, positive away from and negative toward the user)

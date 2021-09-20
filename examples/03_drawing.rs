@@ -5,12 +5,13 @@ extern crate glam;
 extern crate good_web_game as ggez;
 
 use ggez::event;
-use ggez::graphics::{self, Color, DrawMode, DrawParam, FilterMode};
+use ggez::graphics::{self, Color, DrawMode, DrawParam, FilterMode, Canvas};
 use ggez::timer;
 use ggez::{Context, GameResult};
 use lyon::lyon_tessellation::FillOptions;
 use std::env;
 use std::path;
+use ggez::input::keyboard::{KeyCode, KeyMods};
 
 type Point2 = glam::Vec2;
 
@@ -20,6 +21,8 @@ struct MainState {
     image2_nearest: graphics::Image,
     meshes: Vec<graphics::Mesh>,
     zoomlevel: f32,
+    canvas: Canvas,
+    use_canvas: bool,
 }
 
 impl MainState {
@@ -27,10 +30,8 @@ impl MainState {
         let image1 = graphics::Image::new(ctx, "dragon1.png")?;
         let image2_linear = graphics::Image::new(ctx, "shot.png")?;
         let mut image2_nearest = graphics::Image::new(ctx, "shot.png")?;
-        //let image1 = graphics::Image::new(ctx, "dragon1.png")?;
-        //let image2_linear = graphics::Image::new(ctx, "shot.png")?;
-        //let mut image2_nearest = graphics::Image::new(ctx, "shot.png")?;
         image2_nearest.set_filter(graphics::FilterMode::Nearest);
+        let canvas = Canvas::with_window_size(ctx)?;
 
         let meshes = vec![build_mesh(ctx)?, build_textured_triangle(ctx)?];
         let s = MainState {
@@ -39,6 +40,8 @@ impl MainState {
             image2_nearest,
             meshes,
             zoomlevel: 1.0,
+            canvas,
+            use_canvas: false,
         };
 
         Ok(s)
@@ -119,6 +122,10 @@ impl event::EventHandler<ggez::GameError> for MainState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        if self.use_canvas {
+            graphics::set_canvas(ctx, Some(&self.canvas));
+        }
+
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
         // let src = graphics::Rect::new(0.25, 0.25, 0.5, 0.5);
         // let src = graphics::Rect::one();
@@ -144,7 +151,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
             ctx,
             &self.image2_nearest,
             graphics::DrawParam::new()
-                // src: src,
+                //.src(src)
                 .dest(dst2)
                 .rotation(self.zoomlevel)
                 .offset(Point2::new(0.5, 0.5))
@@ -182,8 +189,22 @@ impl event::EventHandler<ggez::GameError> for MainState {
             graphics::draw(ctx, m, DrawParam::new())?;
         }
 
+        if self.use_canvas {
+            graphics::set_canvas(ctx, None);
+            graphics::draw(ctx, &self.canvas, DrawParam::new())?;
+        }
+
         graphics::present(ctx)?;
         Ok(())
+    }
+
+    fn key_down_event(&mut self,
+                      _ctx: &mut Context,
+                      _keycode: KeyCode,
+                      _keymods: KeyMods,
+                      _repeat: bool,) {
+        self.use_canvas ^= true;
+        println!("use_canvas: {}", self.use_canvas);
     }
 }
 
@@ -200,6 +221,7 @@ pub fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
+            //.sample_count(16),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

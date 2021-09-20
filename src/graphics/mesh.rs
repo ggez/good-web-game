@@ -722,7 +722,7 @@ impl Mesh {
         ctx: &mut Context,
         verts: &[V],
         indices: &[u16],
-        texture: Option<miniquad::Texture>,
+        image: Option<Image>,
     ) -> GameResult<Mesh>
     where
         V: Into<Vertex> + Clone,
@@ -772,26 +772,31 @@ impl Mesh {
             "No vertices in MeshBuilder; should never happen since we already checked this",
         );
 
+        let (images, texture_clones_hack) = image
+            .map_or((vec![ctx.gfx_context.white_texture], None), |image| {
+                (vec![image.texture], Some(image.texture_clones_hack.clone()))
+            });
+
         let bindings = miniquad::Bindings {
             vertex_buffers: vec![vertex_buffer],
             index_buffer,
-            images: texture.map_or(vec![ctx.gfx_context.white_texture], |texture| vec![texture]),
+            images,
         };
 
         Ok(Mesh {
             bindings,
             blend_mode: None,
             rect,
-            texture_clones_hack: None,
+            texture_clones_hack,
         })
     }
-
+    /*
     /// Replaces the vertices in the `Mesh` with the given ones.  This MAY be faster
     /// than re-creating a `Mesh` with [`Mesh::from_raw()`](#method.from_raw) due to
     /// reusing memory instead of allocating and deallocating it, both on the CPU and
     /// GPU side.  There's too much variation in implementations and drivers to promise
     /// it will actually be faster though.  At worst, it will be the same speed.
-    pub fn set_vertices(&mut self, _ctx: &mut Context, _verts: &[Vertex], _indices: &[u16]) {
+    //pub fn set_vertices(&mut self, _ctx: &mut Context, _verts: &[Vertex], _indices: &[u16]) {
         // This is in principle faster than throwing away an existing mesh and
         // creating a new one with `Mesh::from_raw()`, but really only because it
         // doesn't take `Into<Vertex>` and so doesn't need to create an intermediate
@@ -810,8 +815,9 @@ impl Mesh {
         //     .create_vertex_buffer_with_slice(verts, indices);
         // self.buffer = vbuf;
         // self.slice = slice;
-        unimplemented!()
-    }
+        //unimplemented!()
+    //}
+    */
 }
 
 impl Drawable for Mesh {

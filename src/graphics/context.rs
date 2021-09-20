@@ -324,7 +324,6 @@ pub(crate) mod image_shader {
     }
 }
 
-// TODO: this shader is WIP (probably)
 pub(crate) mod meshbatch_shader {
     use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 

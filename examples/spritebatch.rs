@@ -81,6 +81,8 @@ impl event::EventHandler<ggez::GameError> for MainState {
                 ((time % cycle) as f32 / cycle as f32 * 6.28).sin().abs() * 2.0 + 1.0,
                 ((time % cycle) as f32 / cycle as f32 * 6.28).sin().abs() * 2.0 + 1.0,
             ))
+            // applying a src parameter to a spritebatch globally has no effect
+            //.src([0.25,0.25,0.5,0.5].into())
             .rotation((time % cycle) as f32 / cycle as f32 * 6.28);
         // WARNING: Using an offset != (0.,0.) on a spritebatch may come with a significant performance cost.
         // This is due to the fact that the total dimensions of everything drawn by it have to be calculated.

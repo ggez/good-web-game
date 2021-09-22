@@ -1,27 +1,23 @@
-#version 150 core
+#version 100
 
-in vec2 a_Pos;
-in vec2 a_Uv;
+attribute vec2 position;
+attribute vec2 texcoord;
+attribute vec4 color0;
 
-in vec4 a_Src;
-in vec4 a_TCol1;
-in vec4 a_TCol2;
-in vec4 a_TCol3;
-in vec4 a_TCol4;
-in vec4 a_Color;
+attribute vec4 Source;
+attribute vec4 Color;
+attribute mat4 Model;
 
-layout (std140) uniform Globals {
-    mat4 u_MVP;
-};
+varying lowp vec4 color;
+varying lowp vec2 uv;
 
-out vec2 v_Uv;
-out vec4 v_Color;
+uniform mat4 Projection;
+
+uniform float depth;
 
 void main() {
-    v_Uv = a_Uv * a_Src.zw + a_Src.xy;
-    v_Color = a_Color;
-    mat4 instance_transform = mat4(a_TCol1, a_TCol2, a_TCol3, a_TCol4);
-    vec4 position = instance_transform * vec4(a_Pos, 0.0, 1.0);
-
-    gl_Position = u_MVP * position;
+    gl_Position = Projection * Model * vec4(position, 0, 1);
+    gl_Position.z = depth;
+    color = Color * color0;
+    uv = texcoord * Source.zw + Source.xy;
 }

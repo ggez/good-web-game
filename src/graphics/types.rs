@@ -1,6 +1,37 @@
 pub type Point2 = cgmath::Point2<f32>;
 pub type Vector2 = cgmath::Vector2<f32>;
 
+use crate::graphics::DrawParam;
+use cgmath::{Matrix4, Transform, Vector4};
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub(crate) struct InstanceAttributes {
+    pub source: Vector4<f32>,
+    pub color: Vector4<f32>,
+    pub model: Matrix4<f32>,
+}
+
+impl Default for InstanceAttributes {
+    fn default() -> InstanceAttributes {
+        InstanceAttributes {
+            source: Vector4::new(0., 0., 0., 0.),
+            color: Vector4::new(0., 0., 0., 0.),
+            model: Matrix4::one(),
+        }
+    }
+}
+
+impl From<&DrawParam> for InstanceAttributes {
+    fn from(param: &DrawParam) -> Self {
+        InstanceAttributes {
+            model: param.trans.to_bare_matrix().into(),
+            source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
+            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
+        }
+    }
+}
+
 /// A simple 2D rectangle.
 ///
 /// The origin of the rectangle is at the top-left,

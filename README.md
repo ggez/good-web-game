@@ -7,7 +7,7 @@ good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://git
 It has been recently updated to support much of the ggez 0.6.0 API. If you're already working with ggez you might use this library to port your game to the web (or perhaps even mobile).
 Since it also runs well on desktop it also offers an alternative implementation of ggez, which might come in handy if you experience bugs in ggez, which you can't work around for some reason.
 
-If you are looking for a properly maintained and supported minimal high-level engine on top of miniquad - check out [macroquad](https://github.com/not-fl3/macroquad/) instead.
+If you are just looking for a well supported minimal high-level engine on top of miniquad you might want to take a look at [macroquad](https://github.com/not-fl3/macroquad/) as well.
 
 ## Status
 
@@ -23,8 +23,6 @@ If you are looking for a properly maintained and supported minimal high-level en
 * screenshot function
 * window icon
 * gamepad support on WASM (as `gilrs` depends on wasm-bindgen)
-* and custom shader support (yes, this is a big one, but if you need it and are familiar with `miniquad` please
-  consider starting a PR; `miniquad` has all the tools you need)
   
 ### On blurry graphics
  

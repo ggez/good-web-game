@@ -1,15 +1,14 @@
 use crate::{
     error::GameResult,
     graphics::{
-        self, context::batch_shader, transform_rect, BlendMode, DrawParam, FilterMode,
-        InstanceAttributes, Rect,
+        self, apply_uniforms, transform_rect, BlendMode, DrawParam, FilterMode, InstanceAttributes,
+        Rect,
     },
     Context,
 };
 
 use std::cell::RefCell;
 
-use cgmath::Vector4;
 use miniquad::{Buffer, BufferType, PassAction};
 
 #[derive(Debug)]
@@ -105,13 +104,8 @@ impl graphics::Drawable for SpriteBatch {
                     std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
                 );
 
-                if image.bindings.vertex_buffers.len() <= 1 {
-                    image.bindings.vertex_buffers.push(buffer);
-                } else {
-                    image.bindings.vertex_buffers[1].delete();
-
-                    image.bindings.vertex_buffers[1] = buffer;
-                }
+                image.bindings.vertex_buffers[1].delete();
+                image.bindings.vertex_buffers[1] = buffer;
             }
 
             for (n, param) in self.sprites.iter().enumerate() {
@@ -135,11 +129,7 @@ impl graphics::Drawable for SpriteBatch {
                     ),
                 };
 
-                let instance = InstanceAttributes {
-                    model: new_param.trans.to_bare_matrix().into(),
-                    source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
-                    color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
-                };
+                let instance = InstanceAttributes::from(&new_param);
                 gpu_sprites[n] = instance;
             }
 
@@ -148,16 +138,17 @@ impl graphics::Drawable for SpriteBatch {
 
             let pass = ctx.framebuffer();
             ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-            ctx.quad_ctx
-                .apply_pipeline(&ctx.gfx_context.sprite_pipeline);
             ctx.quad_ctx.apply_bindings(&image.bindings);
         }
+        let shader_id = *ctx.gfx_context.current_shader.borrow();
+        let current_shader = &mut ctx.gfx_context.shaders[shader_id];
+        ctx.quad_ctx.apply_pipeline(&current_shader.pipeline);
 
-        let uniforms = batch_shader::Uniforms {
-            projection: ctx.gfx_context.projection,
-            model: param.trans.to_bare_matrix().into(),
-        };
-        ctx.quad_ctx.apply_uniforms(&uniforms);
+        apply_uniforms(
+            ctx,
+            shader_id,
+            Some(cgmath::Matrix4::from(param.trans.to_bare_matrix())),
+        );
 
         let mut custom_blend = false;
         if let Some(blend_mode) = self.blend_mode() {

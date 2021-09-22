@@ -1,8 +1,5 @@
 #![allow(warnings)]
-use crate::{
-    graphics::{context::mesh_shader, *},
-    Context, GameError, GameResult,
-};
+use crate::{graphics::*, Context, GameError, GameResult};
 use lyon::path::builder::PathBuilder;
 use lyon::path::Polygon;
 use lyon::tessellation as t;
@@ -10,7 +7,7 @@ use lyon::{self, math::Point as LPoint};
 
 pub use self::t::{FillOptions, FillRule, LineCap, LineJoin, StrokeOptions};
 
-use crate::graphics::context::meshbatch_shader;
+use crate::graphics::context::default_shader;
 use cgmath::{Matrix4, Point2, Transform, Vector2, Vector3, Vector4};
 use miniquad::{Buffer, BufferType, PassAction};
 use std::cell::RefCell;
@@ -23,24 +20,6 @@ pub struct Vertex {
     pub pos: [f32; 2],
     pub uv: [f32; 2],
     pub color: [f32; 4],
-}
-
-#[derive(Debug, Clone)]
-#[repr(C)]
-pub(crate) struct InstanceAttributes {
-    pub source: Vector4<f32>,
-    pub color: Vector4<f32>,
-    pub model: Matrix4<f32>,
-}
-
-impl Default for InstanceAttributes {
-    fn default() -> InstanceAttributes {
-        InstanceAttributes {
-            source: Vector4::new(0., 0., 0., 0.),
-            color: Vector4::new(0., 0., 0., 0.),
-            model: Matrix4::one(),
-        }
-    }
 }
 
 /// A builder for creating [`Mesh`](struct.Mesh.html)es.
@@ -502,12 +481,17 @@ impl MeshBuilder {
             miniquad::BufferType::IndexBuffer,
             &self.buffer.indices[..],
         );
+        let attribute_buffer = Buffer::stream(
+            &mut ctx.quad_ctx,
+            BufferType::VertexBuffer,
+            std::mem::size_of::<InstanceAttributes>(), // start out with space for one instance
+        );
         // make sure to set the filter before building
         if let Some((filter, texture)) = self.tex_filter.zip(self.texture) {
             texture.set_filter(&mut ctx.quad_ctx, filter);
         }
         let bindings = miniquad::Bindings {
-            vertex_buffers: vec![vertex_buffer],
+            vertex_buffers: vec![vertex_buffer, attribute_buffer],
             index_buffer,
             images: self
                 .texture
@@ -766,6 +750,11 @@ impl Mesh {
             miniquad::BufferType::IndexBuffer,
             &indices[..],
         );
+        let attribute_buffer = Buffer::stream(
+            &mut ctx.quad_ctx,
+            BufferType::VertexBuffer,
+            std::mem::size_of::<InstanceAttributes>(), // start out with space for one instance
+        );
 
         let verts: Vec<Vertex> = verts.iter().cloned().map(Into::into).collect();
         let rect = bbox_for_vertices(&verts).expect(
@@ -778,7 +767,7 @@ impl Mesh {
             });
 
         let bindings = miniquad::Bindings {
-            vertex_buffers: vec![vertex_buffer],
+            vertex_buffers: vec![vertex_buffer, attribute_buffer],
             index_buffer,
             images,
         };
@@ -797,47 +786,44 @@ impl Mesh {
     /// GPU side.  There's too much variation in implementations and drivers to promise
     /// it will actually be faster though.  At worst, it will be the same speed.
     //pub fn set_vertices(&mut self, _ctx: &mut Context, _verts: &[Vertex], _indices: &[u16]) {
-        // This is in principle faster than throwing away an existing mesh and
-        // creating a new one with `Mesh::from_raw()`, but really only because it
-        // doesn't take `Into<Vertex>` and so doesn't need to create an intermediate
-        // `Vec`.  It still creates a new GPU buffer and replaces the old one instead
-        // of just copying into the old one.
-        // TODO: By default we create `Mesh` with a read-only GPU buffer, which I am
-        // a little hesitant to change... partially because doing that with
-        // `Image` has caused some subtle edge case bugs.
-        // It's not terribly hard to do in principle though, just tedious;
-        // start at `Factory::create_vertex_buffer_with_slice()`, drill down to
-        // <https://docs.rs/gfx/0.17.1/gfx/traits/trait.Factory.html#tymethod.create_buffer_raw>,
-        // and fill in the bits between with the appropriate values.
-        // let (vbuf, slice) = ctx
-        //     .gfx_context
-        //     .factory
-        //     .create_vertex_buffer_with_slice(verts, indices);
-        // self.buffer = vbuf;
-        // self.slice = slice;
-        //unimplemented!()
+    // This is in principle faster than throwing away an existing mesh and
+    // creating a new one with `Mesh::from_raw()`, but really only because it
+    // doesn't take `Into<Vertex>` and so doesn't need to create an intermediate
+    // `Vec`.  It still creates a new GPU buffer and replaces the old one instead
+    // of just copying into the old one.
+    // TODO: By default we create `Mesh` with a read-only GPU buffer, which I am
+    // a little hesitant to change... partially because doing that with
+    // `Image` has caused some subtle edge case bugs.
+    // It's not terribly hard to do in principle though, just tedious;
+    // start at `Factory::create_vertex_buffer_with_slice()`, drill down to
+    // <https://docs.rs/gfx/0.17.1/gfx/traits/trait.Factory.html#tymethod.create_buffer_raw>,
+    // and fill in the bits between with the appropriate values.
+    // let (vbuf, slice) = ctx
+    //     .gfx_context
+    //     .factory
+    //     .create_vertex_buffer_with_slice(verts, indices);
+    // self.buffer = vbuf;
+    // self.slice = slice;
+    //unimplemented!()
     //}
-    */
+     */
 }
 
 impl Drawable for Mesh {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        let transform = param.trans.to_bare_matrix().into();
+        let instance = InstanceAttributes::from(&param);
+        self.bindings.vertex_buffers[1].update(&mut ctx.quad_ctx, &[instance]);
 
         let pass = ctx.framebuffer();
 
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx.apply_pipeline(&ctx.gfx_context.mesh_pipeline);
         ctx.quad_ctx.apply_bindings(&self.bindings);
 
-        let uniforms = mesh_shader::Uniforms {
-            projection: ctx.gfx_context.projection,
-            model: transform,
-            source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
-            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
-        };
+        let shader_id = *ctx.gfx_context.current_shader.borrow();
+        let current_shader = &mut ctx.gfx_context.shaders[shader_id];
+        ctx.quad_ctx.apply_pipeline(&current_shader.pipeline);
 
-        ctx.quad_ctx.apply_uniforms(&uniforms);
+        apply_uniforms(ctx, shader_id, None);
 
         let mut custom_blend = false;
         if let Some(blend_mode) = self.blend_mode() {
@@ -1035,13 +1021,8 @@ impl MeshBatch {
                     std::mem::size_of::<InstanceAttributes>() * self.instance_params.len(),
                 );
 
-                if mesh.bindings.vertex_buffers.len() <= 1 {
-                    mesh.bindings.vertex_buffers.push(buffer);
-                } else {
-                    mesh.bindings.vertex_buffers[1].delete();
-
-                    mesh.bindings.vertex_buffers[1] = buffer;
-                }
+                mesh.bindings.vertex_buffers[1].delete();
+                mesh.bindings.vertex_buffers[1] = buffer;
             }
 
             let slice = if needs_new_buffer {
@@ -1101,15 +1082,17 @@ impl MeshBatch {
 
             let pass = ctx.framebuffer();
             ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-            ctx.quad_ctx
-                .apply_pipeline(&ctx.gfx_context.meshbatch_pipeline);
             ctx.quad_ctx.apply_bindings(&self.mesh.bindings);
 
-            let uniforms = meshbatch_shader::Uniforms {
-                projection: ctx.gfx_context.projection,
-                model: param.trans.to_bare_matrix().into(),
-            };
-            ctx.quad_ctx.apply_uniforms(&uniforms);
+            let shader_id = *ctx.gfx_context.current_shader.borrow();
+            let current_shader = &mut ctx.gfx_context.shaders[shader_id];
+            ctx.quad_ctx.apply_pipeline(&current_shader.pipeline);
+
+            apply_uniforms(
+                ctx,
+                shader_id,
+                Some(cgmath::Matrix4::from(param.trans.to_bare_matrix())),
+            );
 
             let mut custom_blend = false;
             if let Some(blend_mode) = self.blend_mode() {

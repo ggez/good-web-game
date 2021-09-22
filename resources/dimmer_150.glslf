@@ -1,18 +1,11 @@
-#version 150 core
+#version 100
 
-uniform sampler2D t_Texture;
-in vec2 v_Uv;
-in vec4 v_Color;
-out vec4 Target0;
+varying lowp vec4 color;
+varying lowp vec2 uv;
 
-layout (std140) uniform Globals {
-    mat4 u_MVP;
-};
-
-layout (std140) uniform Dim {
-    float u_Rate;
-};
+uniform sampler2D Texture;
+uniform lowp float u_Rate;
 
 void main() {
-    Target0 = texture(t_Texture, v_Uv) * v_Color * u_Rate;
+    gl_FragColor = texture2D(Texture, uv) * color * u_Rate;
 }

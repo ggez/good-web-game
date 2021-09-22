@@ -1,37 +1,19 @@
-use cgmath::{Matrix4, Transform, Vector4};
+use cgmath::Matrix4;
 use std::path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::{
     error::GameResult,
     filesystem,
-    graphics::{context::image_shader, BlendMode, DrawParam, Drawable, Rect},
+    graphics::{BlendMode, DrawParam, Drawable, InstanceAttributes, Rect},
     Context, GameError,
 };
 
 use miniquad::{Bindings, Buffer, BufferType, PassAction, Texture};
 
-use crate::graphics::Color;
+use crate::graphics::{apply_uniforms, Color};
 pub use miniquad::graphics::FilterMode;
 use std::sync::Arc;
-
-#[derive(Debug, Clone)]
-#[repr(C)]
-pub(crate) struct InstanceAttributes {
-    pub source: Vector4<f32>,
-    pub color: Vector4<f32>,
-    pub model: Matrix4<f32>,
-}
-
-impl Default for InstanceAttributes {
-    fn default() -> InstanceAttributes {
-        InstanceAttributes {
-            source: Vector4::new(0., 0., 0., 0.),
-            color: Vector4::new(0., 0., 0., 0.),
-            model: Matrix4::one(),
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct Image {
@@ -89,15 +71,33 @@ impl Image {
         texture: Texture,
         filter: FilterMode,
     ) -> GameResult<Image> {
+        // if we wanted to we could optimize this a bit by creating this buffer only once and then just cloning the handle
         #[rustfmt::skip]
-        let vertices: [f32; 8] = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
+        let vertices: [f32; 32] = [0.0, 0.0, // first pos
+                                  0.0, 0.0, // first texcoord
+                                  1.0, 1.0, 1.0, 1.0, // first color
+                                  1.0, 0.0, // second pos
+                                  1.0, 0.0, // second texcoord
+                                  1.0, 1.0, 1.0, 1.0, // second color
+                                  1.0, 1.0, // third pos
+                                  1.0, 1.0, // third texcoord
+                                  1.0, 1.0, 1.0, 1.0, // third color
+                                  0.0, 1.0, // fourth pos
+                                  0.0, 1.0, // fourth texcoord
+                                  1.0, 1.0, 1.0, 1.0]; // fourth color
+
         let vertex_buffer = Buffer::immutable(ctx, BufferType::VertexBuffer, &vertices);
+        let attribute_buffer = Buffer::stream(
+            ctx,
+            BufferType::VertexBuffer,
+            std::mem::size_of::<InstanceAttributes>(), // start out with space for one instance
+        );
 
         let indices: [u16; 6] = [0, 1, 2, 0, 2, 3];
         let index_buffer = Buffer::immutable(ctx, BufferType::IndexBuffer, &indices);
 
         let bindings = Bindings {
-            vertex_buffers: vec![vertex_buffer],
+            vertex_buffers: vec![vertex_buffer, attribute_buffer],
             index_buffer,
             images: vec![texture],
         };
@@ -153,7 +153,8 @@ impl Image {
 
     /// Draws without adapting the scaling.
     pub(crate) fn draw_image_raw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        let transform = param.trans.to_bare_matrix().into();
+        let instance = InstanceAttributes::from(&param);
+        self.bindings.vertex_buffers[1].update(&mut ctx.quad_ctx, &[instance]);
 
         if self.dirty_filter.load() {
             self.dirty_filter.store(false);
@@ -162,17 +163,13 @@ impl Image {
 
         let pass = ctx.framebuffer();
         ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx.apply_pipeline(&ctx.gfx_context.image_pipeline);
         ctx.quad_ctx.apply_bindings(&self.bindings);
 
-        let uniforms = image_shader::Uniforms {
-            projection: ctx.gfx_context.projection,
-            model: transform,
-            source: Vector4::new(param.src.x, param.src.y, param.src.w, param.src.h),
-            color: Vector4::new(param.color.r, param.color.g, param.color.b, param.color.a),
-        };
+        let shader_id = *ctx.gfx_context.current_shader.borrow();
+        let current_shader = &mut ctx.gfx_context.shaders[shader_id];
+        ctx.quad_ctx.apply_pipeline(&current_shader.pipeline);
 
-        ctx.quad_ctx.apply_uniforms(&uniforms);
+        apply_uniforms(ctx, shader_id, None);
 
         let mut custom_blend = false;
         if let Some(blend_mode) = self.blend_mode() {
@@ -202,13 +199,12 @@ impl Drawable for Image {
         let scale_x = src_width * f32::from(self.width);
         let scale_y = src_height * f32::from(self.height);
 
-        use crate::graphics::Transform;
         let new_param = match param.trans {
-            Transform::Values { scale, .. } => param.scale(mint::Vector2 {
+            crate::graphics::Transform::Values { scale, .. } => param.scale(mint::Vector2 {
                 x: scale.x * scale_x,
                 y: scale.y * scale_y,
             }),
-            Transform::Matrix(m) => param.transform(
+            crate::graphics::Transform::Matrix(m) => param.transform(
                 Matrix4::from(m) * Matrix4::from_nonuniform_scale(scale_x, scale_y, 1.0),
             ),
         };

@@ -5,13 +5,13 @@ extern crate glam;
 extern crate good_web_game as ggez;
 
 use ggez::event;
-use ggez::graphics::{self, Color, DrawMode, DrawParam, FilterMode, Canvas};
+use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, FilterMode};
+use ggez::input::keyboard::{KeyCode, KeyMods};
 use ggez::timer;
 use ggez::{Context, GameResult};
 use lyon::lyon_tessellation::FillOptions;
 use std::env;
 use std::path;
-use ggez::input::keyboard::{KeyCode, KeyMods};
 
 type Point2 = glam::Vec2;
 
@@ -198,11 +198,13 @@ impl event::EventHandler<ggez::GameError> for MainState {
         Ok(())
     }
 
-    fn key_down_event(&mut self,
-                      _ctx: &mut Context,
-                      _keycode: KeyCode,
-                      _keymods: KeyMods,
-                      _repeat: bool,) {
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        _keycode: KeyCode,
+        _keymods: KeyMods,
+        _repeat: bool,
+    ) {
         self.use_canvas ^= true;
         println!("use_canvas: {}", self.use_canvas);
     }
@@ -220,8 +222,8 @@ pub fn main() -> GameResult {
     ggez::start(
         ggez::conf::Conf::default()
             .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
-            .physical_root_dir(Some(resource_dir)),
-            //.sample_count(16),
+            .physical_root_dir(Some(resource_dir))
+            .sample_count(16),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

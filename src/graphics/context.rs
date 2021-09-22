@@ -1,5 +1,4 @@
-use crate::graphics::{types::Rect, Canvas, FilterMode};
-//use miniquad_text_rusttype::{FontAtlas, FontTexture};
+use crate::graphics::{types::Rect, Canvas, FilterMode, Shader, ShaderId};
 use std::rc::Rc;
 
 use crate::graphics::{spritebatch, BlendMode, DrawParam, Font, Image};
@@ -12,10 +11,8 @@ pub struct GraphicsContext {
     pub(crate) projection: Matrix4<f32>,
     pub(crate) white_texture: miniquad::Texture,
     pub(crate) canvas: Option<Canvas>,
-    pub(crate) sprite_pipeline: miniquad::Pipeline,
-    pub(crate) mesh_pipeline: miniquad::Pipeline,
-    pub(crate) image_pipeline: miniquad::Pipeline,
-    pub(crate) meshbatch_pipeline: miniquad::Pipeline,
+    pub(crate) current_shader: Rc<RefCell<ShaderId>>,
+    pub(crate) shaders: Vec<Shader>,
     pub(crate) blend_mode: BlendMode,
     pub(crate) default_filter: FilterMode,
 
@@ -34,66 +31,18 @@ impl GraphicsContext {
         let white_texture = Texture::from_rgba8(ctx, 1, 1, &[255, 255, 255, 255]);
         let (color_blend, alpha_blend) = BlendMode::Alpha.into();
 
-        let sprite_shader = Shader::new(
+        let default_shader = Shader::new(
             ctx,
-            batch_shader::VERTEX,
-            batch_shader::FRAGMENT,
-            batch_shader::meta(),
+            default_shader::VERTEX,
+            default_shader::FRAGMENT,
+            default_shader::meta(),
         )
-        .expect("couldn't create sprite shader");
+        .expect("couldn't create default shader");
 
-        let sprite_pipeline = miniquad::Pipeline::with_params(
-            ctx,
-            &[
-                BufferLayout::default(),
-                BufferLayout {
-                    step_func: VertexStep::PerInstance,
-                    ..Default::default()
-                },
-            ],
-            &[
-                VertexAttribute::with_buffer("position", VertexFormat::Float2, 0),
-                VertexAttribute::with_buffer("Source", VertexFormat::Float4, 1),
-                VertexAttribute::with_buffer("Color", VertexFormat::Float4, 1),
-                VertexAttribute::with_buffer("InstanceModel", VertexFormat::Mat4, 1),
-            ],
-            sprite_shader,
-            PipelineParams {
-                color_blend: Some(color_blend),
-                alpha_blend: Some(alpha_blend),
-                ..Default::default()
-            },
-        );
+        let gwg_default_shader =
+            crate::graphics::Shader::from_mini_shader(ctx, default_shader, None);
 
-        let image_shader = Shader::new(
-            ctx,
-            image_shader::VERTEX,
-            image_shader::FRAGMENT,
-            image_shader::meta(),
-        )
-        .expect("couldn't create image shader");
-
-        let image_pipeline = miniquad::Pipeline::with_params(
-            ctx,
-            &[BufferLayout::default()],
-            &[VertexAttribute::new("position", VertexFormat::Float2)],
-            image_shader,
-            PipelineParams {
-                color_blend: Some(color_blend),
-                alpha_blend: Some(alpha_blend),
-                ..Default::default()
-            },
-        );
-
-        let meshbatch_shader = Shader::new(
-            ctx,
-            meshbatch_shader::VERTEX,
-            meshbatch_shader::FRAGMENT,
-            meshbatch_shader::meta(),
-        )
-        .expect("couldn't create mesh batch shader");
-
-        let meshbatch_pipeline = miniquad::Pipeline::with_params(
+        let default_pipeline = miniquad::Pipeline::with_params(
             ctx,
             &[
                 BufferLayout::default(),
@@ -108,9 +57,9 @@ impl GraphicsContext {
                 VertexAttribute::with_buffer("color0", VertexFormat::Float4, 0),
                 VertexAttribute::with_buffer("Source", VertexFormat::Float4, 1),
                 VertexAttribute::with_buffer("Color", VertexFormat::Float4, 1),
-                VertexAttribute::with_buffer("InstanceModel", VertexFormat::Mat4, 1),
+                VertexAttribute::with_buffer("Model", VertexFormat::Mat4, 1),
             ],
-            meshbatch_shader,
+            default_shader,
             PipelineParams {
                 color_blend: Some(color_blend),
                 alpha_blend: Some(alpha_blend),
@@ -118,29 +67,8 @@ impl GraphicsContext {
             },
         );
 
-        let mesh_shader = Shader::new(
-            ctx,
-            mesh_shader::VERTEX,
-            mesh_shader::FRAGMENT,
-            mesh_shader::meta(),
-        )
-        .expect("couldn't create mesh shader");
-
-        let mesh_pipeline = Pipeline::with_params(
-            ctx,
-            &[BufferLayout::default()],
-            &[
-                VertexAttribute::new("position", VertexFormat::Float2),
-                VertexAttribute::new("texcoord", VertexFormat::Float2),
-                VertexAttribute::new("color0", VertexFormat::Float4),
-            ],
-            mesh_shader,
-            PipelineParams {
-                color_blend: Some(color_blend),
-                alpha_blend: Some(alpha_blend),
-                ..Default::default()
-            },
-        );
+        // pipeline has to be applied whenever the shader (and therefore pipeline) changes
+        ctx.apply_pipeline(&default_pipeline);
 
         // Glyph cache stuff.
         let font_vec = glyph_brush::ab_glyph::FontArc::try_from_slice(Font::default_font_bytes())
@@ -171,10 +99,8 @@ impl GraphicsContext {
             screen_rect,
             white_texture,
             canvas: None,
-            sprite_pipeline,
-            mesh_pipeline,
-            image_pipeline,
-            meshbatch_pipeline,
+            current_shader: Rc::new(RefCell::new(0)),
+            shaders: vec![gwg_default_shader],
             blend_mode: BlendMode::Alpha,
             default_filter: FilterMode::Linear,
             glyph_brush: Rc::new(RefCell::new(glyph_brush)),
@@ -213,188 +139,26 @@ impl GraphicsContext {
     }
 }
 
-pub(crate) mod batch_shader {
+pub(crate) mod default_shader {
+    use crate::graphics::ShaderId;
     use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
 
-    pub const VERTEX: &str = r#"#version 100
-    attribute vec2 position;
-    attribute vec4 Source;
-    attribute vec4 Color;
-    attribute mat4 InstanceModel;
-
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform mat4 Projection;
-    uniform mat4 Model;
-
-    uniform float depth;
-
-    void main() {
-        gl_Position = Projection * Model * InstanceModel * vec4(position, 0, 1);
-        gl_Position.z = depth;
-        color = Color;
-        uv = position * Source.zw + Source.xy;
-    }"#;
-
-    pub const FRAGMENT: &str = r#"#version 100
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform sampler2D Texture;
-
-    void main() {
-        gl_FragColor = texture2D(Texture, uv) * color;
-    }"#;
-
-    pub fn meta() -> ShaderMeta {
-        ShaderMeta {
-            images: vec!["Texture".to_string()],
-            uniforms: UniformBlockLayout {
-                uniforms: vec![
-                    UniformDesc::new("Projection", UniformType::Mat4),
-                    UniformDesc::new("Model", UniformType::Mat4),
-                ],
-            },
-        }
-    }
-
-    #[repr(C)]
-    #[derive(Debug)]
-    pub struct Uniforms {
-        pub projection: cgmath::Matrix4<f32>,
-        pub model: cgmath::Matrix4<f32>,
-    }
-}
-
-pub(crate) mod image_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
-
-    pub const VERTEX: &str = r#"#version 100
-    attribute vec2 position;
-
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform mat4 Projection;
-    uniform vec4 Source;
-    uniform vec4 Color;
-    uniform mat4 Model;
-
-    uniform float depth;
-
-    void main() {
-        gl_Position = Projection * Model * vec4(position, 0, 1);
-        gl_Position.z = depth;
-        color = Color;
-        uv = position * Source.zw + Source.xy;
-    }"#;
-
-    pub const FRAGMENT: &str = r#"#version 100
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform sampler2D Texture;
-
-    void main() {
-        gl_FragColor = texture2D(Texture, uv) * color;
-    }"#;
-
-    pub fn meta() -> ShaderMeta {
-        ShaderMeta {
-            images: vec!["Texture".to_string()],
-            uniforms: UniformBlockLayout {
-                uniforms: vec![
-                    UniformDesc::new("Projection", UniformType::Mat4),
-                    UniformDesc::new("Source", UniformType::Float4),
-                    UniformDesc::new("Color", UniformType::Float4),
-                    UniformDesc::new("Model", UniformType::Mat4),
-                ],
-            },
-        }
-    }
-
-    #[repr(C)]
-    #[derive(Debug)]
-    pub struct Uniforms {
-        pub projection: cgmath::Matrix4<f32>,
-        pub source: cgmath::Vector4<f32>,
-        pub color: cgmath::Vector4<f32>,
-        pub model: cgmath::Matrix4<f32>,
-    }
-}
-
-pub(crate) mod meshbatch_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
-
-    pub const VERTEX: &str = r#"#version 100
-    attribute vec2 position;
-    attribute vec2 texcoord;
-    attribute vec4 color0;
-    attribute vec4 Source;
-    attribute vec4 Color;
-    attribute mat4 InstanceModel;
-
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform mat4 Projection;
-    uniform mat4 Model;
-
-    uniform float depth;
-
-    void main() {
-        gl_Position = Projection * Model * InstanceModel * vec4(position, 0, 1);
-        gl_Position.z = depth;
-        color = Color * color0;
-        uv = texcoord * Source.zw + Source.xy;
-    }"#;
-
-    pub const FRAGMENT: &str = r#"#version 100
-    varying lowp vec4 color;
-    varying lowp vec2 uv;
-
-    uniform sampler2D Texture;
-
-    void main() {
-        gl_FragColor = texture2D(Texture, uv) * color;
-    }"#;
-
-    pub fn meta() -> ShaderMeta {
-        ShaderMeta {
-            images: vec!["Texture".to_string()],
-            uniforms: UniformBlockLayout {
-                uniforms: vec![
-                    UniformDesc::new("Projection", UniformType::Mat4),
-                    UniformDesc::new("Model", UniformType::Mat4),
-                ],
-            },
-        }
-    }
-
-    #[repr(C)]
-    #[derive(Debug)]
-    pub struct Uniforms {
-        pub projection: cgmath::Matrix4<f32>,
-        pub model: cgmath::Matrix4<f32>,
-    }
-}
-
-pub(crate) mod mesh_shader {
-    use miniquad::{ShaderMeta, UniformBlockLayout, UniformDesc, UniformType};
+    /// As the default shader is created first it holds the first id, which is 0.
+    pub const SHADER_ID: ShaderId = 0;
 
     pub const VERTEX: &str = r#"#version 100
     attribute vec2 position;
     attribute vec2 texcoord;
     attribute vec4 color0;
 
+    attribute vec4 Source;
+    attribute vec4 Color;
+    attribute mat4 Model;
+
     varying lowp vec4 color;
     varying lowp vec2 uv;
 
     uniform mat4 Projection;
-    uniform vec4 Source;
-    uniform mat4 Model;
-    uniform vec4 Color;
 
     uniform float depth;
 
@@ -419,22 +183,8 @@ pub(crate) mod mesh_shader {
         ShaderMeta {
             images: vec!["Texture".to_string()],
             uniforms: UniformBlockLayout {
-                uniforms: vec![
-                    UniformDesc::new("Projection", UniformType::Mat4),
-                    UniformDesc::new("Source", UniformType::Float4),
-                    UniformDesc::new("Model", UniformType::Mat4),
-                    UniformDesc::new("Color", UniformType::Float4),
-                ],
+                uniforms: vec![UniformDesc::new("Projection", UniformType::Mat4)],
             },
         }
-    }
-
-    #[repr(C)]
-    #[derive(Debug)]
-    pub struct Uniforms {
-        pub projection: cgmath::Matrix4<f32>,
-        pub source: cgmath::Vector4<f32>,
-        pub model: cgmath::Matrix4<f32>,
-        pub color: cgmath::Vector4<f32>,
     }
 }

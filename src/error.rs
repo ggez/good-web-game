@@ -8,6 +8,8 @@ use std::fmt;
 pub enum GameError {
     /// Something went wrong trying to read from a file
     IOError(std::io::Error),
+    /// Something went wrong compiling shaders
+    ShaderProgramError(String),
     /// Something went wrong with the `gilrs` gamepad-input library.
     GamepadError(String),
     /// Something went wrong with the `lyon` shape-tesselation library
@@ -16,8 +18,7 @@ pub enum GameError {
     /// Thats the only way to get audio to works on web :(
     MixerNotCreated,
     SoundError,
-    //TTFError(miniquad_text_rusttype::Error),
-    UnknownError(&'static str),
+    UnknownError(String),
     /// Unable to find a resource; the `Vec` is the paths it searched for and associated errors
     ResourceNotFound(String, Vec<(std::path::PathBuf, GameError)>),
     /// An error in the filesystem layout
@@ -26,6 +27,12 @@ pub enum GameError {
     ResourceLoadError(String),
     /// Something went wrong in the renderer
     RenderError(String),
+    /// A custom error type for use by users of ggez.
+    /// This lets you handle custom errors that may happen during your game (such as, trying to load a malformed file for a level)
+    /// using the same mechanism you handle ggez's other errors.
+    ///
+    /// Please include an informative message with the error.
+    CustomError(String),
 }
 
 impl fmt::Display for GameError {
@@ -92,5 +99,12 @@ impl From<gilrs::Error> for GameError {
     fn from(s: gilrs::Error) -> GameError {
         let errstr = format!("Gamepad error: {}", s);
         GameError::GamepadError(errstr)
+    }
+}
+
+impl From<miniquad::ShaderError> for GameError {
+    fn from(e: miniquad::ShaderError) -> GameError {
+        let errstr = format!("Shader creation error: {}", e);
+        GameError::ShaderProgramError(errstr)
     }
 }

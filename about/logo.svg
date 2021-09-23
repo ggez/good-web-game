@@ -8,9 +8,9 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="210mm"
-   height="297mm"
-   viewBox="0 0 210 297"
+   width="35.914585mm"
+   height="35.914585mm"
+   viewBox="0 0 35.914585 35.914585"
    version="1.1"
    id="svg8"
    sodipodi:docname="gwg-logo.svg"
@@ -51,9 +51,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="2.2745727"
-     inkscape:cx="459.19533"
-     inkscape:cy="257.39866"
+     inkscape:zoom="1.1372864"
+     inkscape:cx="467.60834"
+     inkscape:cy="189.08146"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      inkscape:document-rotation="0"
@@ -62,7 +62,11 @@
      inkscape:window-height="1361"
      inkscape:window-x="-9"
      inkscape:window-y="-9"
-     inkscape:window-maximized="1" />
+     inkscape:window-maximized="1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
   <metadata
      id="metadata5">
     <rdf:RDF>
@@ -89,7 +93,8 @@
   <g
      inkscape:label="Ebene 1"
      inkscape:groupmode="layer"
-     id="layer1">
+     id="layer1"
+     transform="translate(-1.8560272,-1.8284868)">
     <flowRoot
        style="font-style:normal;font-weight:normal;font-size:40px;line-height:25px;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        id="flowRoot38"
@@ -104,7 +109,7 @@
          id="flowPara44" /></flowRoot>
     <g
        id="g881"
-       transform="matrix(0.42949306,0,0,0.42949306,80.961896,45.206662)">
+       transform="matrix(0.42949306,0,0,0.42949306,-29.078917,-9.4647781)">
       <g
          id="g887"
          transform="matrix(0.13663542,0,0,0.13663542,72.026645,26.294406)">

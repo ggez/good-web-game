@@ -4,6 +4,17 @@ version = "0.3.0"
 authors = ["not-fl3 <not.fl3@gmail.com>", "PSteinhaus"]
 license = "MIT/Apache-2.0"
 edition = "2018"
+description = "An alternative implementation of the ggez game engine, based on miniquad"
+repository = "https://github.com/ggez/good-web-game"
+keywords = ["game", "ggez", "miniquad", "2D", "engine"]
+readme = "README.md"
+categories = ["game-engines"]
+exclude = [
+    "about",
+    "examples/resources.tar",
+    "resources",
+    "!LiberationMono-Regular.ttf"
+]
 
 [dependencies]
 bitflags = "1.1.0"
@@ -13,7 +24,6 @@ rustc-hash = "1.0.1"
 lazy_static = "1.3.0"
 mint = "0.5"
 cgmath = { version = "0.17", features = ["mint"] }
-#miniquad_text_rusttype = { git = "https://github.com/not-fl3/miniquad_text_rusttype", branch = "0.3" }
 glyph_brush = "0.7"
 miniquad = "0.3.0-alpha.37"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
@@ -39,7 +49,6 @@ jpeg = [ "image/jpeg" ]
 [dev-dependencies]
 quad-rand = "0.2.1"
 oorandom = "11"
-#getrandom = { version = "0.2", features = ["js"] }
 glam = { version = "0.17.3", features = ["mint"]}
 keyframe = "1.0.4"
 keyframe_derive = "1.0.0"

@@ -1,58 +1,47 @@
 //! # Good Web Game
 //!
-//! good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset
-//! on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
+//! [![Discord chat](https://img.shields.io/discord/710177966440579103.svg?label=discord%20chat)](https://discord.gg/jum3Fjek2A)
 //!
-//! It has been recently updated to support much of the ggez 0.6.1 API. If you're already working with ggez
-//! you might use this library to port your game to the web (or perhaps even mobile).
-//! Since it also runs well on desktop it also offers an alternative implementation of ggez, which might
-//! come in handy if you experience bugs in ggez, which you can't work around for some reason. Canvases
-//! with multisampling are currently buggy in classic ggez while they work fine in good-web-game, for example.
+//! good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [Zemeroth](https://github.com/ozkriff/zemeroth) on the web.
 //!
-//! If you are looking for a properly maintained and supported minimal high-level engine on top of miniquad -
-//! check out [macroquad](https://github.com/not-fl3/macroquad/) instead.
+//! It has been recently updated to support much of the ggez 0.6.1 API. If you're already working with ggez you might use this library to port your game to the web (or perhaps even mobile).
+//! Since it also runs well on desktop it also offers an alternative implementation of ggez, which might always come in handy.
+//!
+//! If you are just looking for a well supported minimal high-level engine on top of miniquad you might want to take a look at [macroquad](https://github.com/not-fl3/macroquad/).
 //!
 //! ## Status
 //!
-//! "good-web-game" implements the most important parts of the ggez 0.6.1 API.
+//! "good-web-game" implements most of the ggez 0.6.1 API.
+//!
+//! ### Differences
+//!
+//! * boilerplate code differs slightly, [as shown here](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/ggez/web-examples#ggez-animation-example)
+//! * shaders have to be written in GLSL100, due to support for WebGL1
+//! * API for creation of shaders and their corresponding uniform structs differs slightly, but the workflow remains the same, see [the `shader` example](examples/shader.rs)
 //!
 //! ### Missing / Not available:
 //!
 //! * filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
-//! * game pad support
 //! * writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
 //! * spatial audio (overall audio support is still relatively limited, but could be improved)
 //! * resolution control in fullscreen mode
 //! * setting window position / size (the latter is available on Windows, but buggy)
 //! * screenshot function
 //! * window icon
-//! * and custom shader support (yes, this is a big one, but if you need it and are familiar with `miniquad` please
-//!   consider starting a PR; `miniquad` has all the tools you need)
+//! * gamepad support on WASM (as `gilrs` depends on wasm-bindgen)
 //!
+//! ### On blurry graphics
 //!
-//! ## Demo
+//! You may run into somewhat blurry graphics. This is caused by high-dpi rendering:
 //!
-//! In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
+//! When run on a system with a scaling factor unequal to 1 the graphics may appear blurry, due to the drawbuffer being scaled up, to achieve a window of the size requested by your OS.
+//! This size is usually "the size you specified in `Conf`" * "your OS scaling factor".
 //!
-//! ![screen](https://i.imgur.com/TjvCNwa.jpg)
+//! To avoid this set `Conf::high_dpi` to `true`. This leads to the drawbuffer being the size of your actual physical window. It also means though that you can't be sure how big your drawable space will actually be, as this will then depend on where the program is being run.
 //!
-//! ## Example
-//!
-//! To build and run an example as a native binary:
-//!
-//! ```rust
-//! cargo run --example astroblasto
-//! ```
-//!
-//! Building for web and mobile is currently a WIP (ironic, I know).
-//! If you want to try your luck anyway the [miniquad instructions for WASM](https://github.com/not-fl3/miniquad/#wasm)
-//! might be a good place to start.
-//!
-//! ## Architecture
-//!
-//! Here is how `good-web-game` fits into your rust-based game:
-//!
-//! ![software stack](about/gwg-stack.png?raw=true "good-web-game software stack")
+//! We aim towards changing this, so that windows are always created with the physical size specified in `Conf`, but that's not directly supported by miniquad currently.
+
+#![doc(html_logo_url = "https://github.com/ggez/good-web-game/blob/master/about/logo.png")]
 
 pub mod audio;
 pub mod conf;

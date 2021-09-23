@@ -1,17 +1,25 @@
+<img align="right" src="about/logo.svg">
+
 # Good Web Game
 
 [![Discord chat](https://img.shields.io/discord/710177966440579103.svg?label=discord%20chat)](https://discord.gg/jum3Fjek2A)
 
-good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [zemeroth](https://github.com/ozkriff/zemeroth) in the web.
+good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [Zemeroth](https://github.com/ozkriff/zemeroth) on the web.
 
-It has been recently updated to support much of the ggez 0.6.0 API. If you're already working with ggez you might use this library to port your game to the web (or perhaps even mobile).
-Since it also runs well on desktop it also offers an alternative implementation of ggez, which might come in handy if you experience bugs in ggez, which you can't work around for some reason.
+It has been recently updated to support much of the ggez 0.6.1 API. If you're already working with ggez you might use this library to port your game to the web (or perhaps even mobile).
+Since it also runs well on desktop it also offers an alternative implementation of ggez, which might always come in handy.
 
-If you are just looking for a well supported minimal high-level engine on top of miniquad you might want to take a look at [macroquad](https://github.com/not-fl3/macroquad/) as well.
+If you are just looking for a well supported minimal high-level engine on top of miniquad you might want to take a look at [macroquad](https://github.com/not-fl3/macroquad/).
 
 ## Status
 
-"good-web-game" implements the most important parts of the ggez 0.6.0 API.
+"good-web-game" implements most of the ggez 0.6.1 API.
+
+### Differences
+
+* boilerplate code differs slightly, [as shown here](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/ggez/web-examples#ggez-animation-example)
+* shaders have to be written in GLSL100, due to support for WebGL1
+    * API for creation of shaders and their corresponding uniform structs differs slightly, but the workflow remains the same, see [the `shader` example](examples/shader.rs)
 
 ### Missing / Not available:
 
@@ -37,11 +45,11 @@ We aim towards changing this, so that windows are always created with the physic
  
 ## Demo 
 
-In action(0.1, pre-miniquad version): <https://ozkriff.itch.io/zemeroth>
+Running Zemeroth: <https://not-fl3.github.io/miniquad-samples/zemeroth.html>
 
 ![screen](https://i.imgur.com/TjvCNwa.jpg)
 
-For a tiny demo of the current version of good-web-game check out [astroblasto running on the web](https://psteinhaus.github.io/gwg-example/) ([source](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/gwg-example)).
+You can also check out [astroblasto running on the web](https://psteinhaus.github.io/gwg-example/) ([source](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/gwg-example)).
 
 ## Example
 

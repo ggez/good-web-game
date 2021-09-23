@@ -41,7 +41,7 @@
 //!
 //! We aim towards changing this, so that windows are always created with the physical size specified in `Conf`, but that's not directly supported by miniquad currently.
 
-#![doc(html_logo_url = "https://github.com/ggez/good-web-game/blob/master/about/logo.png")]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/ggez/good-web-game/master/about/logo.png")]
 
 pub mod audio;
 pub mod conf;

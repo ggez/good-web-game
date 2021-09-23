@@ -2,7 +2,7 @@
 name = "good-web-game"
 version = "0.3.0"
 authors = ["not-fl3 <not.fl3@gmail.com>", "PSteinhaus"]
-license = "MIT/Apache-2.0"
+license = "MIT"
 edition = "2018"
 description = "An alternative implementation of the ggez game engine, based on miniquad"
 repository = "https://github.com/ggez/good-web-game"

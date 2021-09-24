@@ -1,6 +1,9 @@
 //! # Good Web Game
 //!
 //! [![Discord chat](https://img.shields.io/discord/710177966440579103.svg?label=discord%20chat)](https://discord.gg/jum3Fjek2A)
+//! [![Docs Status](https://docs.rs/good-web-game/badge.svg)](https://docs.rs/good-web-game)
+//! [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/ggez/good-web-game/blob/master/LICENSE)
+//! [![Crates.io](https://img.shields.io/crates/v/good-web-game.svg)](https://crates.io/crates/good-web-game)
 //!
 //! good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [Zemeroth](https://github.com/ozkriff/zemeroth) on the web.
 //!

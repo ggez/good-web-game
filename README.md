@@ -1,4 +1,4 @@
-<img align="right" width="20%" src="about/logo.svg">
+<img align="right" width="25%" src="about/logo.svg">
 
 # Good Web Game
 
@@ -22,7 +22,7 @@ If you are just looking for a well supported minimal high-level engine on top of
 
 * boilerplate code differs slightly, [as shown here](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/ggez/web-examples#ggez-animation-example)
 * shaders have to be written in GLSL100, due to support for WebGL1
-    * API for creation of shaders and their corresponding uniform structs differs slightly, but the workflow remains the same, see [the `shader` example](examples/shader.rs)
+* API for creation of shaders and their corresponding uniform structs differs slightly, but the workflow remains the same, see [the `shader` example](examples/shader.rs)
 
 ### Missing / Not available:
 
@@ -63,6 +63,8 @@ cargo run --example 05_astroblasto
 ```
 
 If you want to build for WASM take a look at the [miniquad instructions for WASM](https://github.com/not-fl3/miniquad/#wasm).
+
+There you'll also find infos on building for [Android](https://github.com/not-fl3/miniquad/#android) / [iOS](https://github.com/not-fl3/miniquad/#ios).
 
 ## Architecture
 

@@ -1,4 +1,4 @@
-<img align="right" src="about/logo.svg">
+<img align="right" width="20%" src="about/logo.svg">
 
 # Good Web Game
 

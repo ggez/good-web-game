@@ -8,8 +8,8 @@ use ggez::graphics::{
 };
 use ggez::timer;
 use ggez::{Context, GameResult};
-use std::env;
-use std::path;
+//use std::env;
+//use std::path;
 
 // Define the input struct for our shader.
 fn shader_meta() -> ShaderMeta {
@@ -102,6 +102,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
 }
 
 pub fn main() -> GameResult {
+    /*
     let resource_dir = if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
         let mut path = path::PathBuf::from(manifest_dir);
         path.push("resources");
@@ -109,9 +110,10 @@ pub fn main() -> GameResult {
     } else {
         path::PathBuf::from("./resources")
     };
-
+    */
     ggez::start(
-        ggez::conf::Conf::default().physical_root_dir(Some(resource_dir)),
+        ggez::conf::Conf::default()
+            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

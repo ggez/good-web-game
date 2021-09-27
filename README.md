@@ -18,7 +18,9 @@ If you are just looking for a well supported minimal high-level engine on top of
 
 The idea behind good-web-game is to offer a way to easily port ggez games to the web and even to mobile platforms. As it's mostly a subset of ggez, porting from good-web-game to ggez is even simpler.
 
-<img align="middle" width="90%" src="about/supported_platforms.svg">
+<p align="center" width="100%">
+    <img width="90%" src="about/supported_platforms.svg">
+</p>
 
 Note that we don't give any guarantees for iOS / macOS support, as we currently simply don't have Macs lying around to test it on. It _should_ work just fine though.
 

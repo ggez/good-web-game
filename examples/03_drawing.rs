@@ -9,7 +9,7 @@ use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, FilterMode};
 use ggez::input::keyboard::{KeyCode, KeyMods};
 use ggez::timer;
 use ggez::{Context, GameResult};
-use lyon::lyon_tessellation::FillOptions;
+//use lyon::lyon_tessellation::FillOptions;
 use std::env;
 use std::path;
 
@@ -70,7 +70,7 @@ fn build_mesh(ctx: &mut Context) -> GameResult<graphics::Mesh> {
         120.0,
         1.0,
         Color::new(1.0, 1.0, 0.0, 1.0),
-    );
+    )?;
 
     mb.circle(
         DrawMode::fill(),
@@ -78,7 +78,7 @@ fn build_mesh(ctx: &mut Context) -> GameResult<graphics::Mesh> {
         40.0,
         1.0,
         Color::new(1.0, 0.0, 1.0, 1.0),
-    );
+    )?;
 
     mb.build(ctx)
 }
@@ -107,7 +107,7 @@ fn build_textured_triangle(ctx: &mut Context) -> GameResult<graphics::Mesh> {
 
     let mut i = graphics::Image::new(ctx, "rock.png")?;
     i.set_filter(FilterMode::Nearest);
-    mb.raw(&triangle_verts, &triangle_indices, Some(i));
+    mb.raw(&triangle_verts, &triangle_indices, Some(i))?;
     mb.build(ctx)
 }
 

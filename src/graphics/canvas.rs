@@ -123,7 +123,7 @@ impl Drawable for Canvas {
     }
 }
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 /// equal to
 ///
 /// Matrix4::from_translation(cgmath::vec3(0.0, 1.0, 0.0)) * Matrix4::from_nonuniform_scale(1.0, -1.0, 1.0),

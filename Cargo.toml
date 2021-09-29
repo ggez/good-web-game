@@ -33,7 +33,7 @@ log = "0.4"
 tar = { version = "0.4", default-features = false }
 lyon = { version = "0.17.5", optional = true }
 smart-default = "0.6"
-quad-snd = "0.1.0-alpha.1"
+quad-snd = { version = "0.2.2", optional = true }
 zip = { version = "0.5", default-features = false }
 approx = "0.5"
 
@@ -41,8 +41,9 @@ approx = "0.5"
 gilrs = "0.8"
 
 [features]
-default = [ "mesh" ]
+default = [ "mesh", "audio" ]
 mesh = [ "lyon" ]
+audio = [ "quad-snd" ]
 log-impl = ["miniquad/log-impl"]
 jpeg = [ "image/jpeg" ]
 

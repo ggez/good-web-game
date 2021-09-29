@@ -19,6 +19,7 @@
 //! ### Differences
 //!
 //! * boilerplate code differs slightly, [as shown here](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/ggez/web-examples#ggez-animation-example)
+//! * audio API differs slightly due to use of `quad-snd` instead of `rodio` for easy portability
 //! * shaders have to be written in GLSL100, due to support for WebGL1
 //! * API for creation of shaders and their corresponding uniform structs differs slightly, but the workflow remains the same, see [the `shader` example](examples/shader.rs)
 //!
@@ -26,7 +27,7 @@
 //!
 //! * filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
 //! * writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
-//! * spatial audio (overall audio support is still relatively limited, but could be improved)
+//! * spatial audio (overall audio support is still relatively limited)
 //! * resolution control in fullscreen mode
 //! * setting window position / size (the latter is available on Windows, but buggy)
 //! * screenshot function
@@ -148,9 +149,6 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
             {
                 event::quit(&mut self.context);
             }
-        }
-        if let Some(ref mut mixer) = &mut *self.context.audio_context.mixer.borrow_mut() {
-            mixer.frame();
         }
     }
 

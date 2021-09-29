@@ -389,7 +389,7 @@ impl MainState {
         Ok(s)
     }
 
-    fn fire_player_shot(&mut self) {
+    fn fire_player_shot(&mut self, ctx: &mut Context) {
         self.player_shot_timeout = PLAYER_SHOT_TIME;
 
         let player = &self.player;
@@ -408,7 +408,7 @@ impl MainState {
 
         self.assets
             .shot_sound
-            .play()
+            .play(ctx)
             .expect("couldn't play sound for some reason");
     }
 
@@ -417,7 +417,7 @@ impl MainState {
         self.rocks.retain(|r| r.life > 0.0);
     }
 
-    fn handle_collisions(&mut self) {
+    fn handle_collisions(&mut self, ctx: &mut Context) {
         for rock in &mut self.rocks {
             let pdistance = rock.pos - self.player.pos;
             if pdistance.length() < (self.player.bbox_size + rock.bbox_size) {
@@ -437,7 +437,7 @@ impl MainState {
 
                     self.assets
                         .hit_sound
-                        .play()
+                        .play(ctx)
                         .expect("couldn't play sound for some reason");
                 }
             }
@@ -514,7 +514,7 @@ impl EventHandler<ggez::GameError> for MainState {
             );
             self.player_shot_timeout -= seconds;
             if self.input.fire && self.player_shot_timeout < 0.0 {
-                self.fire_player_shot();
+                self.fire_player_shot(ctx);
             }
 
             // Update the physics for all actors.
@@ -543,7 +543,7 @@ impl EventHandler<ggez::GameError> for MainState {
             // collision detection, object death, and if
             // we have killed all the rocks in the level,
             // spawn more of them.
-            self.handle_collisions();
+            self.handle_collisions(ctx);
 
             self.clear_dead_stuff();
 
@@ -639,9 +639,6 @@ impl EventHandler<ggez::GameError> for MainState {
         _keymod: KeyMods,
         _repeat: bool,
     ) {
-        // creating the mixer on user interaction might be necessary for web
-        audio::maybe_create_soundmixer(ctx);
-
         match keycode {
             KeyCode::Up => {
                 self.input.yaxis = 1.0;
@@ -678,17 +675,6 @@ impl EventHandler<ggez::GameError> for MainState {
             }
             _ => (), // Do nothing
         }
-    }
-
-    fn mouse_button_down_event(
-        &mut self,
-        ctx: &mut Context,
-        _button: MouseButton,
-        _x: f32,
-        _y: f32,
-    ) {
-        // creating the mixer on user interaction might be necessary for web
-        audio::maybe_create_soundmixer(ctx);
     }
 
     fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {

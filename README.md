@@ -31,6 +31,7 @@ Note that we don't give any guarantees for iOS / macOS support, as we currently 
 ### Differences
 
 * boilerplate code differs slightly, [as shown here](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/ggez/web-examples#ggez-animation-example)
+* audio API differs slightly due to use of `quad-snd` instead of `rodio` for easy portability
 * shaders have to be written in GLSL100, due to support for WebGL1
 * API for creation of shaders and their corresponding uniform structs differs slightly, but the workflow remains the same, see [the `shader` example](examples/shader.rs)
 
@@ -39,7 +40,7 @@ Note that we don't give any guarantees for iOS / macOS support, as we currently 
 * ggez (and therefore good-web-game) loads files in a blocking fashion, which doesn't work on Wasm (and is also currently not supported on mobile)
 * filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
 * writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
-* spatial audio (overall audio support is still relatively limited, but could be improved)
+* spatial audio (overall audio support is still relatively limited)
 * resolution control in fullscreen mode
 * setting window position / size (the latter is available on Windows, but buggy)
 * screenshot function

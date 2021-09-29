@@ -70,6 +70,8 @@ pub use crate::context::Context;
 pub use crate::error::*;
 
 pub use cgmath;
+// re-exported for those who want/need even more control
+pub extern crate miniquad;
 pub extern crate mint;
 
 use crate::event::ErrorOrigin;

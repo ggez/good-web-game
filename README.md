@@ -99,7 +99,7 @@ And then use the following .html to load .wasm:
 <body>
     <canvas id="glcanvas" tabindex='1'></canvas>
     <!-- For now this is just the same js glue macroquad uses: https://github.com/not-fl3/macroquad/tree/master/js -->
-    <script src="https://raw.githubusercontent.com/ggez/good-web-game/master/js/js_bundle.js"></script>
+    <script src="https://psteinhaus.github.io/js/js_bundle.js"></script>
     <script>load("astroblasto.wasm");</script> <!-- Your compiled wasm file -->
 </body>
 

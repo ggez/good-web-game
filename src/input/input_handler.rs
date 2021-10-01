@@ -33,6 +33,12 @@ pub struct InputHandler {
     pub wheel: f32,
 }
 
+impl Default for InputHandler {
+    fn default() -> Self {
+        InputHandler::new()
+    }
+}
+
 impl InputHandler {
     pub fn new() -> InputHandler {
         InputHandler {

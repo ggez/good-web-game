@@ -462,6 +462,7 @@ impl From<Color> for [f32; 4] {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<String> for Color {
     fn into(self) -> String {
         format!(

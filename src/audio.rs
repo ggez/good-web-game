@@ -82,6 +82,12 @@ impl AudioContext {
     }
 }
 
+impl Default for AudioContext {
+    fn default() -> Self {
+        AudioContext::new()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sound(usize);
 

@@ -55,17 +55,85 @@ Running Zemeroth: <https://not-fl3.github.io/miniquad-samples/zemeroth.html>
 
 You can also check out [astroblasto running on the web](https://psteinhaus.github.io/gwg-example/) ([source](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/gwg-example)).
 
-## Example
+## Building for different platforms
 
 To build and run an example as a native binary:
 
 ```rust
-cargo run --example 05_astroblasto
+cargo run --example astroblasto
 ```
 
-If you want to build for WASM take a look at the [miniquad instructions for WASM](https://github.com/not-fl3/miniquad/#wasm).
+### WebAssembly
 
-There you'll also find infos on building for [Android](https://github.com/not-fl3/miniquad/#android) / [iOS](https://github.com/not-fl3/miniquad/#ios).
+```rust
+rustup target add wasm32-unknown-unknown
+cargo build --example astroblasto --target wasm32-unknown-unknown
+```
+
+And then use the following .html to load .wasm:
+
+<details><summary>index.html</summary>
+
+```html
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>TITLE</title>
+    <style>
+        html,
+        body,
+        canvas {
+            margin: 0px;
+            padding: 0px;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: absolute;
+            background: black;
+            z-index: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="glcanvas" tabindex='1'></canvas>
+    <!-- For now this is just the same js glue macroquad uses: https://github.com/not-fl3/macroquad/tree/master/js -->
+    <script src="https://raw.githubusercontent.com/ggez/good-web-game/master/js/js_bundle.js"></script>
+    <script>load("astroblasto.wasm");</script> <!-- Your compiled wasm file -->
+</body>
+
+</html>
+```
+</details>
+
+To run it you need a server. An easy way to start one:
+
+```
+cargo install basic-http-server
+basic-http-server .
+```
+
+### Android
+
+
+Recommended way to build for android is using Docker.<br/>
+miniquad uses a slightly modifed version of `cargo-apk`
+
+```
+docker run --rm -v (your project folder):/root/src -w /root/src notfl3/cargo-apk cargo quad-apk build --example astroblasto
+```
+
+APK file will be in `target/android-artifacts/(debug|release)/apk`
+
+With "log-impl" enabled all log calls will be forwarded to the adb console.
+No code modifications for Android required.
+
+Note that all examples starting with numbers (for example `03_drawing.rs`) won't install correctly. You need to remove the leading numbers: `drawing.rs`
+
+### iOS
+
+See miniquad iOS [sample project](https://github.com/Gordon-F/miniquad_ios_example).
 
 ## On blurry graphics
 

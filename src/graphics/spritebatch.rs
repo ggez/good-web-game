@@ -49,6 +49,35 @@ impl SpriteBatch {
         SpriteIdx(self.sprites.len() - 1)
     }
 
+    /// Alters a sprite in the batch to use the given draw params
+    pub fn set<P>(&mut self, handle: SpriteIdx, param: P) -> GameResult
+    where
+        P: Into<graphics::DrawParam>,
+    {
+        if handle.0 < self.sprites.len() {
+            self.sprites[handle.0] = param.into();
+            Ok(())
+        } else {
+            Err(crate::error::GameError::RenderError(String::from(
+                "Provided index is out of bounds.",
+            )))
+        }
+    }
+
+    /// Returns a reference to the sprites.
+    pub fn get_sprites(&self) -> &[DrawParam] {
+        &self.sprites
+    }
+
+    /// Returns a mutable reference to the sprites.
+    ///
+    /// Unlike with `MeshBatch`, manually calling `flush` after altering sprites
+    /// in this slice is currently unnecessary, as `SpriteBatch` flushes automatically
+    /// on every draw call. This might change in the future though.
+    pub fn get_sprites_mut(&mut self) -> &mut [DrawParam] {
+        &mut self.sprites
+    }
+
     /// Removes all data from the sprite batch.
     pub fn clear(&mut self) {
         self.sprites.clear();

@@ -32,7 +32,7 @@ Note that we don't give any guarantees for iOS / macOS support, as we currently 
 
 * boilerplate code differs slightly, [as shown here](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/ggez/web-examples#ggez-animation-example)
 * audio API differs slightly due to use of `quad-snd` instead of `rodio` for easy portability
-* shaders have to be written in GLSL100, due to support for WebGL1
+* if you want to run on the web, shaders have to be written in GLSL100, due to support for WebGL1
 * API for creation of shaders and their corresponding uniform structs differs slightly, but the workflow remains the same, see [the `shader` example](examples/shader.rs)
 
 ### Missing / Not available:

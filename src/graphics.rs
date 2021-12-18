@@ -45,11 +45,10 @@ pub(crate) fn release_dropped_bindings() {
                 if *delete_texture {
                     bindings.images[0].delete();
                 }
-            } else {
-                *counter -= 1;
             }
+            *counter -= 1;
         }
-        DROPPED_BINDINGS.retain(|(_bindings, counter, _delete_texture)| *counter > 0);
+        DROPPED_BINDINGS.retain(|(_bindings, counter, _delete_texture)| *counter >= 0);
     }
 }
 

@@ -1,3 +1,8 @@
+# 0.4.1
+
+* fixed a memory leak caused by drawable structs not releasing their resources
+* fixed `miniquad` version
+
 # 0.4.0
 
 ## Added

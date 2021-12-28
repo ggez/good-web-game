@@ -1,3 +1,8 @@
+# 0.4.2
+
+* added a dependency on `twox_hash 1.5.0` to coerce semver into using a `rand < 0.8` in order to avoid `getrandom`, so
+that gwg compiles on wasm again
+
 # 0.4.1
 
 * fixed a memory leak caused by drawable structs not releasing their resources

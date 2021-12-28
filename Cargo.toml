@@ -1,6 +1,6 @@
 [package]
 name = "good-web-game"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["not-fl3 <not.fl3@gmail.com>", "PSteinhaus"]
 license = "MIT"
 edition = "2018"

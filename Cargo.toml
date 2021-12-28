@@ -24,6 +24,7 @@ rustc-hash = "1.0.1"
 lazy_static = "1.3.0"
 mint = "0.5"
 cgmath = { version = "0.17", features = ["mint"] }
+twox-hash = "=1.5.0"    # necessary to force a version of rand < 0.8 to avoid getrandom
 glyph_brush = "0.7"
 miniquad = "=0.3.0-alpha.37"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }

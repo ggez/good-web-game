@@ -93,7 +93,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
 pub fn main() -> GameResult {
     ggez::start(
         ggez::conf::Conf::default()
-            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
+            .cache(Some(include_bytes!("resources.tar"))),
         |ctx| Box::new(MainState::new(ctx).unwrap()),
     )
 }

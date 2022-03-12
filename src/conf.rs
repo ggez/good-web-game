@@ -14,21 +14,20 @@ pub enum Loading {
 /// can't be changed later.
 #[derive(Debug)]
 pub struct Conf {
-    //pub loading: Loading,
     /// `Filesystem::open` will try to read from this dir if there's no such file in the cache.
     ///
     /// Note that this won't work on platforms where `std::fs` is unavailable, like WASM.
     pub physical_root_dir: Option<PathBuf>,
+    pub(crate) cache: Option<&'static [u8]>,
     pub(crate) quad_conf: miniquad::conf::Conf,
 }
 
 impl Default for Conf {
     fn default() -> Conf {
         Conf {
-            //loading: Loading::No,
             physical_root_dir: None,
+            cache: None,
             quad_conf: miniquad::conf::Conf {
-                cache: miniquad::conf::Cache::No,
                 window_title: "An easy, good game".to_string(),
                 window_width: 800,
                 window_height: 600,
@@ -36,6 +35,7 @@ impl Default for Conf {
                 fullscreen: false,
                 sample_count: 1,
                 window_resizable: false,
+                icon: None
             },
         }
     }
@@ -59,8 +59,8 @@ impl Conf {
     /// Set the cache, holding embedded files for later use.
     ///
     /// Default: `miniquad::conf::Cache::No`
-    pub fn cache(mut self, val: miniquad::conf::Cache) -> Self {
-        self.quad_conf.cache = val;
+    pub fn cache(mut self, val: Option<&'static [u8]>) -> Self {
+        self.cache = val;
         self
     }
     /// Set the window title

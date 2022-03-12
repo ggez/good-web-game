@@ -8,9 +8,7 @@ use ggez::timer;
 use ggez::{Context, GameResult};
 use glam::*;
 use oorandom::Rand32;
-use std::env;
 use std::f32::consts::PI;
-use std::path;
 
 const TWO_PI: f32 = 2.0 * PI;
 
@@ -119,18 +117,9 @@ impl event::EventHandler<ggez::GameError> for MainState {
 }
 
 pub fn main() -> GameResult {
-    let resource_dir = if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
-        let mut path = path::PathBuf::from(manifest_dir);
-        path.push("resources");
-        path
-    } else {
-        path::PathBuf::from("./resources")
-    };
 
     ggez::start(
-        ggez::conf::Conf::default()
-            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
-            .physical_root_dir(Some(resource_dir)),
+        ggez::conf::Conf::default(),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

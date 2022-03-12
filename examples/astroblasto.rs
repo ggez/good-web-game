@@ -706,7 +706,7 @@ pub fn main() -> GameResult {
 
     ggez::start(
         ggez::conf::Conf::default()
-            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
+            .cache(Some(include_bytes!("resources.tar"))),
         |mut context| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

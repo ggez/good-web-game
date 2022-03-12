@@ -7,8 +7,7 @@ use ggez::{event::EventHandler, Context, GameError, GameResult};
 
 fn main() -> GameResult<()> {
     ggez::start(
-        ggez::conf::Conf::default()
-            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
+        ggez::conf::Conf::default(),
         |context| {
             set_cursor_grabbed(context, true);
             Box::new(MousePos(0., 0.))

@@ -181,7 +181,7 @@ fn main() -> GameResult {
 
     ggez::start(
         ggez::conf::Conf::default()
-            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+            .cache(Some(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
         |context| Box::new(GameState::new(context).unwrap()),
     )

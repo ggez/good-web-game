@@ -9,7 +9,6 @@ use ggez::{Context, GameResult};
 use glam::Vec2;
 use std::collections::BTreeMap;
 use std::env;
-use std::f32;
 //use std::path;
 
 /// Creates a random RGB color.
@@ -207,7 +206,7 @@ pub fn main() -> GameResult {
 
     ggez::start(
         ggez::conf::Conf::default()
-            .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar"))),
+            .cache(Some(include_bytes!("resources.tar"))),
         |context| Box::new(App::new(context).unwrap()),
     )
 }

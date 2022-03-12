@@ -450,7 +450,7 @@ fn main() -> GameResult {
     let state = GameState::new();
     // Then we create a configuration for how to start the application
     let conf = ggez::conf::Conf::default()
-        .cache(miniquad::conf::Cache::Tar(include_bytes!("resources.tar")))
+        .cache(Some(include_bytes!("resources.tar")))
         // We set up the window. This title will be displayed in the title bar of the window.
         .window_title("Snake!".to_string())
         // Now we get to set the size of the window, which we use our SCREEN_SIZE constant from earlier to help with

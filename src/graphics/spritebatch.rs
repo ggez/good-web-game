@@ -105,20 +105,6 @@ impl SpriteBatch {
 
 impl graphics::Drawable for SpriteBatch {
     fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-        // scale the offset according to the dimensions of the spritebatch
-        // but only if there is an offset (it's too expensive to calculate the dimensions to always to this)
-        let mut param = param;
-        if let crate::graphics::Transform::Values { offset, .. } = param.trans {
-            if offset != [0.0, 0.0].into() {
-                if let Some(dim) = self.dimensions(ctx) {
-                    let new_offset = mint::Vector2 {
-                        x: offset.x * dim.w + dim.x,
-                        y: offset.y * dim.h + dim.y,
-                    };
-                    param = param.offset(new_offset);
-                }
-            }
-        }
 
         {
             let mut image = self.image.borrow_mut();

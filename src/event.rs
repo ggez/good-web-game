@@ -7,6 +7,7 @@ pub use crate::input::MouseButton;
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
 use gilrs::{Axis, Button};
 pub use miniquad::{KeyCode, TouchPhase};
+use crate::GameError;
 
 /// Used in [`EventHandler`](trait.EventHandler.html)
 /// to specify where an error originated
@@ -28,7 +29,7 @@ pub enum ErrorOrigin {
 /// [`key_down_event()`](#tymethod.key_down_event), which will by
 /// default exit the game if the escape key is pressed.  Just
 /// override the methods you want to use.
-pub trait EventHandler<E>
+pub trait EventHandler<E = GameError>
 where
     E: std::error::Error,
 {

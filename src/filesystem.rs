@@ -1,7 +1,11 @@
+// large parts directly stolen from macroquad: https://github.com/not-fl3/macroquad/blob/854aa50302a00ce590d505e28c9ecc42ae24be58/src/file.rs
+
 use std::{collections::HashMap, io, path};
+use std::sync::{Arc, Mutex};
 
 use crate::{conf::Conf, Context, GameError, GameResult};
 use std::panic::panic_any;
+use crate::GameError::ResourceLoadError;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -63,23 +67,69 @@ impl Filesystem {
             path = path::PathBuf::from(stripped);
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if let Some(ref root_path) = self.root {
-                if let Ok(buf) = std::fs::read(root_path.join(&path)) {
-                    let bytes = io::Cursor::new(buf);
-                    return Ok(File { bytes });
+        // first check the cache
+        if self.files.contains_key(&path) {
+            Ok(self.files[&path].clone())
+        } else {
+            // the file is not inside the cache, so it has to be loaded (locally, or via http url)
+            let file = self.load_file(&path)?;
+            Ok(file)
+        }
+
+    }
+
+    /// Load file from the path and block until its loaded
+    /// Will use filesystem on PC and do http request on web
+    fn load_file<P: AsRef<path::Path>>(&self, path: P) -> GameResult<File> {
+        fn load_file_inner(path: &str) -> GameResult<Vec<u8>> {
+
+            let contents = Arc::new(Mutex::new(None));
+
+            {
+                let contents = contents.clone();
+                let err_path = path.to_string();
+
+                miniquad::fs::load_file(path, move |bytes| {
+                    *contents.lock().unwrap() =
+                        Some(bytes.map_err(|kind| GameError::ResourceLoadError(format!("Couldn't load file {}: {}", err_path, kind))));
+                });
+            }
+
+            // wait until the file has been loaded
+            // as miniquad::fs::load_file internally uses non-asynchronous loading for everything
+            // except wasm, waiting should only ever occur on wasm
+            loop {
+                let mut contents_guard = contents.lock().unwrap();
+                if let Some(contents) = contents_guard.take() {
+                    return contents;
                 }
+                drop(contents_guard);
+                std::thread::yield_now();
             }
         }
 
-        if !self.files.contains_key(&path) {
-            return Err(GameError::FilesystemError(format!(
-                "No such file: {:?}",
-                &path
-            )));
-        }
-        Ok(self.files[&path].clone())
+        #[cfg(target_os = "ios")]
+            let _ = std::env::set_current_dir(std::env::current_exe().unwrap().parent().unwrap());
+
+        let path = path.as_ref().as_os_str().to_os_string().into_string().map_err(|os_string| ResourceLoadError(format!("utf-8-invalid path: {:?}", os_string)))?;
+
+        #[cfg(not(target_os = "android"))]
+            let path = if let Some(ref root) = self.root {
+            format!("{}/{}",
+                    root.as_os_str()
+                        .to_os_string()
+                        .into_string()
+                        .map_err(|os_string| ResourceLoadError(format!("utf-8-invalid root: {:?}", os_string)))?,
+                    path)
+        } else {
+            path
+        };
+
+        println!("loading with path {}", &path);
+
+        let buf = load_file_inner(&path)?;
+        let bytes = io::Cursor::new(buf);
+        Ok(File { bytes })
     }
 }
 

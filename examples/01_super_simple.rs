@@ -3,7 +3,7 @@
 extern crate good_web_game as ggez;
 
 use ggez::input::mouse::set_cursor_grabbed;
-use ggez::{event::EventHandler, Context, GameError, GameResult};
+use ggez::{event::EventHandler, Context, GameResult};
 
 fn main() -> GameResult<()> {
     ggez::start(
@@ -17,7 +17,7 @@ fn main() -> GameResult<()> {
 
 struct MousePos(f32, f32);
 
-impl EventHandler<GameError> for MousePos {
+impl EventHandler for MousePos {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         println!("UPDATE: delta: {:?}", ggez::input::mouse::delta(ctx));
         Ok(())

@@ -59,10 +59,10 @@ impl event::EventHandler<ggez::GameError> for MainState {
                 self.spritebatch.add(p);
             }
         }
-        /*
+
         let param = graphics::DrawParam::new()
             .dest(Point2::new(
-                ((time % cycle) as f32 / cycle as f32 * 6.28).cos() * 50.0 - 150.0,
+                ((time % cycle) as f32 / cycle as f32 * 6.28).cos() * 50.0 + 150.0,
                 ((time % cycle) as f32 / cycle as f32 * 6.28).sin() * 50.0 - 150.0,
             ))
             .scale(Vector2::new(
@@ -70,24 +70,10 @@ impl event::EventHandler<ggez::GameError> for MainState {
                 ((time % cycle) as f32 / cycle as f32 * 6.28).sin().abs() * 2.0 + 1.0,
             ))
             .rotation((time % cycle) as f32 / cycle as f32 * 6.28)
-            .offset(Point2::new(750.0, 750.0));
-         */
-        let param = graphics::DrawParam::new()
-            .dest(Point2::new(
-                ((time % cycle) as f32 / cycle as f32 * 6.28).cos() * 50.0 + 250.0,
-                ((time % cycle) as f32 / cycle as f32 * 6.28).sin() * 50.0 + 150.0,
-            ))
-            .scale(Vector2::new(
-                ((time % cycle) as f32 / cycle as f32 * 6.28).sin().abs() * 2.0 + 1.0,
-                ((time % cycle) as f32 / cycle as f32 * 6.28).sin().abs() * 2.0 + 1.0,
-            ))
             // applying a src parameter to a spritebatch globally has no effect
             //.src([0.25,0.25,0.5,0.5].into())
-            .rotation((time % cycle) as f32 / cycle as f32 * 6.28);
-        // WARNING: Using an offset != (0.,0.) on a spritebatch may come with a significant performance cost.
-        // This is due to the fact that the total dimensions of everything drawn by it have to be calculated.
-        // See SpriteBatch::draw and SpriteBatch::dimensions for more information.
-        //.offset(Point2::new(0.5, 0.5));
+            .offset(Point2::new(750.0, 750.0));
+
         graphics::draw(ctx, &self.spritebatch, param)?;
         self.spritebatch.clear();
 

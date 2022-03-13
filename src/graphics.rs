@@ -201,7 +201,6 @@ pub fn set_drawable_size(context: &mut Context, width: u32, height: u32) {
 pub fn clear_font_cache(ctx: &mut Context) {
     use glyph_brush::GlyphBrushBuilder;
     use std::cell::RefCell;
-    use std::convert::TryInto;
     use std::rc::Rc;
     let font_vec =
         glyph_brush::ab_glyph::FontArc::try_from_slice(Font::default_font_bytes()).unwrap();

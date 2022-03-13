@@ -448,8 +448,8 @@ impl MeshBuilder {
     where
         V: Into<Vertex> + Clone,
     {
-        assert!(self.buffer.vertices.len() + verts.len() < (std::u16::MAX as usize));
-        assert!(self.buffer.indices.len() + indices.len() < (std::u16::MAX as usize));
+        assert!(self.buffer.vertices.len() + verts.len() < (u16::MAX as usize));
+        assert!(self.buffer.indices.len() + indices.len() < (u16::MAX as usize));
         let next_idx = self.buffer.vertices.len() as u16;
         // Can we remove the clone here?
         // I can't find a way to, because `into()` consumes its source and
@@ -712,14 +712,14 @@ impl Mesh {
         V: Into<Vertex> + Clone,
     {
         // Sanity checks to return early with helpful error messages.
-        if verts.len() > (std::u16::MAX as usize) {
+        if verts.len() > (u16::MAX as usize) {
             let msg = format!(
                 "Tried to build a mesh with {} vertices, max is u16::MAX",
                 verts.len()
             );
             return Err(GameError::LyonError(msg));
         }
-        if indices.len() > (std::u16::MAX as usize) {
+        if indices.len() > (u16::MAX as usize) {
             let msg = format!(
                 "Tried to build a mesh with {} indices, max is u16::MAX",
                 indices.len()
@@ -1061,20 +1061,6 @@ impl MeshBatch {
     /// Draws the drawable onto the rendering target.
     pub fn draw(&mut self, ctx: &mut Context, param: DrawParam) -> GameResult {
         if !self.instance_params.is_empty() {
-            // scale the offset according to the dimensions of the spritebatch
-            // but only if there is an offset (it's too expensive to calculate the dimensions to always to this)
-            let mut param = param;
-            if let crate::graphics::Transform::Values { offset, .. } = param.trans {
-                if offset != [0.0, 0.0].into() {
-                    if let Some(dim) = self.dimensions(ctx) {
-                        let new_offset = mint::Vector2 {
-                            x: offset.x * dim.w + dim.x,
-                            y: offset.y * dim.h + dim.y,
-                        };
-                        param = param.offset(new_offset);
-                    }
-                }
-            }
 
             if self.instance_buffer_dirty {
                 self.flush(ctx)?;

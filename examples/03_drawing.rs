@@ -111,7 +111,7 @@ fn build_textured_triangle(ctx: &mut Context) -> GameResult<graphics::Mesh> {
     mb.build(ctx)
 }
 
-impl event::EventHandler<ggez::GameError> for MainState {
+impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         const DESIRED_FPS: u32 = 60;
 

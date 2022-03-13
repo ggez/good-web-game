@@ -16,6 +16,7 @@ use ggez::timer;
 use ggez::{audio, graphics};
 use ggez::{Context, GameResult};
 use std::f32::consts::PI;
+use std::{env, path};
 
 type Point2 = glam::Vec2;
 type Vector2 = glam::Vec2;
@@ -497,7 +498,7 @@ fn draw_actor(
 /// ggez with callbacks for updating and drawing our game, as well as
 /// handling input events.
 /// **********************************************************************
-impl EventHandler<ggez::GameError> for MainState {
+impl EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         const DESIRED_FPS: u32 = 60;
 
@@ -630,6 +631,23 @@ impl EventHandler<ggez::GameError> for MainState {
         Ok(())
     }
 
+    fn resize_event(&mut self, context: &mut Context, w: f32, h: f32) {
+        self.screen_width = w;
+        self.screen_height = h;
+        let coordinates = graphics::Rect::new(0., 0.0, w, h);
+
+        graphics::set_screen_coordinates(context, coordinates).expect("Can't resize the window");
+    }
+
+    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {
+        if let MouseButton::Left = button {
+            // stop shooting and accelerating
+            self.input.yaxis = 0.0;
+            self.input.xaxis = 0.0;
+            self.input.fire = false;
+        }
+    }
+
     // Handle key events.  These just map keyboard events
     // and alter our input state appropriately.
     fn key_down_event(
@@ -675,23 +693,6 @@ impl EventHandler<ggez::GameError> for MainState {
             }
             _ => (), // Do nothing
         }
-    }
-
-    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {
-        if let MouseButton::Left = button {
-            // stop shooting and accelerating
-            self.input.yaxis = 0.0;
-            self.input.xaxis = 0.0;
-            self.input.fire = false;
-        }
-    }
-
-    fn resize_event(&mut self, context: &mut Context, w: f32, h: f32) {
-        self.screen_width = w;
-        self.screen_height = h;
-        let coordinates = graphics::Rect::new(0., 0.0, w, h);
-
-        graphics::set_screen_coordinates(context, coordinates).expect("Can't resize the window");
     }
 }
 

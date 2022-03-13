@@ -75,7 +75,6 @@ impl GraphicsContext {
             .expect("Invalid default font bytes, should never happen");
         let glyph_brush = GlyphBrushBuilder::using_font(font_vec).build();
         let (glyph_cache_width, glyph_cache_height) = glyph_brush.texture_dimensions();
-        use std::convert::{TryFrom, TryInto};
         let initial_contents = vec![
             255;
             4 * usize::try_from(glyph_cache_width).unwrap()

@@ -78,8 +78,9 @@ impl Filesystem {
 
     }
 
+    #[cfg(not(target_os = "wasm32"))]
     /// Load file from the path and block until its loaded
-    /// Will use filesystem on PC and do http request on web
+    /// Will use filesystem on PC and Android and fail on WASM
     fn load_file<P: AsRef<path::Path>>(&self, path: P) -> GameResult<File> {
         fn load_file_inner(path: &str) -> GameResult<Vec<u8>> {
 
@@ -97,7 +98,10 @@ impl Filesystem {
 
             // wait until the file has been loaded
             // as miniquad::fs::load_file internally uses non-asynchronous loading for everything
-            // except wasm, waiting should only ever occur on wasm
+            // except wasm, waiting should only ever occur on wasm (TODO: since this holds the main
+            // thread hostage no progress is ever made and this just blocks forever... perhaps this
+            // could be worked around by using "asyncify", but that would be both hard and also
+            // require an additional post processing step on the generated wasm file)
             loop {
                 let mut contents_guard = contents.lock().unwrap();
                 if let Some(contents) = contents_guard.take() {
@@ -131,10 +135,46 @@ impl Filesystem {
         let bytes = io::Cursor::new(buf);
         Ok(File { bytes })
     }
+
+    #[cfg(target_os = "wasm32")]
+    /// Load file from the path and block until its loaded
+    /// Will use filesystem on PC and Android and fail on WASM
+    fn load_file<P: AsRef<path::Path>>(&self, path: P) -> GameResult<File> {
+        Err(GameError::ResourceLoadError(format!("Couldn't load file {}", path.as_display())))
+    }
 }
 
 /// Opens the given path and returns the resulting `File`
 /// in read-only mode.
+///
+/// Checks the [embedded tar file](../conf/struct.Conf.html#method.high_dpi), if there is one, first and if the file cannot be found there
+/// continues to either load the file using the OS-filesystem, or just fail on WASM, as blocking loads
+/// are impossible there.
 pub fn open<P: AsRef<path::Path>>(ctx: &mut Context, path: P) -> GameResult<File> {
     ctx.filesystem.open(path)
+}
+
+/// Loads a file from the path returning an `Option` that will be `Some` once it has been loaded (or loading it failed).
+/// Will use filesystem on PC and Android and a http request on WASM.
+///
+/// Note: Don't wait for the `Option` to become `Some` inside of a loop, as that would create an infinite loop
+/// on WASM, where progress on the GET request can only be made _between_ frames of your application.
+pub fn load_file_async<P: AsRef<path::Path>>(path: P) -> Arc<Mutex<Option<GameResult<File>>>> {
+    // TODO: Create an example showcasing the use of this.
+    let contents = Arc::new(Mutex::new(None));
+    let path = path.as_ref().as_os_str().to_os_string().into_string().map_err(|os_string| ResourceLoadError(format!("utf-8-invalid path: {:?}", os_string)));
+
+    if let Ok(path) = path {
+        let contents = contents.clone();
+
+        miniquad::fs::load_file(&*(path.clone()), move |response| {
+            let result = match response {
+                Ok(bytes) => Ok(File { bytes: io::Cursor::new(bytes) }),
+                Err(e) => Err(GameError::ResourceLoadError(format!("Couldn't load file {}: {}", path, e)))
+            };
+            *contents.lock().unwrap() = Some(result);
+        });
+    }
+
+    contents
 }

@@ -1,15 +1,5 @@
 use std::path::PathBuf;
 
-/*
-#[derive(Debug)]
-pub enum Loading {
-    /// No progressbar at all, no html special requirements
-    No,
-    /// Will look for some specific html elements and show default progress bar
-    Embedded,
-}
-*/
-
 /// Holds configuration values setting different options when starting the game, some of which
 /// can't be changed later.
 #[derive(Debug)]
@@ -42,13 +32,6 @@ impl Default for Conf {
 }
 
 impl Conf {
-    /*
-    /// Whether to show a progress bar (doesn't do anything currently)
-    pub fn loading(mut self, val: Loading) -> Self {
-        self.loading = val;
-        self
-    }
-    */
     /// Set the root of your filesystem.
     ///
     /// Default: `None`

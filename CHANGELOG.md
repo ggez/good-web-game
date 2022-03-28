@@ -1,3 +1,22 @@
+# 0.5.0
+
+## Added
+
+* added `filesystem::load_file_async` to allow for file loading on WASM as well
+
+## Changed
+
+* updated `miniquad` to 0.3.0-alpha.38 (highest version currently compatible with the docker build script and without
+an icon bug on windows)
+* changed `offset` behavior and added default error type to `EventHandler` to match `ggez` 0.7.0
+* made `filesystem::open` check the cache first and then only load files whenever they're not present in the cache
+* `filesystem::open` now internally uses `miniquad::fs::load_file`, allowing to load files on Android now as well
+  * ```cargo
+    [package.metadata.android]
+    assets = "<your ressource folder>/"
+    ```
+    can be used in your `Cargo.toml` file to specify which folder to include in the apk as the assets folder
+
 # 0.4.2
 
 * added a dependency on `twox_hash 1.5.0` to coerce semver into using a `rand < 0.8` in order to avoid `getrandom`, so

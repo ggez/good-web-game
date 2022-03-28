@@ -131,23 +131,12 @@ where
 
 /// Cached font metrics that we can keep attached to a `Text`
 /// so we don't have to keep recalculating them.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 struct CachedMetrics {
     string: Option<String>,
     width: Option<f32>,
     height: Option<f32>,
     glyph_positions: Vec<mint::Point2<f32>>,
-}
-
-impl Default for CachedMetrics {
-    fn default() -> CachedMetrics {
-        CachedMetrics {
-            string: None,
-            width: None,
-            height: None,
-            glyph_positions: Vec::new(),
-        }
-    }
 }
 
 /// Drawable text object.  Essentially a list of [`TextFragment`](struct.TextFragment.html)'s

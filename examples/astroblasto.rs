@@ -16,7 +16,6 @@ use ggez::timer;
 use ggez::{audio, graphics};
 use ggez::{Context, GameResult};
 use std::f32::consts::PI;
-use std::{env, path};
 
 type Point2 = glam::Vec2;
 type Vector2 = glam::Vec2;

@@ -9,10 +9,10 @@
 
 good-web-game is a wasm32-unknown-unknown implementation of a [ggez](https://github.com/ggez/ggez) subset on top of [miniquad](https://github.com/not-fl3/miniquad/). Originally built to run [Zemeroth](https://github.com/ozkriff/zemeroth) on the web.
 
-It has been recently updated to support much of the ggez 0.6.1 API. If you're already working with ggez you might use this library to port your game to the web (or even mobile).
+It currently supports most of the ggez 0.7.0 API. If you're already working with ggez you might use this library to port your game to the web (or even mobile).
 Since it also runs well on desktop it also offers an alternative implementation of ggez, which might always come in handy.
 
-If you are just looking for a well supported minimal high-level engine on top of miniquad you might want to take a look at [macroquad](https://github.com/not-fl3/macroquad/).
+If you are just looking for a well supported, more serious, minimal high-level engine on top of miniquad you might want to take a look at [macroquad](https://github.com/not-fl3/macroquad/).
 
 ## Supported Platforms
 
@@ -22,22 +22,23 @@ The idea behind good-web-game is to offer a way to easily port ggez games to the
     <img width="90%" src="about/supported_platforms.svg">
 </p>
 
-Note that we don't give any guarantees for iOS / macOS support, as we currently simply don't have Macs lying around to test it on. It _should_ work just fine though.
+Note that we don't give any guarantees for iOS / macOS support, as we currently simply don't have Macs lying around to test it on. In theory, it _should_ work though.
 
 ## Status
 
-"good-web-game" implements most of the ggez 0.6.1 API.
+"good-web-game" implements most of the ggez 0.7.0 API.
 
 ### Differences
 
 * boilerplate code differs slightly, [as shown here](https://github.com/PSteinhaus/PSteinhaus.github.io/tree/main/ggez/web-examples#ggez-animation-example)
-* audio API differs slightly due to use of `quad-snd` instead of `rodio` for easy portability
+* audio API differs somewhat due to use of `quad-snd` instead of `rodio` for easy portability
 * if you want to run on the web, shaders have to be written in GLSL100, due to support for WebGL1
 * API for creation of shaders and their corresponding uniform structs differs slightly, but the workflow remains the same, see [the `shader` example](examples/shader.rs)
 
 ### Missing / Not available:
 
-* ggez (and therefore good-web-game) loads files in a blocking fashion, which doesn't work on Wasm (and is also currently not supported on mobile)
+* ggez (and therefore good-web-game) usually loads files in a blocking fashion, which doesn't work on WASM
+  * loading files asynchronously is possible through [`load_file_async`](https://docs.rs/good-web-game/0.5.0/good_web_game/filesystem/fn.load_file_async.html) everywhere though
 * filesystem with writing access (if you need it take a look at [`quad-storage`](https://github.com/optozorax/quad-storage))
 * writing your own event loop (doesn't make much sense on callback-only platforms like HTML5)
 * spatial audio (overall audio support is still relatively limited)
@@ -59,13 +60,13 @@ You can also check out [astroblasto running on the web](https://psteinhaus.githu
 
 To build and run an example as a native binary:
 
-```rust
+```
 cargo run --example astroblasto
 ```
 
 ### WebAssembly
 
-```rust
+```
 rustup target add wasm32-unknown-unknown
 cargo build --example astroblasto --target wasm32-unknown-unknown
 ```

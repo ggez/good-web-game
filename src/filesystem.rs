@@ -26,6 +26,7 @@ pub struct Filesystem {
 }
 
 impl Filesystem {
+    #[allow(clippy::redundant_closure)]
     pub(crate) fn new(conf: &Conf) -> Filesystem {
         let mut files = HashMap::new();
 
@@ -128,8 +129,6 @@ impl Filesystem {
         } else {
             path
         };
-
-        println!("loading with path {}", &path);
 
         let buf = load_file_inner(&path)?;
         let bytes = io::Cursor::new(buf);

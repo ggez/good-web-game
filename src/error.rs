@@ -89,7 +89,7 @@ impl From<lyon::lyon_tessellation::geometry_builder::GeometryBuilderError> for G
 
 impl From<zip::result::ZipError> for GameError {
     fn from(e: zip::result::ZipError) -> GameError {
-        let errstr = format!("Zip error: {}", e.to_string());
+        let errstr = format!("Zip error: {}", e);
         GameError::ResourceLoadError(errstr)
     }
 }

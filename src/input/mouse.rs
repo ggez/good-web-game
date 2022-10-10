@@ -83,9 +83,13 @@ pub fn cursor_grabbed(ctx: &Context) -> bool {
 }
 
 /// Set whether or not the mouse is grabbed (confined to the window)
-pub fn set_cursor_grabbed(ctx: &mut Context, grabbed: bool) {
+pub fn set_cursor_grabbed(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::GraphicsContext,
+    grabbed: bool,
+) {
     ctx.mouse_context.cursor_grabbed = grabbed;
-    ctx.quad_ctx.set_cursor_grab(grabbed);
+    quad_ctx.set_cursor_grab(grabbed);
 }
 
 /// Returns the current mouse cursor type of the window.
@@ -94,9 +98,13 @@ pub fn cursor_type(ctx: &Context) -> miniquad::CursorIcon {
 }
 
 /// Modifies the mouse cursor type of the window.
-pub fn set_cursor_type(ctx: &mut Context, cursor_type: miniquad::CursorIcon) {
+pub fn set_cursor_type(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    cursor_type: miniquad::CursorIcon,
+) {
     ctx.mouse_context.cursor_type = cursor_type;
-    ctx.quad_ctx.set_mouse_cursor(cursor_type);
+    quad_ctx.set_mouse_cursor(cursor_type);
 }
 
 /// Set whether or not the mouse is hidden (invisible)
@@ -105,7 +113,11 @@ pub fn cursor_hidden(ctx: &Context) -> bool {
 }
 
 /// Set whether or not the mouse is hidden (invisible).
-pub fn set_cursor_hidden(ctx: &mut Context, hidden: bool) {
+pub fn set_cursor_hidden(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    hidden: bool,
+) {
     ctx.mouse_context.cursor_hidden = hidden;
-    ctx.quad_ctx.show_mouse(!hidden);
+    quad_ctx.show_mouse(!hidden);
 }

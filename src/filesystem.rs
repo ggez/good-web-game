@@ -1,11 +1,11 @@
 // large parts directly stolen from macroquad: https://github.com/not-fl3/macroquad/blob/854aa50302a00ce590d505e28c9ecc42ae24be58/src/file.rs
 
-use std::{collections::HashMap, io, path};
 use std::sync::{Arc, Mutex};
+use std::{collections::HashMap, io, path};
 
+use crate::GameError::ResourceLoadError;
 use crate::{conf::Conf, Context, GameError, GameResult};
 use std::panic::panic_any;
-use crate::GameError::ResourceLoadError;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -76,7 +76,6 @@ impl Filesystem {
             let file = self.load_file(&path)?;
             Ok(file)
         }
-
     }
 
     #[cfg(not(target_os = "wasm32"))]
@@ -84,7 +83,6 @@ impl Filesystem {
     /// Will use filesystem on PC and Android and fail on WASM
     fn load_file<P: AsRef<path::Path>>(&self, path: P) -> GameResult<File> {
         fn load_file_inner(path: &str) -> GameResult<Vec<u8>> {
-
             let contents = Arc::new(Mutex::new(None));
 
             {
@@ -92,8 +90,12 @@ impl Filesystem {
                 let err_path = path.to_string();
 
                 miniquad::fs::load_file(path, move |bytes| {
-                    *contents.lock().unwrap() =
-                        Some(bytes.map_err(|kind| GameError::ResourceLoadError(format!("Couldn't load file {}: {}", err_path, kind))));
+                    *contents.lock().unwrap() = Some(bytes.map_err(|kind| {
+                        GameError::ResourceLoadError(format!(
+                            "Couldn't load file {}: {}",
+                            err_path, kind
+                        ))
+                    }));
                 });
             }
 
@@ -114,18 +116,30 @@ impl Filesystem {
         }
 
         #[cfg(target_os = "ios")]
-            let _ = std::env::set_current_dir(std::env::current_exe().unwrap().parent().unwrap());
+        let _ = std::env::set_current_dir(std::env::current_exe().unwrap().parent().unwrap());
 
-        let path = path.as_ref().as_os_str().to_os_string().into_string().map_err(|os_string| ResourceLoadError(format!("utf-8-invalid path: {:?}", os_string)))?;
+        let path = path
+            .as_ref()
+            .as_os_str()
+            .to_os_string()
+            .into_string()
+            .map_err(|os_string| {
+                ResourceLoadError(format!("utf-8-invalid path: {:?}", os_string))
+            })?;
 
         #[cfg(not(target_os = "android"))]
-            let path = if let Some(ref root) = self.root {
-            format!("{}/{}",
-                    root.as_os_str()
-                        .to_os_string()
-                        .into_string()
-                        .map_err(|os_string| ResourceLoadError(format!("utf-8-invalid root: {:?}", os_string)))?,
-                    path)
+        let path = if let Some(ref root) = self.root {
+            format!(
+                "{}/{}",
+                root.as_os_str()
+                    .to_os_string()
+                    .into_string()
+                    .map_err(|os_string| ResourceLoadError(format!(
+                        "utf-8-invalid root: {:?}",
+                        os_string
+                    )))?,
+                path
+            )
         } else {
             path
         };
@@ -139,7 +153,10 @@ impl Filesystem {
     /// Load file from the path and block until its loaded
     /// Will use filesystem on PC and Android and fail on WASM
     fn load_file<P: AsRef<path::Path>>(&self, path: P) -> GameResult<File> {
-        Err(GameError::ResourceLoadError(format!("Couldn't load file {}", path.as_display())))
+        Err(GameError::ResourceLoadError(format!(
+            "Couldn't load file {}",
+            path.as_display()
+        )))
     }
 }
 
@@ -161,15 +178,25 @@ pub fn open<P: AsRef<path::Path>>(ctx: &mut Context, path: P) -> GameResult<File
 pub fn load_file_async<P: AsRef<path::Path>>(path: P) -> Arc<Mutex<Option<GameResult<File>>>> {
     // TODO: Create an example showcasing the use of this.
     let contents = Arc::new(Mutex::new(None));
-    let path = path.as_ref().as_os_str().to_os_string().into_string().map_err(|os_string| ResourceLoadError(format!("utf-8-invalid path: {:?}", os_string)));
+    let path = path
+        .as_ref()
+        .as_os_str()
+        .to_os_string()
+        .into_string()
+        .map_err(|os_string| ResourceLoadError(format!("utf-8-invalid path: {:?}", os_string)));
 
     if let Ok(path) = path {
         let contents = contents.clone();
 
         miniquad::fs::load_file(&*(path.clone()), move |response| {
             let result = match response {
-                Ok(bytes) => Ok(File { bytes: io::Cursor::new(bytes) }),
-                Err(e) => Err(GameError::ResourceLoadError(format!("Couldn't load file {}: {}", path, e)))
+                Ok(bytes) => Ok(File {
+                    bytes: io::Cursor::new(bytes),
+                }),
+                Err(e) => Err(GameError::ResourceLoadError(format!(
+                    "Couldn't load file {}: {}",
+                    path, e
+                ))),
             };
             *contents.lock().unwrap() = Some(result);
         });

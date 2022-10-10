@@ -51,27 +51,33 @@ impl MainState {
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
 
         let text = graphics::Text::new("Press number key 1 to to play a sound,\n2 to play repeated,\n3 to stop,\nUp to increase volume,\nDown to decrease volume,\nor escape to quit.");
         graphics::draw(
             ctx,
+            quad_ctx,
             &text,
             (glam::Vec2::new(100.0, 100.), graphics::Color::WHITE),
         )?;
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         keycode: event::KeyCode,
         _keymod: input::keyboard::KeyMods,
         _repeat: bool,
@@ -92,8 +98,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
 
 pub fn main() -> GameResult {
     ggez::start(
-        ggez::conf::Conf::default()
-            .cache(Some(include_bytes!("resources.tar"))),
-        |ctx| Box::new(MainState::new(ctx).unwrap()),
+        ggez::conf::Conf::default().cache(Some(include_bytes!("resources.tar"))),
+        |ctx, _quad_ctx| Box::new(MainState::new(ctx).unwrap()),
     )
 }

@@ -10,6 +10,7 @@ extern crate good_web_game as ggez;
 use ggez::event;
 use ggez::graphics::{self, Color, DrawParam, FilterMode, Rect, Text, TextFragment};
 use ggez::input::keyboard::KeyCode;
+use ggez::miniquad;
 use ggez::{Context, GameResult};
 use glam::*;
 use keyframe::{ease, functions::*, keyframes, AnimationSequence, EasingFunction};
@@ -225,8 +226,8 @@ fn player_sequence(
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let mut img = graphics::Image::new(ctx, "/player_sheet.png")?;
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
+        let mut img = graphics::Image::new(ctx, quad_ctx, "/player_sheet.png")?;
         img.set_filter(FilterMode::Nearest); // because pixel art
         let s = MainState {
             spritesheet: img,
@@ -240,7 +241,12 @@ impl MainState {
     }
 }
 
-fn draw_info(ctx: &mut Context, info: String, position: Point2<f32>) -> GameResult {
+fn draw_info(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::GraphicsContext,
+    info: String,
+    position: Point2<f32>,
+) -> GameResult {
     let t = Text::new(TextFragment {
         text: info,
         font: None,
@@ -249,13 +255,18 @@ fn draw_info(ctx: &mut Context, info: String, position: Point2<f32>) -> GameResu
     });
     graphics::draw(
         ctx,
+        quad_ctx,
         &t,
         DrawParam::default().dest(position).color(Color::WHITE),
     )
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         let secs = ggez::timer::delta(ctx).as_secs_f64();
         // advance the ball animation and reverse it once it reaches its end
         self.ball_animation.advance_and_maybe_reverse(secs);
@@ -264,28 +275,32 @@ impl event::EventHandler<ggez::GameError> for MainState {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
 
         // draw some text showing the current parameters
         draw_info(
             ctx,
+            quad_ctx,
             format!("Easing: {:?}", self.easing_enum),
             [300.0, 60.0].into(),
         )?;
         draw_info(
             ctx,
+            quad_ctx,
             format!("Animation: {:?}", self.animation_type),
             [300.0, 110.0].into(),
         )?;
         draw_info(
             ctx,
+            quad_ctx,
             format!("Duration: {:.2} s", self.duration),
             [300.0, 160.0].into(),
         )?;
         // draw info about the controls for web
         draw_info(
             ctx,
+            quad_ctx,
             "Controls: Up/Down, Left/Right, W/S".to_string(),
             [44.0, 520.0].into(),
         )?;
@@ -293,6 +308,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
         // draw the animated ball
         let ball = graphics::Mesh::new_circle(
             ctx,
+            quad_ctx,
             graphics::DrawMode::fill(),
             Vec2::new(0.0, 0.0),
             60.0,
@@ -300,7 +316,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
             Color::WHITE,
         )?;
         let ball_pos = self.ball_animation.now_strict().unwrap();
-        graphics::draw(ctx, &ball, (ball_pos,))?;
+        graphics::draw(ctx, quad_ctx, &ball, (ball_pos,))?;
 
         // draw the player
         let current_frame_src: Rect = self.player_animation.now_strict().unwrap().into();
@@ -310,15 +326,16 @@ impl event::EventHandler<ggez::GameError> for MainState {
             .scale(Vec2::new(scale, scale))
             .dest([470.0, 460.0])
             .offset([0.5, 1.0]);
-        graphics::draw(ctx, &self.spritesheet, draw_p)?;
+        graphics::draw(ctx, quad_ctx, &self.spritesheet, draw_p)?;
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 
     fn key_down_event(
         &mut self,
         _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         keycode: ggez::input::keyboard::KeyCode,
         _keymods: ggez::input::keyboard::KeyMods,
         _repeat: bool,
@@ -414,6 +431,6 @@ pub fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(Some(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        |mut context, quad_ctx| Box::new(MainState::new(&mut context, quad_ctx).unwrap()),
     )
 }

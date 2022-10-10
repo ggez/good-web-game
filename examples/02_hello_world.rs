@@ -31,23 +31,31 @@ impl MainState {
 // The `EventHandler` trait also contains callbacks for event handling
 // that you can override if you wish, but the defaults are fine.
 impl event::EventHandler for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> GameResult {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+    fn draw(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> GameResult {
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
 
         // Drawables are drawn from their top-left corner.
         let offset = self.frames as f32 / 10.0;
         let dest_point = cgmath::Point2::new(offset, offset);
-        graphics::draw(ctx, &self.text, (dest_point,))?;
-        graphics::present(ctx)?;
+        graphics::draw(ctx, quad_ctx, &self.text, (dest_point,))?;
+        graphics::present(ctx, quad_ctx)?;
 
         self.frames += 1;
         if (self.frames % 100) == 0 {
             println!("FPS: {}", ggez::timer::fps(ctx));
-            println!("drawable size: {:?}", graphics::drawable_size(ctx));
+            println!("drawable size: {:?}", graphics::drawable_size(quad_ctx));
         }
 
         Ok(())
@@ -70,6 +78,6 @@ pub fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(Some(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        |mut context, mut _quad_ctx| Box::new(MainState::new(&mut context).unwrap()),
     )
 }

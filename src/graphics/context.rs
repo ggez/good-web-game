@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::graphics::{spritebatch, BlendMode, DrawParam, Font, Image};
 use cgmath::Matrix4;
 use glyph_brush::{GlyphBrush, GlyphBrushBuilder};
+use miniquad::{BufferLayout, PipelineParams, Texture, VertexAttribute, VertexFormat, VertexStep};
 use std::cell::RefCell;
 
 pub struct GraphicsContext {
@@ -22,17 +23,15 @@ pub struct GraphicsContext {
 }
 
 impl GraphicsContext {
-    pub fn new(ctx: &mut miniquad::Context) -> GraphicsContext {
-        use miniquad::*;
-
+    pub fn new(quad_ctx: &mut miniquad::graphics::GraphicsContext) -> GraphicsContext {
         let projection = cgmath::One::one();
         let screen_rect = Rect::new(-1., -1., 2., 2.);
 
-        let white_texture = Texture::from_rgba8(ctx, 1, 1, &[255, 255, 255, 255]);
+        let white_texture = Texture::from_rgba8(quad_ctx, 1, 1, &[255, 255, 255, 255]);
         let (color_blend, alpha_blend) = BlendMode::Alpha.into();
 
-        let default_shader = Shader::new(
-            ctx,
+        let default_shader = miniquad::Shader::new(
+            quad_ctx,
             default_shader::VERTEX,
             default_shader::FRAGMENT,
             default_shader::meta(),
@@ -40,10 +39,10 @@ impl GraphicsContext {
         .expect("couldn't create default shader");
 
         let gwg_default_shader =
-            crate::graphics::Shader::from_mini_shader(ctx, default_shader, None);
+            crate::graphics::Shader::from_mini_shader(quad_ctx, default_shader, None);
 
         let default_pipeline = miniquad::Pipeline::with_params(
-            ctx,
+            quad_ctx,
             &[
                 BufferLayout::default(),
                 BufferLayout {
@@ -68,7 +67,7 @@ impl GraphicsContext {
         );
 
         // pipeline has to be applied whenever the shader (and therefore pipeline) changes
-        ctx.apply_pipeline(&default_pipeline);
+        quad_ctx.apply_pipeline(&default_pipeline);
 
         // Glyph cache stuff.
         let font_vec = glyph_brush::ab_glyph::FontArc::try_from_slice(Font::default_font_bytes())
@@ -81,13 +80,13 @@ impl GraphicsContext {
                 * usize::try_from(glyph_cache_height).unwrap()
         ];
         let glyph_cache = Texture::from_rgba8(
-            ctx,
+            quad_ctx,
             glyph_cache_width.try_into().unwrap(),
             glyph_cache_height.try_into().unwrap(),
             &initial_contents,
         );
 
-        let glyph_cache = Image::from_texture(ctx, glyph_cache, FilterMode::Linear).unwrap();
+        let glyph_cache = Image::from_texture(quad_ctx, glyph_cache, FilterMode::Linear).unwrap();
 
         let glyph_state = Rc::new(RefCell::new(spritebatch::SpriteBatch::new(
             glyph_cache.clone(),

@@ -1,6 +1,6 @@
 [package]
 name = "good-web-game"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["not-fl3 <not.fl3@gmail.com>", "PSteinhaus"]
 license = "MIT"
 edition = "2021"
@@ -26,7 +26,7 @@ mint = "0.5"
 cgmath = { version = "0.17", features = ["mint"] }
 twox-hash = "=1.5.0"    # necessary to force a version of rand < 0.8 to avoid getrandom
 glyph_brush = "0.7"
-miniquad = "=0.3.0-alpha.38"
+miniquad = "0.3.13"
 image = { version = "0.22", default-features = false, features = ["png_codec"] }
 serde = "1"
 serde_derive = "1"
@@ -51,7 +51,7 @@ jpeg = [ "image/jpeg" ]
 [dev-dependencies]
 quad-rand = "0.2.1"
 oorandom = "11"
-glam = { version = "0.17.3", features = ["mint"]}
+glam = { version = "0.21.3", features = ["mint", "bytemuck"]}
 keyframe = "1.0.4"
 keyframe_derive = "1.0.0"
 num-traits = "0.2"

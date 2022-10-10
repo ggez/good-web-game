@@ -4,12 +4,12 @@ extern crate good_web_game as ggez;
 
 use ggez::event;
 use ggez::graphics::{self, Align, Color, DrawParam, Font, PxScale, Text, TextFragment};
+use ggez::miniquad;
 use ggez::timer;
 use ggez::{Context, GameResult};
 use glam::Vec2;
 use std::collections::BTreeMap;
 use std::env;
-//use std::path;
 
 /// Creates a random RGB color.
 fn random_color(rng: &mut oorandom::Rand32) -> Color {
@@ -113,14 +113,18 @@ impl App {
 }
 
 impl event::EventHandler<ggez::GameError> for App {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         const DESIRED_FPS: u32 = 60;
         while timer::check_update_time(ctx, DESIRED_FPS) {}
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
 
         // `Text` can be used in "immediate mode", but it's slightly less efficient
         // in most cases, and horrifically less efficient in a few select ones
@@ -128,7 +132,12 @@ impl event::EventHandler<ggez::GameError> for App {
         let fps = timer::fps(ctx);
         let fps_display = Text::new(format!("FPS: {}", fps));
         // When drawing through these calls, `DrawParam` will work as they are documented.
-        graphics::draw(ctx, &fps_display, (Vec2::new(200.0, 0.0), Color::WHITE))?;
+        graphics::draw(
+            ctx,
+            quad_ctx,
+            &fps_display,
+            (Vec2::new(200.0, 0.0), Color::WHITE),
+        )?;
 
         let mut height = 0.0;
         for text in self.texts.values() {
@@ -142,6 +151,7 @@ impl event::EventHandler<ggez::GameError> for App {
         // in screen coordinates, and `.color` will be ignored.
         graphics::draw_queued_text(
             ctx,
+            quad_ctx,
             DrawParam::default(),
             None,
             graphics::FilterMode::Linear,
@@ -178,6 +188,7 @@ impl event::EventHandler<ggez::GameError> for App {
         graphics::queue_text(ctx, &t, Vec2::new(0.0, 20.0), None);
         graphics::draw_queued_text(
             ctx,
+            quad_ctx,
             DrawParam::new()
                 .dest(Vec2::new(500.0, 300.0))
                 .rotation(-0.5),
@@ -185,12 +196,18 @@ impl event::EventHandler<ggez::GameError> for App {
             graphics::FilterMode::Linear,
         )?;
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         //timer::yield_now();
         Ok(())
     }
 
-    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) {
+    fn resize_event(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        width: f32,
+        height: f32,
+    ) {
         graphics::set_screen_coordinates(ctx, graphics::Rect::new(0.0, 0.0, width, height))
             .unwrap();
     }
@@ -205,8 +222,7 @@ pub fn main() -> GameResult {
     }
 
     ggez::start(
-        ggez::conf::Conf::default()
-            .cache(Some(include_bytes!("resources.tar"))),
-        |context| Box::new(App::new(context).unwrap()),
+        ggez::conf::Conf::default().cache(Some(include_bytes!("resources.tar"))),
+        |context, _quad_ctx| Box::new(App::new(context).unwrap()),
     )
 }

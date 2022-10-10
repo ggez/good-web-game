@@ -9,6 +9,7 @@ extern crate good_web_game as ggez;
 
 use ggez::event::EventHandler;
 use ggez::graphics::{self, BlendMode, Color, DrawParam, Drawable};
+use ggez::miniquad;
 use ggez::{Context, GameResult};
 use glam::Vec2;
 use std::env;
@@ -21,9 +22,10 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
         let circle = graphics::Mesh::new_circle(
             ctx,
+            quad_ctx,
             graphics::DrawMode::fill(),
             Vec2::new(0.0, 0.0),
             40.0,
@@ -31,7 +33,7 @@ impl MainState {
             Color::WHITE,
         )?;
 
-        let mut canvas = graphics::Canvas::with_window_size(ctx)?;
+        let mut canvas = graphics::Canvas::with_window_size(ctx, quad_ctx)?;
         canvas.set_blend_mode(Some(BlendMode::Alpha));
 
         let font = graphics::Font::new(ctx, "/LiberationMono-Regular.ttf")?;
@@ -44,7 +46,13 @@ impl MainState {
         Ok(s)
     }
 
-    fn draw_venn(&self, ctx: &mut Context, pos: Vec2, name: &str) -> GameResult<()> {
+    fn draw_venn(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::GraphicsContext,
+        pos: Vec2,
+        name: &str,
+    ) -> GameResult<()> {
         const TRI_COLORS: [Color; 3] = [
             Color::new(0.8, 0., 0., 0.5),
             Color::new(0., 0.8, 0., 0.5),
@@ -62,6 +70,7 @@ impl MainState {
         for i in 0..3 {
             self.circle.draw(
                 ctx,
+                quad_ctx,
                 DrawParam::default()
                     .dest(pos + Vec2::from(REL_POSITIONS[i]))
                     .color(TRI_COLORS[i]),
@@ -73,6 +82,7 @@ impl MainState {
         let text_offset = Vec2::new(0., -90.);
         graphics::draw(
             ctx,
+            quad_ctx,
             &text,
             graphics::DrawParam::new()
                 .dest(pos + text_offset)
@@ -83,56 +93,69 @@ impl MainState {
         Ok(())
     }
 
-    fn draw_venn_diagrams(&mut self, ctx: &mut Context) -> GameResult<()> {
-        let (w, h) = graphics::drawable_size(ctx);
+    fn draw_venn_diagrams(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult<()> {
+        let (w, h) = graphics::drawable_size(quad_ctx);
         let y = h / 4.;
         const MODE_COUNT: usize = 5;
         let x_step = w / (MODE_COUNT + 1) as f32;
 
         // draw with Alpha
         self.circle.set_blend_mode(Some(BlendMode::Alpha));
-        self.draw_venn(ctx, [x_step, y].into(), "Alpha")?;
+        self.draw_venn(ctx, quad_ctx, [x_step, y].into(), "Alpha")?;
 
         // draw with Add
         self.circle.set_blend_mode(Some(BlendMode::Add));
-        self.draw_venn(ctx, [x_step * 2., y].into(), "Add")?;
+        self.draw_venn(ctx, quad_ctx, [x_step * 2., y].into(), "Add")?;
 
         // draw with Sub
         self.circle.set_blend_mode(Some(BlendMode::Subtract));
-        self.draw_venn(ctx, [x_step * 3., y].into(), "Subtract")?;
+        self.draw_venn(ctx, quad_ctx, [x_step * 3., y].into(), "Subtract")?;
 
         // draw with Multiply
         self.circle.set_blend_mode(Some(BlendMode::Multiply));
-        self.draw_venn(ctx, [x_step * 4., y].into(), "Multiply")?;
+        self.draw_venn(ctx, quad_ctx, [x_step * 4., y].into(), "Multiply")?;
 
         // draw with Replace
         self.circle.set_blend_mode(Some(BlendMode::Replace));
-        self.draw_venn(ctx, [x_step * 5., y].into(), "Replace")?;
+        self.draw_venn(ctx, quad_ctx, [x_step * 5., y].into(), "Replace")?;
 
         Ok(())
     }
 }
 
 impl EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, _: &mut Context) -> GameResult<()> {
+    fn update(
+        &mut self,
+        _: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult<()> {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
+    fn draw(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult<()> {
         // also draw everything onto the canvas
         graphics::set_canvas(ctx, Some(&self.canvas));
-        graphics::clear(ctx, Color::new(0., 0., 0., 0.));
-        self.draw_venn_diagrams(ctx)?;
+        graphics::clear(ctx, quad_ctx, Color::new(0., 0., 0., 0.));
+        self.draw_venn_diagrams(ctx, quad_ctx)?;
 
         // draw the canvas onto the screen
         graphics::set_canvas(ctx, None);
-        graphics::clear(ctx, Color::new(0.3, 0.3, 0.3, 1.0));
+        graphics::clear(ctx, quad_ctx, Color::new(0.3, 0.3, 0.3, 1.0));
         // draw everything directly onto the screen once
-        self.draw_venn_diagrams(ctx)?;
+        self.draw_venn_diagrams(ctx, quad_ctx)?;
 
-        let (_, height) = graphics::drawable_size(ctx);
+        let (_, height) = graphics::drawable_size(quad_ctx);
         self.canvas.draw(
             ctx,
+            quad_ctx,
             DrawParam::default().dest(mint::Point2 {
                 x: 0.,
                 y: height / 2.,
@@ -140,12 +163,13 @@ impl EventHandler<ggez::GameError> for MainState {
         )?;
 
         // draw text pointing out which is which
-        let (_w, h) = graphics::drawable_size(ctx);
+        let (_w, h) = graphics::drawable_size(quad_ctx);
         let y = h / 2.;
 
         let text = graphics::Text::new(("drawn directly:", self.font, 20.0));
         graphics::draw(
             ctx,
+            quad_ctx,
             &text,
             graphics::DrawParam::new()
                 .dest(Vec2::new(8., 4.))
@@ -155,19 +179,21 @@ impl EventHandler<ggez::GameError> for MainState {
             graphics::Text::new(("drawn onto a (transparent black) canvas:", self.font, 20.0));
         graphics::draw(
             ctx,
+            quad_ctx,
             &text,
             graphics::DrawParam::new()
                 .dest(Vec2::new(8., 4. + y))
                 .color(Color::WHITE),
         )?;
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 
     fn key_down_event(
         &mut self,
         _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         _keycode: ggez::event::KeyCode,
         _keymod: ggez::event::KeyMods,
         repeat: bool,
@@ -197,6 +223,6 @@ pub fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(Some(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        |mut context, quad_ctx| Box::new(MainState::new(&mut context, quad_ctx).unwrap()),
     )
 }

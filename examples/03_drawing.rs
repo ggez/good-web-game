@@ -10,6 +10,7 @@ use ggez::input::keyboard::{KeyCode, KeyMods};
 use ggez::timer;
 use ggez::{Context, GameResult};
 //use lyon::lyon_tessellation::FillOptions;
+use ggez::miniquad;
 use std::env;
 use std::path;
 
@@ -26,14 +27,17 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let image1 = graphics::Image::new(ctx, "dragon1.png")?;
-        let image2_linear = graphics::Image::new(ctx, "shot.png")?;
-        let mut image2_nearest = graphics::Image::new(ctx, "shot.png")?;
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
+        let image1 = graphics::Image::new(ctx, quad_ctx, "dragon1.png")?;
+        let image2_linear = graphics::Image::new(ctx, quad_ctx, "shot.png")?;
+        let mut image2_nearest = graphics::Image::new(ctx, quad_ctx, "shot.png")?;
         image2_nearest.set_filter(graphics::FilterMode::Nearest);
-        let canvas = Canvas::with_window_size(ctx)?;
+        let canvas = Canvas::with_window_size(ctx, quad_ctx)?;
 
-        let meshes = vec![build_mesh(ctx)?, build_textured_triangle(ctx)?];
+        let meshes = vec![
+            build_mesh(ctx, quad_ctx)?,
+            build_textured_triangle(ctx, quad_ctx)?,
+        ];
         let s = MainState {
             image1,
             image2_linear,
@@ -48,7 +52,10 @@ impl MainState {
     }
 }
 
-fn build_mesh(ctx: &mut Context) -> GameResult<graphics::Mesh> {
+fn build_mesh(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::GraphicsContext,
+) -> GameResult<graphics::Mesh> {
     let mb = &mut graphics::MeshBuilder::new();
 
     mb.line(
@@ -80,10 +87,13 @@ fn build_mesh(ctx: &mut Context) -> GameResult<graphics::Mesh> {
         Color::new(1.0, 0.0, 1.0, 1.0),
     )?;
 
-    mb.build(ctx)
+    mb.build(ctx, quad_ctx)
 }
 
-fn build_textured_triangle(ctx: &mut Context) -> GameResult<graphics::Mesh> {
+fn build_textured_triangle(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::GraphicsContext,
+) -> GameResult<graphics::Mesh> {
     let mb = &mut graphics::MeshBuilder::new();
     let triangle_verts = vec![
         graphics::Vertex {
@@ -105,14 +115,18 @@ fn build_textured_triangle(ctx: &mut Context) -> GameResult<graphics::Mesh> {
 
     let triangle_indices = vec![0, 1, 2];
 
-    let mut i = graphics::Image::new(ctx, "rock.png")?;
+    let mut i = graphics::Image::new(ctx, quad_ctx, "rock.png")?;
     i.set_filter(FilterMode::Nearest);
     mb.raw(&triangle_verts, &triangle_indices, Some(i))?;
-    mb.build(ctx)
+    mb.build(ctx, quad_ctx)
 }
 
 impl event::EventHandler for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         const DESIRED_FPS: u32 = 60;
 
         while timer::check_update_time(ctx, DESIRED_FPS) {
@@ -121,16 +135,16 @@ impl event::EventHandler for MainState {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
         if self.use_canvas {
             graphics::set_canvas(ctx, Some(&self.canvas));
         }
 
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
         // let src = graphics::Rect::new(0.25, 0.25, 0.5, 0.5);
         // let src = graphics::Rect::one();
         let dst = cgmath::Point2::new(20.0, 20.0);
-        graphics::draw(ctx, &self.image1, (dst,))?;
+        graphics::draw(ctx, quad_ctx, &self.image1, (dst,))?;
 
         let dst = cgmath::Point2::new(200.0, 100.0);
         let dst2 = cgmath::Point2::new(400.0, 400.0);
@@ -138,6 +152,7 @@ impl event::EventHandler for MainState {
         //let shear = graphics::Point::new(self.zoomlevel, self.zoomlevel);
         graphics::draw(
             ctx,
+            quad_ctx,
             &self.image2_linear,
             graphics::DrawParam::new()
                 // src: src,
@@ -149,6 +164,7 @@ impl event::EventHandler for MainState {
         )?;
         graphics::draw(
             ctx,
+            quad_ctx,
             &self.image2_nearest,
             graphics::DrawParam::new()
                 //.src(src)
@@ -161,20 +177,22 @@ impl event::EventHandler for MainState {
         let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
         let r1 = graphics::Mesh::new_rectangle(
             ctx,
+            quad_ctx,
             graphics::DrawMode::fill(),
             rect,
             graphics::Color::WHITE,
         )?;
-        graphics::draw(ctx, &r1, DrawParam::default())?;
+        graphics::draw(ctx, quad_ctx, &r1, DrawParam::default())?;
 
         let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
         let r2 = graphics::Mesh::new_rectangle(
             ctx,
+            quad_ctx,
             graphics::DrawMode::fill(),
             rect,
             graphics::Color::new(1.0, 0.0, 0.0, 1.0),
         )?;
-        graphics::draw(ctx, &r2, DrawParam::default())?;
+        graphics::draw(ctx, quad_ctx, &r2, DrawParam::default())?;
         //graphics::rectangle(ctx, graphics::WHITE, graphics::DrawMode::fill(), rect)?;
 
         // let rect = graphics::Rect::new(450.0, 450.0, 50.0, 50.0);
@@ -186,21 +204,22 @@ impl event::EventHandler for MainState {
         // )?;
 
         for m in &self.meshes {
-            graphics::draw(ctx, m, DrawParam::new())?;
+            graphics::draw(ctx, quad_ctx, m, DrawParam::new())?;
         }
 
         if self.use_canvas {
             graphics::set_canvas(ctx, None);
-            graphics::draw(ctx, &self.canvas, DrawParam::new())?;
+            graphics::draw(ctx, quad_ctx, &self.canvas, DrawParam::new())?;
         }
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 
     fn key_down_event(
         &mut self,
         _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         _keycode: KeyCode,
         _keymods: KeyMods,
         _repeat: bool,
@@ -223,7 +242,7 @@ pub fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(Some(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
-            //.sample_count(16),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        //.sample_count(16),
+        |mut context, quad_ctx| Box::new(MainState::new(&mut context, quad_ctx).unwrap()),
     )
 }

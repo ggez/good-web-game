@@ -10,6 +10,7 @@ extern crate good_web_game as ggez;
 
 use ggez::event;
 use ggez::graphics;
+use ggez::miniquad;
 use ggez::timer;
 use ggez::{Context, GameResult};
 
@@ -24,10 +25,10 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let image = graphics::Image::new(ctx, "/tile.png").unwrap();
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
+        let image = graphics::Image::new(ctx, quad_ctx, "/tile.png").unwrap();
         let spritebatch = graphics::spritebatch::SpriteBatch::new(image);
-        let canvas = graphics::Canvas::with_window_size(ctx)?;
+        let canvas = graphics::Canvas::with_window_size(ctx, quad_ctx)?;
         let draw_pt = Point2::new(0.0, 0.0);
         let draw_vec = Vector2::new(1.0, 1.0);
         let s = MainState {
@@ -41,9 +42,13 @@ impl MainState {
 }
 
 impl MainState {
-    fn draw_spritebatch(&mut self, ctx: &mut Context) -> GameResult {
+    fn draw_spritebatch(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         graphics::set_canvas(ctx, Some(&self.canvas));
-        graphics::clear(ctx, graphics::Color::WHITE);
+        graphics::clear(ctx, quad_ctx, graphics::Color::WHITE);
 
         // Freeze the animation so things are easier to see.
         let time = 2000;
@@ -86,7 +91,7 @@ impl MainState {
             // See SpriteBatch::draw and SpriteBatch::dimensions for more information.
             .offset(Point2::new(0.5, 0.5));
 
-        graphics::draw(ctx, &self.spritebatch, param)?;
+        graphics::draw(ctx, quad_ctx, &self.spritebatch, param)?;
         self.spritebatch.clear();
         graphics::set_canvas(ctx, None);
         Ok(())
@@ -94,14 +99,18 @@ impl MainState {
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         if timer::ticks(ctx) % 100 == 0 {
             println!("Delta frame time: {:?} ", timer::delta(ctx));
             println!("Average FPS: {}", timer::fps(ctx));
         }
 
         // Bounce the rect if necessary
-        let (w, h) = graphics::drawable_size(ctx);
+        let (w, h) = graphics::drawable_size(quad_ctx);
         if self.draw_pt.x + (w as f32 / 2.0) > (w as f32) || self.draw_pt.x < 0.0 {
             self.draw_vec.x *= -1.0;
         }
@@ -112,28 +121,29 @@ impl event::EventHandler<ggez::GameError> for MainState {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
-        self.draw_spritebatch(ctx)?;
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
+        self.draw_spritebatch(ctx, quad_ctx)?;
         let dims = self.canvas.image().dimensions();
         let src_x = self.draw_pt.x / dims.w;
         let src_y = self.draw_pt.y / dims.h;
         graphics::draw(
             ctx,
+            quad_ctx,
             &self.canvas,
             graphics::DrawParam::new()
                 .dest(self.draw_pt)
                 .src(graphics::Rect::new(src_x, src_y, 0.5, 0.5)),
         )?;
-        graphics::present(ctx)?;
+
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 }
 
 pub fn main() -> GameResult {
     ggez::start(
-        ggez::conf::Conf::default()
-            .cache(Some(include_bytes!("resources.tar"))),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        ggez::conf::Conf::default().cache(Some(include_bytes!("resources.tar"))),
+        |mut context, quad_ctx| Box::new(MainState::new(&mut context, quad_ctx).unwrap()),
     )
 }

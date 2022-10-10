@@ -27,20 +27,33 @@ pub enum SceneSwitch<C> {
 /// Defines the callbacks the scene uses:
 /// a common context type `C`
 pub trait Scene<C> {
-    fn update(&mut self, gameworld: &mut C, ctx: &mut crate::Context) -> SceneSwitch<C>;
-    fn draw(&mut self, gameworld: &mut C, ctx: &mut crate::Context) -> crate::GameResult<()>;
+    fn update(
+        &mut self,
+        gameworld: &mut C,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> SceneSwitch<C>;
+    fn draw(
+        &mut self,
+        gameworld: &mut C,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> crate::GameResult<()>;
     fn resize_event(
         &mut self,
         _gameworld: &mut C,
         _ctx: &mut crate::Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
         _width: f32,
         _height: f32,
     ) {
     }
+    #[allow(clippy::too_many_arguments)]
     fn mouse_motion_event(
         &mut self,
         _gameworld: &mut C,
         _ctx: &mut crate::Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
         _x: f32,
         _y: f32,
         _dx: f32,
@@ -51,6 +64,7 @@ pub trait Scene<C> {
         &mut self,
         _gameworld: &mut C,
         _ctx: &mut crate::Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
         _x: f32,
         _y: f32,
     ) {
@@ -59,6 +73,7 @@ pub trait Scene<C> {
         &mut self,
         _gameworld: &mut C,
         _ctx: &mut crate::Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
         _button: crate::event::MouseButton,
         _x: f32,
         _y: f32,
@@ -68,6 +83,7 @@ pub trait Scene<C> {
         &mut self,
         _gameworld: &mut C,
         _ctx: &mut crate::Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
         _button: crate::event::MouseButton,
         _x: f32,
         _y: f32,
@@ -77,6 +93,7 @@ pub trait Scene<C> {
         &mut self,
         _gameworld: &mut C,
         _ctx: &mut crate::Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
         _key: crate::event::KeyCode,
     ) {
     }
@@ -84,6 +101,7 @@ pub trait Scene<C> {
         &mut self,
         _gameworld: &mut C,
         _ctx: &mut crate::Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
         _key: crate::event::KeyCode,
     ) {
     }
@@ -178,13 +196,17 @@ impl<C> SceneStack<C> {
     // These functions must be on the SceneStack because otherwise
     // if you try to get the current scene and the world to call
     // update() on the current scene it causes a double-borrow.  :/
-    pub fn update(&mut self, ctx: &mut crate::Context) {
+    pub fn update(
+        &mut self,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) {
         let next_scene = {
             let current_scene = &mut **self
                 .scenes
                 .last_mut()
                 .expect("Tried to update empty scene stack");
-            current_scene.update(&mut self.world, ctx)
+            current_scene.update(&mut self.world, ctx, quad_ctx)
         };
         self.switch(next_scene);
     }
@@ -193,65 +215,103 @@ impl<C> SceneStack<C> {
     /// supposed to draw the previous one, then draw them from the bottom up.
     ///
     /// This allows for layering GUI's and such.
-    fn draw_scenes(scenes: &mut [Box<dyn Scene<C>>], world: &mut C, ctx: &mut crate::Context) {
+    fn draw_scenes(
+        scenes: &mut [Box<dyn Scene<C>>],
+        world: &mut C,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) {
         assert!(!scenes.is_empty());
         if let Some((current, rest)) = scenes.split_last_mut() {
             if current.draw_previous() {
-                SceneStack::draw_scenes(rest, world, ctx);
+                SceneStack::draw_scenes(rest, world, ctx, quad_ctx);
             }
             current
-                .draw(world, ctx)
+                .draw(world, ctx, quad_ctx)
                 .expect("I would hope drawing a scene never fails!");
         }
     }
 
     /// Draw the current scene.
-    pub fn draw(&mut self, ctx: &mut crate::Context) {
-        SceneStack::draw_scenes(&mut self.scenes, &mut self.world, ctx)
+    pub fn draw(
+        &mut self,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) {
+        SceneStack::draw_scenes(&mut self.scenes, &mut self.world, ctx, quad_ctx)
     }
 }
 
 impl<C, E: std::error::Error> crate::event::EventHandler<E> for SceneStack<C> {
-    fn update(&mut self, ctx: &mut crate::Context) -> Result<(), E> {
-        self.update(ctx);
+    fn update(
+        &mut self,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> Result<(), E> {
+        self.update(ctx, quad_ctx);
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut crate::Context) -> Result<(), E> {
-        self.draw(ctx);
+    fn draw(
+        &mut self,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> Result<(), E> {
+        self.draw(ctx, quad_ctx);
         Ok(())
     }
 
-    fn resize_event(&mut self, ctx: &mut crate::Context, width: f32, height: f32) {
+    fn resize_event(
+        &mut self,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        width: f32,
+        height: f32,
+    ) {
         let current_scene = &mut **self
             .scenes
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.resize_event(&mut self.world, ctx, width, height)
+        current_scene.resize_event(&mut self.world, ctx, quad_ctx, width, height)
     }
 
-    fn mouse_motion_event(&mut self, ctx: &mut crate::Context, x: f32, y: f32, dx: f32, dy: f32) {
+    fn mouse_motion_event(
+        &mut self,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        x: f32,
+        y: f32,
+        dx: f32,
+        dy: f32,
+    ) {
         let current_scene = &mut **self
             .scenes
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.mouse_motion_event(&mut self.world, ctx, x, y, dx, dy);
+        current_scene.mouse_motion_event(&mut self.world, ctx, quad_ctx, x, y, dx, dy);
     }
 
-    fn mouse_wheel_event(&mut self, ctx: &mut crate::Context, x: f32, y: f32) {
+    fn mouse_wheel_event(
+        &mut self,
+        ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        x: f32,
+        y: f32,
+    ) {
         let current_scene = &mut **self
             .scenes
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.mouse_wheel_event(&mut self.world, ctx, x, y);
+        current_scene.mouse_wheel_event(&mut self.world, ctx, quad_ctx, x, y);
     }
 
     fn mouse_button_down_event(
         &mut self,
         ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         button: crate::event::MouseButton,
         x: f32,
         y: f32,
@@ -261,11 +321,12 @@ impl<C, E: std::error::Error> crate::event::EventHandler<E> for SceneStack<C> {
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.mouse_button_down_event(&mut self.world, ctx, button, x, y);
+        current_scene.mouse_button_down_event(&mut self.world, ctx, quad_ctx, button, x, y);
     }
     fn mouse_button_up_event(
         &mut self,
         ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         button: crate::event::MouseButton,
         x: f32,
         y: f32,
@@ -275,12 +336,13 @@ impl<C, E: std::error::Error> crate::event::EventHandler<E> for SceneStack<C> {
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.mouse_button_up_event(&mut self.world, ctx, button, x, y);
+        current_scene.mouse_button_up_event(&mut self.world, ctx, quad_ctx, button, x, y);
     }
 
     fn key_down_event(
         &mut self,
         ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         keycode: crate::event::KeyCode,
         _keymods: crate::event::KeyMods,
         _repeat: bool,
@@ -290,12 +352,13 @@ impl<C, E: std::error::Error> crate::event::EventHandler<E> for SceneStack<C> {
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.key_down_event(&mut self.world, ctx, keycode);
+        current_scene.key_down_event(&mut self.world, ctx, quad_ctx, keycode);
     }
 
     fn key_up_event(
         &mut self,
         ctx: &mut crate::Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         keycode: crate::event::KeyCode,
         _keymods: crate::event::KeyMods,
     ) {
@@ -304,6 +367,6 @@ impl<C, E: std::error::Error> crate::event::EventHandler<E> for SceneStack<C> {
             .last_mut()
             .expect("Tried to update empty scene stack");
 
-        current_scene.key_up_event(&mut self.world, ctx, keycode);
+        current_scene.key_up_event(&mut self.world, ctx, quad_ctx, keycode);
     }
 }

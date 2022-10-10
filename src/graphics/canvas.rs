@@ -14,9 +14,14 @@ pub struct Canvas {
 
 impl Canvas {
     /// Create a new `Canvas` with the specified size.
-    pub fn new(ctx: &mut Context, width: u16, height: u16) -> GameResult<Canvas> {
+    pub fn new(
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        width: u16,
+        height: u16,
+    ) -> GameResult<Canvas> {
         let texture = Texture::new_render_texture(
-            &mut ctx.quad_ctx,
+            quad_ctx,
             TextureParams {
                 width: width as u32,
                 height: height as u32,
@@ -25,10 +30,9 @@ impl Canvas {
             },
         );
 
-        let image =
-            Image::from_texture(&mut ctx.quad_ctx, texture, ctx.gfx_context.default_filter)?;
+        let image = Image::from_texture(quad_ctx, texture, ctx.gfx_context.default_filter)?;
 
-        let offscreen_pass = RenderPass::new(&mut ctx.quad_ctx, texture, None);
+        let offscreen_pass = RenderPass::new(quad_ctx, texture, None);
 
         Ok(Canvas {
             image,
@@ -37,11 +41,14 @@ impl Canvas {
     }
 
     /// Create a new `Canvas` with the current window dimensions.
-    pub fn with_window_size(ctx: &mut Context) -> GameResult<Canvas> {
+    pub fn with_window_size(
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> GameResult<Canvas> {
         use crate::graphics;
-        let (w, h) = graphics::drawable_size(ctx);
+        let (w, h) = graphics::drawable_size(quad_ctx);
         // Default to no multisampling
-        Canvas::new(ctx, w as u16, h as u16)
+        Canvas::new(ctx, quad_ctx, w as u16, h as u16)
     }
 
     /// Gets the backend `Image` that is being rendered to.
@@ -83,7 +90,12 @@ impl Canvas {
 }
 
 impl Drawable for Canvas {
-    fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+    fn draw(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        param: DrawParam,
+    ) -> GameResult {
         // We have to mess with the scale to make everything
         // be its-unit-size-in-pixels.
         let scale_x = param.src.w * f32::from(self.width());
@@ -107,7 +119,7 @@ impl Drawable for Canvas {
         // to account for OpenGL's origin being at the bottom-left.
         let new_param = flip_draw_param_vertical(scaled_param);
 
-        self.image.draw_image_raw(ctx, new_param)
+        self.image.draw_image_raw(ctx, quad_ctx, new_param)
     }
 
     fn set_blend_mode(&mut self, blend_mode: Option<BlendMode>) {

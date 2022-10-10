@@ -88,7 +88,7 @@ impl Default for AudioContext {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sound(usize);
 
 pub struct Source {

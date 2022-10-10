@@ -1,3 +1,4 @@
+use miniquad::conf::{LinuxBackend, LinuxX11Gl, Platform};
 use std::path::PathBuf;
 
 /// Holds configuration values setting different options when starting the game, some of which
@@ -25,7 +26,13 @@ impl Default for Conf {
                 fullscreen: false,
                 sample_count: 1,
                 window_resizable: false,
-                icon: None
+                icon: None,
+                platform: Platform {
+                    linux_x11_gl: LinuxX11Gl::GLXWithEGLFallback,
+                    linux_backend: LinuxBackend::X11WithWaylandFallback,
+                    swap_interval: None,
+                    framebuffer_alpha: false,
+                },
             },
         }
     }

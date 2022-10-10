@@ -12,6 +12,7 @@ use quad_rand as qrand;
 use ggez::event::{EventHandler, KeyCode, KeyMods};
 use ggez::graphics::DrawParam;
 use ggez::input::MouseButton;
+use ggez::miniquad;
 use ggez::timer;
 use ggez::{audio, graphics};
 use ggez::{Context, GameResult};
@@ -278,10 +279,10 @@ struct Assets {
 }
 
 impl Assets {
-    fn new(ctx: &mut Context) -> GameResult<Assets> {
-        let player_image = graphics::Image::new(ctx, "player.png")?;
-        let shot_image = graphics::Image::new(ctx, "shot.png")?;
-        let rock_image = graphics::Image::new(ctx, "rock.png")?;
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<Assets> {
+        let player_image = graphics::Image::new(ctx, quad_ctx, "player.png")?;
+        let shot_image = graphics::Image::new(ctx, quad_ctx, "shot.png")?;
+        let rock_image = graphics::Image::new(ctx, quad_ctx, "rock.png")?;
         let font = graphics::Font::new(ctx, "LiberationMono-Regular.ttf")?;
 
         // let mut shot_sound = audio::SpatialSource::new(ctx, "/pew.ogg")?;
@@ -360,17 +361,17 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
         print_instructions();
 
-        let assets = Assets::new(ctx)?;
+        let assets = Assets::new(ctx, quad_ctx)?;
         // let score_disp = graphics::Text::new(ctx, "score", &assets.font)?;
         // let level_disp = graphics::Text::new(ctx, "level", &assets.font)?;
 
         let player = create_player();
         let rocks = create_rocks(5, player.pos, 100.0, 250.0);
 
-        let (w, h) = graphics::drawable_size(ctx);
+        let (w, h) = graphics::drawable_size(quad_ctx);
 
         let s = MainState {
             player,
@@ -479,6 +480,7 @@ extern crate mint;
 fn draw_actor(
     assets: &mut Assets,
     ctx: &mut Context,
+    quad_ctx: &mut miniquad::GraphicsContext,
     actor: &Actor,
     world_coords: (f32, f32),
 ) -> GameResult {
@@ -489,7 +491,7 @@ fn draw_actor(
         .dest(pos)
         .rotation(actor.facing as f32)
         .offset(Point2::new(0.5, 0.5));
-    graphics::draw(ctx, image, drawparams)
+    graphics::draw(ctx, quad_ctx, image, drawparams)
 }
 
 /// **********************************************************************
@@ -498,7 +500,11 @@ fn draw_actor(
 /// handling input events.
 /// **********************************************************************
 impl EventHandler for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         const DESIRED_FPS: u32 = 60;
 
         while timer::check_update_time(ctx, DESIRED_FPS) && !self.game_over {
@@ -562,10 +568,10 @@ impl EventHandler for MainState {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
         // Our drawing is quite simple.
         // Just clear the screen...
-        graphics::clear(ctx, graphics::Color::BLACK);
+        graphics::clear(ctx, quad_ctx, graphics::Color::BLACK);
 
         // Loop over all objects drawing them...
         {
@@ -573,14 +579,14 @@ impl EventHandler for MainState {
             let coords = (self.screen_width, self.screen_height);
 
             let p = &self.player;
-            draw_actor(assets, ctx, p, coords)?;
+            draw_actor(assets, ctx, quad_ctx, p, coords)?;
 
             for s in &self.shots {
-                draw_actor(assets, ctx, s, coords)?;
+                draw_actor(assets, ctx, quad_ctx, s, coords)?;
             }
 
             for r in &self.rocks {
-                draw_actor(assets, ctx, r, coords)?;
+                draw_actor(assets, ctx, quad_ctx, r, coords)?;
             }
         }
 
@@ -594,11 +600,13 @@ impl EventHandler for MainState {
         let score_display = graphics::Text::new((score_str, self.assets.font, 32.0));
         graphics::draw(
             ctx,
+            quad_ctx,
             &level_display,
             (level_dest, 0.0, graphics::Color::WHITE),
         )?;
         graphics::draw(
             ctx,
+            quad_ctx,
             &score_display,
             (score_dest, 0.0, graphics::Color::WHITE),
         )?;
@@ -609,6 +617,7 @@ impl EventHandler for MainState {
                 graphics::Text::new(("GAME OVER".to_string(), self.assets.font, 32.0));
             graphics::draw(
                 ctx,
+                quad_ctx,
                 &game_over_display,
                 DrawParam::new()
                     .dest(game_over_dest)
@@ -618,7 +627,7 @@ impl EventHandler for MainState {
         }
 
         // Then we flip the screen...
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
 
         // And yield the timeslice
         // This tells the OS that we're done using the CPU but it should
@@ -630,7 +639,13 @@ impl EventHandler for MainState {
         Ok(())
     }
 
-    fn resize_event(&mut self, context: &mut Context, w: f32, h: f32) {
+    fn resize_event(
+        &mut self,
+        context: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        w: f32,
+        h: f32,
+    ) {
         self.screen_width = w;
         self.screen_height = h;
         let coordinates = graphics::Rect::new(0., 0.0, w, h);
@@ -638,7 +653,14 @@ impl EventHandler for MainState {
         graphics::set_screen_coordinates(context, coordinates).expect("Can't resize the window");
     }
 
-    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {
+    fn mouse_button_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        button: MouseButton,
+        _x: f32,
+        _y: f32,
+    ) {
         if let MouseButton::Left = button {
             // stop shooting and accelerating
             self.input.yaxis = 0.0;
@@ -652,6 +674,7 @@ impl EventHandler for MainState {
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         keycode: KeyCode,
         _keymod: KeyMods,
         _repeat: bool,
@@ -679,7 +702,13 @@ impl EventHandler for MainState {
         }
     }
 
-    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymod: KeyMods) {
+    fn key_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        keycode: KeyCode,
+        _keymod: KeyMods,
+    ) {
         match keycode {
             KeyCode::Up => {
                 self.input.yaxis = 0.0;
@@ -705,8 +734,7 @@ pub fn main() -> GameResult {
     qrand::srand(1234);
 
     ggez::start(
-        ggez::conf::Conf::default()
-            .cache(Some(include_bytes!("resources.tar"))),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        ggez::conf::Conf::default().cache(Some(include_bytes!("resources.tar"))),
+        |mut context, quad_ctx| Box::new(MainState::new(&mut context, quad_ctx).unwrap()),
     )
 }

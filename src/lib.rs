@@ -79,6 +79,7 @@ use crate::filesystem::Filesystem;
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
 use crate::input::gamepad::GamepadId;
 use crate::input::mouse;
+use miniquad::GraphicsContext;
 #[cfg(feature = "log-impl")]
 pub use miniquad::{debug, info, log, warn};
 
@@ -87,13 +88,13 @@ struct EventHandlerWrapper<E: std::error::Error> {
     context: Context,
 }
 
-impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E> {
-    fn update(&mut self) {
+impl<E: std::error::Error> miniquad::EventHandler for EventHandlerWrapper<E> {
+    fn update(&mut self, quad_ctx: &mut GraphicsContext) {
         // if the program is to quit, quit
         // (in ggez this is done before looking at any of the events of this frame, but this isn't
         //  possible here, so this is the closest it can get)
         if !self.context.continuing {
-            self.context.quad_ctx.quit();
+            quad_ctx.order_quit();
             // TODO: Even after this has been called the app might continue on executing into `EventHandler::update`
             //       starting another game logic cycle. This could be pretty bad...
             //       for now we somewhat fix this by yielding the time slice and simply returning
@@ -117,6 +118,7 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
                     gilrs::EventType::ButtonPressed(button, _) => {
                         self.event_handler.gamepad_button_down_event(
                             &mut self.context,
+                            quad_ctx,
                             button,
                             GamepadId(id),
                         );
@@ -124,6 +126,7 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
                     gilrs::EventType::ButtonReleased(button, _) => {
                         self.event_handler.gamepad_button_up_event(
                             &mut self.context,
+                            quad_ctx,
                             button,
                             GamepadId(id),
                         );
@@ -131,6 +134,7 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
                     gilrs::EventType::AxisChanged(axis, value, _) => {
                         self.event_handler.gamepad_axis_event(
                             &mut self.context,
+                            quad_ctx,
                             axis,
                             value,
                             GamepadId(id),
@@ -142,26 +146,26 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
         }
 
         // do ggez 0.6 style error handling
-        if let Err(e) = self.event_handler.update(&mut self.context) {
+        if let Err(e) = self.event_handler.update(&mut self.context, quad_ctx) {
             error!("Error on EventHandler::update(): {:?}", e); // TODO: maybe use miniquad-logging here instead, but I haven't looked into it yet
             eprintln!("Error on EventHandler::update(): {:?}", e);
             if self
                 .event_handler
-                .on_error(&mut self.context, ErrorOrigin::Update, e)
+                .on_error(&mut self.context, quad_ctx, ErrorOrigin::Update, e)
             {
                 event::quit(&mut self.context);
             }
         }
     }
 
-    fn draw(&mut self) {
+    fn draw(&mut self, quad_ctx: &mut GraphicsContext) {
         // do ggez 0.6 style error handling
-        if let Err(e) = self.event_handler.draw(&mut self.context) {
+        if let Err(e) = self.event_handler.draw(&mut self.context, quad_ctx) {
             error!("Error on EventHandler::draw(): {:?}", e);
             eprintln!("Error on EventHandler::draw(): {:?}", e);
             if self
                 .event_handler
-                .on_error(&mut self.context, ErrorOrigin::Draw, e)
+                .on_error(&mut self.context, quad_ctx, ErrorOrigin::Draw, e)
             {
                 event::quit(&mut self.context);
             }
@@ -170,12 +174,12 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
         self.context.mouse_context.reset_delta();
     }
 
-    fn resize_event(&mut self, width: f32, height: f32) {
+    fn resize_event(&mut self, quad_ctx: &mut GraphicsContext, width: f32, height: f32) {
         self.event_handler
-            .resize_event(&mut self.context, width, height);
+            .resize_event(&mut self.context, quad_ctx, width, height);
     }
 
-    fn mouse_motion_event(&mut self, x: f32, y: f32) {
+    fn mouse_motion_event(&mut self, quad_ctx: &mut GraphicsContext, x: f32, y: f32) {
         self.context
             .mouse_context
             .input_handler
@@ -190,34 +194,58 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
             .set_delta((old_delta.x + dx, old_delta.y + dy).into());
         self.context.mouse_context.set_last_position((x, y).into());
         self.event_handler
-            .mouse_motion_event(&mut self.context, x, y, dx, dy);
+            .mouse_motion_event(&mut self.context, quad_ctx, x, y, dx, dy);
     }
 
-    fn mouse_button_down_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
+    fn mouse_button_down_event(
+        &mut self,
+        quad_ctx: &mut GraphicsContext,
+        button: miniquad::MouseButton,
+        x: f32,
+        y: f32,
+    ) {
         self.context
             .mouse_context
             .input_handler
             .handle_mouse_down(button);
-        self.event_handler
-            .mouse_button_down_event(&mut self.context, button.into(), x, y);
+        self.event_handler.mouse_button_down_event(
+            &mut self.context,
+            quad_ctx,
+            button.into(),
+            x,
+            y,
+        );
     }
 
-    fn mouse_button_up_event(&mut self, button: miniquad::MouseButton, x: f32, y: f32) {
+    fn mouse_button_up_event(
+        &mut self,
+        quad_ctx: &mut GraphicsContext,
+        button: miniquad::MouseButton,
+        x: f32,
+        y: f32,
+    ) {
         self.context
             .mouse_context
             .input_handler
             .handle_mouse_up(button);
         self.event_handler
-            .mouse_button_up_event(&mut self.context, button.into(), x, y);
+            .mouse_button_up_event(&mut self.context, quad_ctx, button.into(), x, y);
     }
 
-    fn char_event(&mut self, character: char, _keymods: miniquad::KeyMods, _repeat: bool) {
+    fn char_event(
+        &mut self,
+        quad_ctx: &mut GraphicsContext,
+        character: char,
+        _keymods: miniquad::KeyMods,
+        _repeat: bool,
+    ) {
         self.event_handler
-            .text_input_event(&mut self.context, character);
+            .text_input_event(&mut self.context, quad_ctx, character);
     }
 
     fn key_down_event(
         &mut self,
+        quad_ctx: &mut GraphicsContext,
         keycode: miniquad::KeyCode,
         keymods: miniquad::KeyMods,
         repeat: bool,
@@ -225,19 +253,36 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
         // first update the keyboard context state
         self.context.keyboard_context.set_key(keycode, true);
         // then hand it to the user
-        self.event_handler
-            .key_down_event(&mut self.context, keycode, keymods.into(), repeat);
+        self.event_handler.key_down_event(
+            &mut self.context,
+            quad_ctx,
+            keycode,
+            keymods.into(),
+            repeat,
+        );
     }
 
-    fn key_up_event(&mut self, keycode: miniquad::KeyCode, keymods: miniquad::KeyMods) {
+    fn key_up_event(
+        &mut self,
+        quad_ctx: &mut GraphicsContext,
+        keycode: miniquad::KeyCode,
+        keymods: miniquad::KeyMods,
+    ) {
         self.context.keyboard_context.set_key(keycode, false);
         self.event_handler
-            .key_up_event(&mut self.context, keycode, keymods.into());
+            .key_up_event(&mut self.context, quad_ctx, keycode, keymods.into());
     }
 
-    fn touch_event(&mut self, phase: miniquad::TouchPhase, id: u64, x: f32, y: f32) {
+    fn touch_event(
+        &mut self,
+        quad_ctx: &mut GraphicsContext,
+        phase: miniquad::TouchPhase,
+        id: u64,
+        x: f32,
+        y: f32,
+    ) {
         self.event_handler
-            .touch_event(&mut self.context, phase, id, x, y);
+            .touch_event(&mut self.context, quad_ctx, phase, id, x, y);
     }
 }
 
@@ -247,7 +292,8 @@ impl<E: std::error::Error> miniquad::EventHandlerFree for EventHandlerWrapper<E>
 pub fn start<F, E>(conf: conf::Conf, f: F) -> GameResult
 where
     E: std::error::Error + 'static,
-    F: 'static + FnOnce(&mut Context) -> Box<dyn event::EventHandler<E>>,
+    F: 'static
+        + FnOnce(&mut Context, &mut miniquad::GraphicsContext) -> Box<dyn event::EventHandler<E>>,
 {
     let fs = Filesystem::new(&conf);
     let quad_conf = conf.into();
@@ -257,14 +303,14 @@ where
 
         // uncommenting this leads to wrong window sizes as `set_window_size` is currently buggy
         //context.quad_ctx.set_window_size(800 as u32, 600 as u32);
-        let (d_w, d_h) = context.quad_ctx.screen_size();
+        let (d_w, d_h) = ctx.screen_size();
         context
             .gfx_context
             .set_screen_coordinates(graphics::Rect::new(0., 0., d_w, d_h));
 
-        let event_handler = f(&mut context);
+        let event_handler = f(&mut context, ctx);
 
-        miniquad::UserData::free(EventHandlerWrapper {
+        Box::new(EventHandlerWrapper {
             event_handler,
             context,
         })

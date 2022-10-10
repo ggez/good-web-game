@@ -45,15 +45,13 @@ pub struct Context {
     pub gamepad_context: Box<dyn gamepad::GamepadContext>,
     /// Timer state
     pub timer_context: TimeContext,
-    /// Exposed miniquad context. Handle with care.
-    pub quad_ctx: miniquad::Context,
     /// Controls whether or not the event loop should be running.
     /// Set this with `ggez::event::quit()`.
     pub continuing: bool,
 }
 
 impl Context {
-    pub(crate) fn new(mut quad_ctx: miniquad::Context, filesystem: Filesystem) -> Context {
+    pub(crate) fn new(quad_ctx: &mut miniquad::Context, filesystem: Filesystem) -> Context {
         let input_handler = InputHandler::new();
         #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
         {
@@ -66,13 +64,12 @@ impl Context {
 
             Context {
                 filesystem,
-                gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
+                gfx_context: graphics::GraphicsContext::new(quad_ctx),
                 audio_context: audio::AudioContext::new(),
                 mouse_context: MouseContext::new(input_handler),
                 keyboard_context: KeyboardContext::new(),
                 gamepad_context,
                 timer_context: TimeContext::new(),
-                quad_ctx,
                 continuing: true,
             }
         }
@@ -80,12 +77,11 @@ impl Context {
         {
             Context {
                 filesystem,
-                gfx_context: graphics::GraphicsContext::new(&mut quad_ctx),
+                gfx_context: graphics::GraphicsContext::new(quad_ctx),
                 audio_context: audio::AudioContext::new(),
                 mouse_context: MouseContext::new(input_handler),
                 keyboard_context: KeyboardContext::new(),
                 timer_context: TimeContext::new(),
-                quad_ctx,
                 continuing: true,
             }
         }

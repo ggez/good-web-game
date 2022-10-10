@@ -6,6 +6,7 @@ extern crate good_web_game as ggez;
 use ggez::event::{self, KeyCode, KeyMods, MouseButton};
 use ggez::graphics::{self, Color, DrawMode};
 use ggez::input;
+use ggez::miniquad;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
 use ggez::input::gamepad::{
@@ -32,7 +33,11 @@ impl MainState {
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         if input::keyboard::is_key_pressed(ctx, KeyCode::A) {
             println!("The A key is pressed");
             if input::keyboard::is_mod_active(ctx, input::keyboard::KeyMods::SHIFT) {
@@ -46,11 +51,12 @@ impl event::EventHandler<ggez::GameError> for MainState {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
 
         let rectangle = graphics::Mesh::new_rectangle(
             ctx,
+            quad_ctx,
             DrawMode::fill(),
             graphics::Rect {
                 x: self.pos_x,
@@ -60,23 +66,45 @@ impl event::EventHandler<ggez::GameError> for MainState {
             },
             Color::WHITE,
         )?;
-        graphics::draw(ctx, &rectangle, (glam::Vec2::new(0.0, 0.0),))?;
+        graphics::draw(ctx, quad_ctx, &rectangle, (glam::Vec2::new(0.0, 0.0),))?;
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 
-    fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
+    fn mouse_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        button: MouseButton,
+        x: f32,
+        y: f32,
+    ) {
         self.mouse_down = true;
         println!("Mouse button pressed: {:?}, x: {}, y: {}", button, x, y);
     }
 
-    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
+    fn mouse_button_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        button: MouseButton,
+        x: f32,
+        y: f32,
+    ) {
         self.mouse_down = false;
         println!("Mouse button released: {:?}, x: {}, y: {}", button, x, y);
     }
 
-    fn mouse_motion_event(&mut self, _ctx: &mut Context, x: f32, y: f32, xrel: f32, yrel: f32) {
+    fn mouse_motion_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        x: f32,
+        y: f32,
+        xrel: f32,
+        yrel: f32,
+    ) {
         if self.mouse_down {
             // Mouse coordinates are PHYSICAL coordinates, but here we want logical coordinates.
 
@@ -100,13 +128,20 @@ impl event::EventHandler<ggez::GameError> for MainState {
         );
     }
 
-    fn mouse_wheel_event(&mut self, _ctx: &mut Context, x: f32, y: f32) {
+    fn mouse_wheel_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        x: f32,
+        y: f32,
+    ) {
         println!("Mousewheel event, x: {}, y: {}", x, y);
     }
 
     fn key_down_event(
         &mut self,
         _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         keycode: KeyCode,
         keymod: KeyMods,
         repeat: bool,
@@ -117,26 +152,56 @@ impl event::EventHandler<ggez::GameError> for MainState {
         );
     }
 
-    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, keymod: KeyMods) {
+    fn key_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        keycode: KeyCode,
+        keymod: KeyMods,
+    ) {
         println!("Key released: {:?}, modifier {:?}", keycode, keymod);
     }
 
-    fn text_input_event(&mut self, _ctx: &mut Context, ch: char) {
+    fn text_input_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        ch: char,
+    ) {
         println!("Text input: {}", ch);
     }
 
     #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
-    fn gamepad_button_down_event(&mut self, _ctx: &mut Context, btn: Button, id: GamepadId) {
+    fn gamepad_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        btn: Button,
+        id: GamepadId,
+    ) {
         println!("Gamepad button pressed: {:?} Gamepad_Id: {:?}", btn, id);
     }
 
     #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
-    fn gamepad_button_up_event(&mut self, _ctx: &mut Context, btn: Button, id: GamepadId) {
+    fn gamepad_button_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        btn: Button,
+        id: GamepadId,
+    ) {
         println!("Gamepad button released: {:?} Gamepad_Id: {:?}", btn, id);
     }
 
     #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android",)))]
-    fn gamepad_axis_event(&mut self, _ctx: &mut Context, axis: Axis, value: f32, id: GamepadId) {
+    fn gamepad_axis_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+        axis: Axis,
+        value: f32,
+        id: GamepadId,
+    ) {
         println!(
             "Axis Event: {:?} Value: {} Gamepad_Id: {:?}",
             axis, value, id
@@ -172,6 +237,6 @@ pub fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(Some(include_bytes!("resources.tar")))
             .window_resizable(true),
-        |_context| Box::new(MainState::new()),
+        |_context, _quad_ctx| Box::new(MainState::new()),
     )
 }

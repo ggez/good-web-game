@@ -165,6 +165,7 @@ impl Shader {
     /// Create a new `Shader` given source files, constants and a name.
     pub fn new<P: AsRef<Path>>(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         vertex_path: P,
         pixel_path: P,
         shader_meta: ShaderMeta,
@@ -182,12 +183,20 @@ impl Shader {
             let _ = reader.read_to_end(&mut buf)?;
             buf
         };
-        Self::from_u8(ctx, &vertex_source, &pixel_source, shader_meta, blend_mode)
+        Self::from_u8(
+            ctx,
+            quad_ctx,
+            &vertex_source,
+            &pixel_source,
+            shader_meta,
+            blend_mode,
+        )
     }
 
     /// Create a new `Shader` directly from GLSL source code, given as byte slices.
     pub fn from_u8(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         vertex_source: &[u8],
         pixel_source: &[u8],
         shader_meta: ShaderMeta,
@@ -200,25 +209,29 @@ impl Shader {
         let vertex_source = std::str::from_utf8(vertex_source).map_err(to_shader_error)?;
         let pixel_source = std::str::from_utf8(pixel_source).map_err(to_shader_error)?;
 
-        Self::from_str(ctx, vertex_source, pixel_source, shader_meta, blend_mode)
+        Self::from_str(
+            ctx,
+            quad_ctx,
+            vertex_source,
+            pixel_source,
+            shader_meta,
+            blend_mode,
+        )
     }
 
     /// Create a new `Shader` directly from GLSL source code.
     pub fn from_str(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         vertex_source: &str,
         pixel_source: &str,
         shader_meta: ShaderMeta,
         blend_mode: Option<BlendMode>,
     ) -> GameResult<ShaderId> {
-        let miniquad_shader = miniquad::graphics::Shader::new(
-            &mut ctx.quad_ctx,
-            vertex_source,
-            pixel_source,
-            shader_meta,
-        )?;
+        let miniquad_shader =
+            miniquad::graphics::Shader::new(quad_ctx, vertex_source, pixel_source, shader_meta)?;
 
-        let shader = Self::from_mini_shader(&mut ctx.quad_ctx, miniquad_shader, blend_mode);
+        let shader = Self::from_mini_shader(quad_ctx, miniquad_shader, blend_mode);
 
         let id = ctx.gfx_context.shaders.len();
         ctx.gfx_context.shaders.push(shader);
@@ -286,6 +299,7 @@ pub fn set_uniforms<U: Pod>(ctx: &mut Context, id: ShaderId, extra_uniforms: U) 
 /// Apply the uniforms for the given shader.
 pub(crate) fn apply_uniforms(
     ctx: &mut Context,
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
     shader_id: ShaderId,
     batch_model: Option<Matrix4<f32>>,
 ) {
@@ -307,7 +321,7 @@ pub(crate) fn apply_uniforms(
             *after_last_byte.offset(offset) = *projection_bytes.offset(offset);
         }
     }
-    ctx.quad_ctx.apply_uniforms_from_bytes(
+    quad_ctx.apply_uniforms_from_bytes(
         current_shader.uniforms.as_ptr(),
         current_shader.uniforms.len(),
     );

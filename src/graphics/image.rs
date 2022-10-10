@@ -29,7 +29,11 @@ pub struct Image {
 }
 
 impl Image {
-    pub fn new<P: AsRef<path::Path>>(ctx: &mut Context, path: P) -> GameResult<Self> {
+    pub fn new<P: AsRef<path::Path>>(
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        path: P,
+    ) -> GameResult<Self> {
         use std::io::Read;
 
         let mut file = filesystem::open(ctx, path)?;
@@ -37,10 +41,14 @@ impl Image {
         let mut bytes = vec![];
         file.bytes.read_to_end(&mut bytes)?;
 
-        Self::from_png_bytes(ctx, &bytes)
+        Self::from_png_bytes(ctx, quad_ctx, &bytes)
     }
 
-    pub fn from_png_bytes(ctx: &mut Context, bytes: &[u8]) -> GameResult<Self> {
+    pub fn from_png_bytes(
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        bytes: &[u8],
+    ) -> GameResult<Self> {
         match image::load_from_memory(bytes) {
             Ok(img) => {
                 let rgba = img.to_rgba();
@@ -49,7 +57,7 @@ impl Image {
                 let height = rgba.height() as u16;
                 let bytes = rgba.into_raw();
 
-                Image::from_rgba8(ctx, width, height, &bytes)
+                Image::from_rgba8(ctx, quad_ctx, width, height, &bytes)
             }
             Err(e) => Err(GameError::ResourceLoadError(e.to_string())),
         }
@@ -57,13 +65,13 @@ impl Image {
 
     pub fn from_rgba8(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         width: u16,
         height: u16,
         bytes: &[u8],
     ) -> GameResult<Image> {
-        let texture = Texture::from_rgba8(&mut ctx.quad_ctx, width, height, bytes);
-
-        Self::from_texture(&mut ctx.quad_ctx, texture, ctx.gfx_context.default_filter)
+        let texture = Texture::from_rgba8(quad_ctx, width, height, bytes);
+        Self::from_texture(quad_ctx, texture, ctx.gfx_context.default_filter)
     }
 
     pub fn from_texture(
@@ -118,7 +126,12 @@ impl Image {
     /// A little helper function that creates a new `Image` that is just
     /// a solid square of the given size and color.  Mainly useful for
     /// debugging.
-    pub fn solid(context: &mut Context, size: u16, color: Color) -> GameResult<Self> {
+    pub fn solid(
+        context: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        size: u16,
+        color: Color,
+    ) -> GameResult<Self> {
         let (r, g, b, a) = color.into();
         let pixel_array: [u8; 4] = [r, g, b, a];
         let size_squared = usize::from(size) * usize::from(size);
@@ -126,7 +139,7 @@ impl Image {
         for _i in 0..size_squared {
             buffer.extend(&pixel_array[..]);
         }
-        Image::from_rgba8(context, size, size, &buffer)
+        Image::from_rgba8(context, quad_ctx, size, size, &buffer)
     }
 
     pub fn width(&self) -> u16 {
@@ -152,46 +165,56 @@ impl Image {
     }
 
     /// Draws without adapting the scaling.
-    pub(crate) fn draw_image_raw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+    pub(crate) fn draw_image_raw(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        param: DrawParam,
+    ) -> GameResult {
         let instance = InstanceAttributes::from(&param);
-        self.bindings.vertex_buffers[1].update(&mut ctx.quad_ctx, &[instance]);
+        self.bindings.vertex_buffers[1].update(quad_ctx, &[instance]);
 
         if self.dirty_filter.load() {
             self.dirty_filter.store(false);
-            self.texture.set_filter(&mut ctx.quad_ctx, self.filter);
+            self.texture.set_filter(quad_ctx, self.filter);
         }
 
         let pass = ctx.framebuffer();
-        ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx.apply_bindings(&self.bindings);
+        quad_ctx.begin_pass(pass, PassAction::Nothing);
+        quad_ctx.apply_bindings(&self.bindings);
 
         let shader_id = *ctx.gfx_context.current_shader.borrow();
         let current_shader = &mut ctx.gfx_context.shaders[shader_id];
-        ctx.quad_ctx.apply_pipeline(&current_shader.pipeline);
+        quad_ctx.apply_pipeline(&current_shader.pipeline);
 
-        apply_uniforms(ctx, shader_id, None);
+        apply_uniforms(ctx, quad_ctx, shader_id, None);
 
         let mut custom_blend = false;
         if let Some(blend_mode) = self.blend_mode() {
             custom_blend = true;
-            crate::graphics::set_current_blend_mode(ctx, blend_mode)
+            crate::graphics::set_current_blend_mode(quad_ctx, blend_mode)
         }
 
-        ctx.quad_ctx.draw(0, 6, 1);
+        quad_ctx.draw(0, 6, 1);
 
         // restore default blend mode
         if custom_blend {
-            crate::graphics::restore_blend_mode(ctx);
+            crate::graphics::restore_blend_mode(ctx, quad_ctx);
         }
 
-        ctx.quad_ctx.end_render_pass();
+        quad_ctx.end_render_pass();
 
         Ok(())
     }
 }
 
 impl Drawable for Image {
-    fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+    fn draw(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        param: DrawParam,
+    ) -> GameResult {
         let src_width = param.src.w;
         let src_height = param.src.h;
         // We have to mess with the scale to make everything
@@ -209,7 +232,7 @@ impl Drawable for Image {
             ),
         };
 
-        self.draw_image_raw(ctx, new_param)
+        self.draw_image_raw(ctx, quad_ctx, new_param)
     }
 
     fn set_blend_mode(&mut self, mode: Option<BlendMode>) {

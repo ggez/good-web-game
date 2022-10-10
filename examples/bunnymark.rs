@@ -49,10 +49,13 @@ struct GameState {
 }
 
 impl GameState {
-    fn new(ctx: &mut Context) -> ggez::GameResult<GameState> {
+    fn new(
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> ggez::GameResult<GameState> {
         // We just use the same RNG seed every time.
         qrand::srand(12345);
-        let texture = Image::new(ctx, "/wabbit_alpha.png")?;
+        let texture = Image::new(ctx, quad_ctx, "/wabbit_alpha.png")?;
         let mut bunnies = Vec::with_capacity(INITIAL_BUNNIES);
         let max_x = (WIDTH - texture.width()) as f32;
         let max_y = (HEIGHT - texture.height()) as f32;
@@ -77,7 +80,11 @@ impl GameState {
 }
 
 impl event::EventHandler<ggez::GameError> for GameState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         if self.click_timer > 0 {
             self.click_timer -= 1;
         }
@@ -111,18 +118,18 @@ impl event::EventHandler<ggez::GameError> for GameState {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, Color::from((0.392, 0.584, 0.929)));
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, Color::from((0.392, 0.584, 0.929)));
 
         if self.batched_drawing {
             self.bunnybatch.clear();
             for bunny in &self.bunnies {
                 self.bunnybatch.add((bunny.position,));
             }
-            graphics::draw(ctx, &self.bunnybatch, (Vec2::new(0.0, 0.0),))?;
+            graphics::draw(ctx, quad_ctx, &self.bunnybatch, (Vec2::new(0.0, 0.0),))?;
         } else {
             for bunny in &self.bunnies {
-                graphics::draw(ctx, &self.texture, (bunny.position,))?;
+                graphics::draw(ctx, quad_ctx, &self.texture, (bunny.position,))?;
             }
         }
 
@@ -137,7 +144,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
             ),
         );
         */
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
 
         Ok(())
     }
@@ -145,6 +152,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
     fn mouse_button_down_event(
         &mut self,
         _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         button: input::mouse::MouseButton,
         _x: f32,
         _y: f32,
@@ -160,6 +168,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
     fn key_down_event(
         &mut self,
         _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         keycode: event::KeyCode,
         _keymods: event::KeyMods,
         _repeat: bool,
@@ -183,6 +192,6 @@ fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(Some(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
-        |context| Box::new(GameState::new(context).unwrap()),
+        |context, quad_ctx| Box::new(GameState::new(context, quad_ctx).unwrap()),
     )
 }

@@ -4,6 +4,7 @@ extern crate good_web_game as ggez;
 
 use ggez::event::{self, KeyCode, KeyMods};
 use ggez::graphics::{self, Color, DrawMode};
+use ggez::miniquad;
 use ggez::{Context, GameResult};
 use glam::*;
 use std::env;
@@ -22,8 +23,8 @@ impl MainState {
     const GRID_SIZE: usize = 10;
     const GRID_POINT_RADIUS: f32 = 5.0;
 
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let angle = graphics::Image::new(ctx, "/angle.png")?;
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
+        let angle = graphics::Image::new(ctx, quad_ctx, "/angle.png")?;
         let gridmesh_builder = &mut graphics::MeshBuilder::new();
         for x in 0..Self::GRID_SIZE {
             for y in 0..Self::GRID_SIZE {
@@ -41,7 +42,7 @@ impl MainState {
                 )?;
             }
         }
-        let gridmesh = gridmesh_builder.build(ctx)?;
+        let gridmesh = gridmesh_builder.build(ctx, quad_ctx)?;
         // An array of rects to cycle the screen coordinates through.
         let screen_bounds = vec![
             graphics::Rect::new(0.0, 0.0, 800.0, 600.0),
@@ -58,7 +59,11 @@ impl MainState {
         Ok(s)
     }
 
-    fn draw_coord_labels(&self, ctx: &mut Context) -> GameResult {
+    fn draw_coord_labels(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         for x in 0..Self::GRID_SIZE {
             for y in 0..Self::GRID_SIZE {
                 let point = Vec2::new(
@@ -67,7 +72,7 @@ impl MainState {
                 );
                 let s = format!("({}, {})", point.x, point.y);
                 let t = graphics::Text::new(s);
-                graphics::draw(ctx, &t, (point,))?
+                graphics::draw(ctx, quad_ctx, &t, (point,))?
             }
         }
         Ok(())
@@ -75,16 +80,20 @@ impl MainState {
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         self.pos_x = self.pos_x % 800.0 + 1.0;
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
 
         let origin = Vec2::ZERO;
-        graphics::draw(ctx, &self.gridmesh, (origin, Color::WHITE))?;
+        graphics::draw(ctx, quad_ctx, &self.gridmesh, (origin, Color::WHITE))?;
 
         let param = graphics::DrawParam::new()
             .dest(Vec2::new(400.0, 400.0))
@@ -92,17 +101,18 @@ impl event::EventHandler<ggez::GameError> for MainState {
             .offset(Vec2::new(0.5, 0.5))
             .scale(Vec2::new(1.0, 1.0));
 
-        self.draw_coord_labels(ctx)?;
+        self.draw_coord_labels(ctx, quad_ctx)?;
 
-        graphics::draw(ctx, &self.angle, param)?;
+        graphics::draw(ctx, quad_ctx, &self.angle, param)?;
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         keycode: KeyCode,
         _keymod: KeyMods,
         _repeat: bool,
@@ -128,6 +138,6 @@ pub fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(Some(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
-        |context| Box::new(MainState::new(context).unwrap()),
+        |context, quad_ctx| Box::new(MainState::new(context, quad_ctx).unwrap()),
     )
 }

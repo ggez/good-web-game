@@ -470,25 +470,29 @@ impl MeshBuilder {
 
     /// Takes the accumulated geometry and load it into GPU memory,
     /// creating a single `Mesh`.
-    pub fn build(&self, ctx: &mut Context) -> GameResult<Mesh> {
+    pub fn build(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> GameResult<Mesh> {
         let vertex_buffer = miniquad::Buffer::immutable(
-            &mut ctx.quad_ctx,
+            quad_ctx,
             miniquad::BufferType::VertexBuffer,
             &self.buffer.vertices[..],
         );
         let index_buffer = miniquad::Buffer::immutable(
-            &mut ctx.quad_ctx,
+            quad_ctx,
             miniquad::BufferType::IndexBuffer,
             &self.buffer.indices[..],
         );
         let attribute_buffer = Buffer::stream(
-            &mut ctx.quad_ctx,
+            quad_ctx,
             BufferType::VertexBuffer,
             std::mem::size_of::<InstanceAttributes>(), // start out with space for one instance
         );
         // make sure to set the filter before building
         if let Some((filter, texture)) = self.tex_filter.zip(self.texture) {
-            texture.set_filter(&mut ctx.quad_ctx, filter);
+            texture.set_filter(quad_ctx, filter);
         }
         let bindings = miniquad::Bindings {
             vertex_buffers: vec![vertex_buffer, attribute_buffer],
@@ -571,6 +575,7 @@ impl Mesh {
     /// Create a new mesh for a line of one or more connected segments.
     pub fn new_line<P>(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         points: &[P],
         width: f32,
         color: Color,
@@ -580,12 +585,13 @@ impl Mesh {
     {
         let mut mb = MeshBuilder::new();
         let _ = mb.polyline(DrawMode::stroke(width), points, color);
-        mb.build(ctx)
+        mb.build(ctx, quad_ctx)
     }
 
     /// Create a new mesh for a circle.
     pub fn new_circle<P>(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         mode: DrawMode,
         point: P,
         radius: f32,
@@ -597,12 +603,13 @@ impl Mesh {
     {
         let mut mb = MeshBuilder::new();
         let _ = mb.circle(mode, point, radius, tolerance, color);
-        mb.build(ctx)
+        mb.build(ctx, quad_ctx)
     }
 
     /// Create a new mesh for an ellipse.
     pub fn new_ellipse<P>(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         mode: DrawMode,
         point: P,
         radius1: f32,
@@ -615,12 +622,13 @@ impl Mesh {
     {
         let mut mb = MeshBuilder::new();
         let _ = mb.ellipse(mode, point, radius1, radius2, tolerance, color);
-        mb.build(ctx)
+        mb.build(ctx, quad_ctx)
     }
 
     /// Create a new mesh for series of connected lines.
     pub fn new_polyline<P>(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         mode: DrawMode,
         points: &[P],
         color: Color,
@@ -630,7 +638,7 @@ impl Mesh {
     {
         let mut mb = MeshBuilder::new();
         let _ = mb.polyline(mode, points, color);
-        mb.build(ctx)
+        mb.build(ctx, quad_ctx)
     }
 
     /// Create a new mesh for closed polygon.
@@ -638,6 +646,7 @@ impl Mesh {
     /// otherwise at best the polygon will not draw.
     pub fn new_polygon<P>(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         mode: DrawMode,
         points: &[P],
         color: Color,
@@ -652,24 +661,26 @@ impl Mesh {
         }
         let mut mb = MeshBuilder::new();
         let _ = mb.polygon(mode, points, color);
-        mb.build(ctx)
+        mb.build(ctx, quad_ctx)
     }
 
     /// Create a new mesh for a rectangle
     pub fn new_rectangle(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         mode: DrawMode,
         bounds: Rect,
         color: Color,
     ) -> GameResult<Mesh> {
         let mut mb = MeshBuilder::new();
         let _ = mb.rectangle(mode, bounds, color);
-        mb.build(ctx)
+        mb.build(ctx, quad_ctx)
     }
 
     /// Create a new mesh for a rounded rectangle
     pub fn new_rounded_rectangle(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         mode: DrawMode,
         bounds: Rect,
         radius: f32,
@@ -677,17 +688,22 @@ impl Mesh {
     ) -> GameResult<Mesh> {
         let mut mb = MeshBuilder::new();
         let _ = mb.rounded_rectangle(mode, bounds, radius, color);
-        mb.build(ctx)
+        mb.build(ctx, quad_ctx)
     }
 
     /// Create a new `Mesh` from a raw list of triangle points.
-    pub fn from_triangles<P>(ctx: &mut Context, triangles: &[P], color: Color) -> GameResult<Mesh>
+    pub fn from_triangles<P>(
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        triangles: &[P],
+        color: Color,
+    ) -> GameResult<Mesh>
     where
         P: Into<mint::Point2<f32>> + Clone,
     {
         let mut mb = MeshBuilder::new();
         let _ = mb.triangles(triangles, color);
-        mb.build(ctx)
+        mb.build(ctx, quad_ctx)
     }
 
     /// Creates a `Mesh` from a raw list of triangles defined from points
@@ -704,6 +720,7 @@ impl Mesh {
     ///  * `verts` is longer than `u16::MAX` elements.
     pub fn from_raw<V>(
         ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         verts: &[V],
         indices: &[u16],
         image: Option<Image>,
@@ -740,18 +757,12 @@ impl Mesh {
             return Err(GameError::LyonError(msg));
         }
 
-        let vertex_buffer = miniquad::Buffer::immutable(
-            &mut ctx.quad_ctx,
-            miniquad::BufferType::VertexBuffer,
-            &verts[..],
-        );
-        let index_buffer = miniquad::Buffer::immutable(
-            &mut ctx.quad_ctx,
-            miniquad::BufferType::IndexBuffer,
-            &indices[..],
-        );
+        let vertex_buffer =
+            miniquad::Buffer::immutable(quad_ctx, miniquad::BufferType::VertexBuffer, &verts[..]);
+        let index_buffer =
+            miniquad::Buffer::immutable(quad_ctx, miniquad::BufferType::IndexBuffer, &indices[..]);
         let attribute_buffer = Buffer::stream(
-            &mut ctx.quad_ctx,
+            quad_ctx,
             BufferType::VertexBuffer,
             std::mem::size_of::<InstanceAttributes>(), // start out with space for one instance
         );
@@ -810,36 +821,40 @@ impl Mesh {
 }
 
 impl Drawable for Mesh {
-    fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+    fn draw(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        param: DrawParam,
+    ) -> GameResult {
         let instance = InstanceAttributes::from(&param);
-        self.bindings.vertex_buffers[1].update(&mut ctx.quad_ctx, &[instance]);
+        self.bindings.vertex_buffers[1].update(quad_ctx, &[instance]);
 
         let pass = ctx.framebuffer();
 
-        ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-        ctx.quad_ctx.apply_bindings(&self.bindings);
+        quad_ctx.begin_pass(pass, PassAction::Nothing);
+        quad_ctx.apply_bindings(&self.bindings);
 
         let shader_id = *ctx.gfx_context.current_shader.borrow();
         let current_shader = &mut ctx.gfx_context.shaders[shader_id];
-        ctx.quad_ctx.apply_pipeline(&current_shader.pipeline);
+        quad_ctx.apply_pipeline(&current_shader.pipeline);
 
-        apply_uniforms(ctx, shader_id, None);
+        apply_uniforms(ctx, quad_ctx, shader_id, None);
 
         let mut custom_blend = false;
         if let Some(blend_mode) = self.blend_mode() {
             custom_blend = true;
-            crate::graphics::set_current_blend_mode(ctx, blend_mode)
+            crate::graphics::set_current_blend_mode(quad_ctx, blend_mode)
         }
 
-        ctx.quad_ctx
-            .draw(0, self.bindings.index_buffer.size() as i32 / 2, 1);
+        quad_ctx.draw(0, self.bindings.index_buffer.size() as i32 / 2, 1);
 
         // restore default blend mode
         if custom_blend {
-            crate::graphics::restore_blend_mode(ctx);
+            crate::graphics::restore_blend_mode(ctx, quad_ctx);
         }
 
-        ctx.quad_ctx.end_render_pass();
+        quad_ctx.end_render_pass();
 
         Ok(())
     }
@@ -999,7 +1014,8 @@ impl MeshBatch {
     /// Use it for updating small portions of large batches.
     pub fn flush_range(
         &mut self,
-        ctx: &mut Context,
+        _ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
         first_handle: MeshIdx,
         count: usize,
     ) -> GameResult {
@@ -1016,7 +1032,7 @@ impl MeshBatch {
                     .resize(self.instance_params.len(), InstanceAttributes::default());
 
                 let buffer = Buffer::stream(
-                    &mut ctx.quad_ctx,
+                    quad_ctx,
                     BufferType::VertexBuffer,
                     std::mem::size_of::<InstanceAttributes>() * self.instance_params.len(),
                 );
@@ -1041,7 +1057,7 @@ impl MeshBatch {
             }
 
             // TODO: if `update` had an offset parameter we could really only update parts of the buffer, just like intended
-            mesh.bindings.vertex_buffers[1].update(&mut ctx.quad_ctx, &gpu_instance_params[..]);
+            mesh.bindings.vertex_buffers[1].update(quad_ctx, &gpu_instance_params[..]);
 
             self.instance_buffer_dirty = false;
             Ok(())
@@ -1054,28 +1070,37 @@ impl MeshBatch {
     ///
     /// In general, [`graphics::draw()`](../fn.draw.html) on the `MeshBatch`
     /// will do this automatically when buffer contents are updated.
-    pub fn flush(&mut self, ctx: &mut Context) -> GameResult {
-        self.flush_range(ctx, MeshIdx(0), self.instance_params.len())
+    pub fn flush(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> GameResult {
+        self.flush_range(ctx, quad_ctx, MeshIdx(0), self.instance_params.len())
     }
 
     /// Draws the drawable onto the rendering target.
-    pub fn draw(&mut self, ctx: &mut Context, param: DrawParam) -> GameResult {
+    pub fn draw(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        param: DrawParam,
+    ) -> GameResult {
         if !self.instance_params.is_empty() {
-
             if self.instance_buffer_dirty {
-                self.flush(ctx)?;
+                self.flush(ctx, quad_ctx)?;
             }
 
             let pass = ctx.framebuffer();
-            ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-            ctx.quad_ctx.apply_bindings(&self.mesh.bindings);
+            quad_ctx.begin_pass(pass, PassAction::Nothing);
+            quad_ctx.apply_bindings(&self.mesh.bindings);
 
             let shader_id = *ctx.gfx_context.current_shader.borrow();
             let current_shader = &mut ctx.gfx_context.shaders[shader_id];
-            ctx.quad_ctx.apply_pipeline(&current_shader.pipeline);
+            quad_ctx.apply_pipeline(&current_shader.pipeline);
 
             apply_uniforms(
                 ctx,
+                quad_ctx,
                 shader_id,
                 Some(cgmath::Matrix4::from(param.trans.to_bare_matrix())),
             );
@@ -1083,10 +1108,10 @@ impl MeshBatch {
             let mut custom_blend = false;
             if let Some(blend_mode) = self.blend_mode() {
                 custom_blend = true;
-                crate::graphics::set_current_blend_mode(ctx, blend_mode)
+                crate::graphics::set_current_blend_mode(quad_ctx, blend_mode)
             }
 
-            ctx.quad_ctx.draw(
+            quad_ctx.draw(
                 0,
                 self.mesh.bindings.index_buffer.size() as i32 / 2,
                 self.instance_params.len() as i32,
@@ -1094,10 +1119,10 @@ impl MeshBatch {
 
             // restore default blend mode
             if custom_blend {
-                crate::graphics::restore_blend_mode(ctx);
+                crate::graphics::restore_blend_mode(ctx, quad_ctx);
             }
 
-            ctx.quad_ctx.end_render_pass();
+            quad_ctx.end_render_pass();
         }
 
         Ok(())

@@ -3,31 +3,44 @@
 extern crate good_web_game as ggez;
 
 use ggez::input::mouse::set_cursor_grabbed;
-use ggez::{event::EventHandler, Context, GameResult};
+use ggez::{event::EventHandler, miniquad, Context, GameResult};
 
 fn main() -> GameResult<()> {
-    ggez::start(
-        ggez::conf::Conf::default(),
-        |context| {
-            set_cursor_grabbed(context, true);
-            Box::new(MousePos(0., 0.))
-        },
-    )
+    ggez::start(ggez::conf::Conf::default(), |_context, _quad_ctx| {
+        Box::new(MousePos(0., 0.))
+    })
 }
 
 struct MousePos(f32, f32);
 
 impl EventHandler for MousePos {
-    fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> GameResult<()> {
+        set_cursor_grabbed(ctx, quad_ctx, true);
         println!("UPDATE: delta: {:?}", ggez::input::mouse::delta(ctx));
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        ggez::graphics::present(ctx)
+    fn draw(
+        &mut self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    ) -> GameResult<()> {
+        ggez::graphics::present(ctx, quad_ctx)
     }
 
-    fn mouse_motion_event(&mut self, _ctx: &mut Context, x: f32, y: f32, dx: f32, dy: f32) {
+    fn mouse_motion_event(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        x: f32,
+        y: f32,
+        dx: f32,
+        dy: f32,
+    ) {
         let delta = (x - self.0, y - self.1);
         *self = MousePos(x, y);
         println!(

@@ -6,6 +6,7 @@ use ggez::event;
 use ggez::graphics::{
     self, Color, DrawMode, ShaderMeta, UniformBlockLayout, UniformDesc, UniformType,
 };
+use ggez::miniquad;
 use ggez::timer;
 use ggez::{Context, GameResult};
 //use std::env;
@@ -40,10 +41,11 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
         let dim = 0.5;
         let shader_id = graphics::Shader::new(
             ctx,
+            quad_ctx,
             "/basic_150.glslv",
             "/dimmer_150.glslf",
             shader_meta(),
@@ -54,49 +56,56 @@ impl MainState {
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         self.dim = 0.5 + (((timer::ticks(ctx) as f32) / 100.0).cos() / 2.0);
         graphics::set_uniforms(ctx, self.shader_id, ExtraUniforms { u_rate: self.dim });
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, [0.1, 0.2, 0.3, 1.0].into());
 
         let circle = graphics::Mesh::new_circle(
             ctx,
+            quad_ctx,
             DrawMode::fill(),
             glam::Vec2::new(100.0, 300.0),
             100.0,
             2.0,
             Color::WHITE,
         )?;
-        graphics::draw(ctx, &circle, (glam::Vec2::new(0.0, 0.0),))?;
+        graphics::draw(ctx, quad_ctx, &circle, (glam::Vec2::new(0.0, 0.0),))?;
 
         {
             let _lock = graphics::use_shader(ctx, self.shader_id);
             let circle = graphics::Mesh::new_circle(
                 ctx,
+                quad_ctx,
                 DrawMode::fill(),
                 glam::Vec2::new(400.0, 300.0),
                 100.0,
                 2.0,
                 Color::WHITE,
             )?;
-            graphics::draw(ctx, &circle, (glam::Vec2::new(0.0, 0.0),))?;
+            graphics::draw(ctx, quad_ctx, &circle, (glam::Vec2::new(0.0, 0.0),))?;
         }
 
         let circle = graphics::Mesh::new_circle(
             ctx,
+            quad_ctx,
             DrawMode::fill(),
             glam::Vec2::new(700.0, 300.0),
             100.0,
             2.0,
             Color::WHITE,
         )?;
-        graphics::draw(ctx, &circle, (glam::Vec2::new(0.0, 0.0),))?;
+        graphics::draw(ctx, quad_ctx, &circle, (glam::Vec2::new(0.0, 0.0),))?;
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 }
@@ -112,8 +121,7 @@ pub fn main() -> GameResult {
     };
     */
     ggez::start(
-        ggez::conf::Conf::default()
-            .cache(Some(include_bytes!("resources.tar"))),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        ggez::conf::Conf::default().cache(Some(include_bytes!("resources.tar"))),
+        |mut context, quad_ctx| Box::new(MainState::new(&mut context, quad_ctx).unwrap()),
     )
 }

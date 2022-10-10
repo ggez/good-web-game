@@ -20,7 +20,7 @@ use quad_rand as qrand;
 // Next we need to actually `use` the pieces of ggez that we are going
 // to need frequently.
 use ggez::event::{KeyCode, KeyMods};
-use ggez::{event, graphics, timer, Context, GameResult};
+use ggez::{event, graphics, miniquad, timer, Context, GameResult};
 
 // We'll bring in some things from `std` to help us in the future.
 use std::collections::LinkedList;
@@ -181,16 +181,26 @@ impl Food {
     /// Note: this method of drawing does not scale. If you need to render
     /// a large number of shapes, use a SpriteBatch. This approach is fine for
     /// this example since there are a fairly limited number of calls.
-    fn draw(&self, ctx: &mut Context) -> GameResult {
+    fn draw(&self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
         // First we set the color to draw with, in this case all food will be
         // colored blue.
         let color = [0.0, 0.0, 1.0, 1.0].into();
         // Then we draw a rectangle with the Fill draw mode, and we convert the
         // Food's position into a `ggez::Rect` using `.into()` which we can do
         // since we implemented `From<GridPosition>` for `Rect` earlier.
-        let rectangle =
-            graphics::Mesh::new_rectangle(ctx, graphics::DrawMode::fill(), self.pos.into(), color)?;
-        graphics::draw(ctx, &rectangle, (mint::Point2 { x: 0.0, y: 0.0 },))
+        let rectangle = graphics::Mesh::new_rectangle(
+            ctx,
+            quad_ctx,
+            graphics::DrawMode::fill(),
+            self.pos.into(),
+            color,
+        )?;
+        graphics::draw(
+            ctx,
+            quad_ctx,
+            &rectangle,
+            (mint::Point2 { x: 0.0, y: 0.0 },),
+        )
     }
 }
 
@@ -309,27 +319,39 @@ impl Snake {
     /// Again, note that this approach to drawing is fine for the limited scope of this
     /// example, but larger scale games will likely need a more optimized render path
     /// using SpriteBatch or something similar that batches draw calls.
-    fn draw(&self, ctx: &mut Context) -> GameResult {
+    fn draw(&self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
         // We first iterate through the body segments and draw them.
         for seg in self.body.iter() {
             // Again we set the color (in this case an orangey color)
             // and then draw the Rect that we convert that Segment's position into
             let rectangle = graphics::Mesh::new_rectangle(
                 ctx,
+                quad_ctx,
                 graphics::DrawMode::fill(),
                 seg.pos.into(),
                 [0.3, 0.3, 0.0, 1.0].into(),
             )?;
-            graphics::draw(ctx, &rectangle, (mint::Point2 { x: 0.0, y: 0.0 },))?;
+            graphics::draw(
+                ctx,
+                quad_ctx,
+                &rectangle,
+                (mint::Point2 { x: 0.0, y: 0.0 },),
+            )?;
         }
         // And then we do the same for the head, instead making it fully red to distinguish it.
         let rectangle = graphics::Mesh::new_rectangle(
             ctx,
+            quad_ctx,
             graphics::DrawMode::fill(),
             self.head.pos.into(),
             [1.0, 0.5, 0.0, 1.0].into(),
         )?;
-        graphics::draw(ctx, &rectangle, (mint::Point2 { x: 0.0, y: 0.0 },))?;
+        graphics::draw(
+            ctx,
+            quad_ctx,
+            &rectangle,
+            (mint::Point2 { x: 0.0, y: 0.0 },),
+        )?;
         Ok(())
     }
 }
@@ -373,7 +395,11 @@ impl GameState {
 impl event::EventHandler for GameState {
     /// Update will happen on every frame before it is drawn. This is where we update
     /// our game state to react to whatever is happening in the game world.
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         // Rely on ggez's built-in timer for deciding when to update the game, and how many times.
         // If the update is early, there will be no cycles, otherwises, the logic will run once for each
         // frame fitting in the time since the last update.
@@ -406,16 +432,16 @@ impl event::EventHandler for GameState {
     }
 
     /// draw is where we should actually render the game's current state.
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
         // First we clear the screen to a nice (well, maybe pretty glaring ;)) green
-        graphics::clear(ctx, [0.0, 1.0, 0.0, 1.0].into());
+        graphics::clear(ctx, quad_ctx, [0.0, 1.0, 0.0, 1.0].into());
 
         // Then we tell the snake and the food to draw themselves
-        self.snake.draw(ctx)?;
-        self.food.draw(ctx)?;
+        self.snake.draw(ctx, quad_ctx)?;
+        self.food.draw(ctx, quad_ctx)?;
         // Finally we call graphics::present to cycle the gpu's framebuffer and display
         // the new frame we just drew.
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         // And return success.
         Ok(())
     }
@@ -424,6 +450,7 @@ impl event::EventHandler for GameState {
     fn key_down_event(
         &mut self,
         _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
         keycode: KeyCode,
         _keymod: KeyMods,
         _repeat: bool,
@@ -458,5 +485,5 @@ fn main() -> GameResult {
         .window_height(SCREEN_SIZE.1);
 
     // And finally, we start the game!
-    ggez::start(conf, |_context| Box::new(state))
+    ggez::start(conf, |_context, _quad_ctx| Box::new(state))
 }

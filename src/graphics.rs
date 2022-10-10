@@ -53,7 +53,7 @@ pub(crate) fn release_dropped_bindings() {
 }
 
 /// Clear the screen to the background color.
-pub fn clear(ctx: &mut Context, color: Color) {
+pub fn clear(ctx: &mut Context, quad_ctx: &mut miniquad::graphics::GraphicsContext, color: Color) {
     let action = PassAction::Clear {
         color: Some((color.r, color.g, color.b, color.a)),
         depth: None,
@@ -61,20 +61,24 @@ pub fn clear(ctx: &mut Context, color: Color) {
     };
 
     let pass = ctx.framebuffer();
-    ctx.quad_ctx.begin_pass(pass, action);
-    ctx.quad_ctx
-        .clear(Some((color.r, color.g, color.b, color.a)), None, None);
+    quad_ctx.begin_pass(pass, action);
+    quad_ctx.clear(Some((color.r, color.g, color.b, color.a)), None, None);
 }
 
 /// Draws the given `Drawable` object to the screen by calling its
 /// [`draw()`](trait.Drawable.html#tymethod.draw) method.
-pub fn draw<D, T>(ctx: &mut Context, drawable: &D, params: T) -> GameResult
+pub fn draw<D, T>(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    drawable: &D,
+    params: T,
+) -> GameResult
 where
     D: Drawable,
     T: Into<DrawParam>,
 {
     let params = params.into();
-    drawable.draw(ctx, params)
+    drawable.draw(ctx, quad_ctx, params)
 }
 
 pub fn set_projection<M>(context: &mut Context, proj: M)
@@ -107,8 +111,8 @@ pub fn size(_ctx: &Context) -> (f32, f32) {
 
 /// Returns the size of the window's underlying drawable in pixels as (width, height).
 /// This may return a different value than `get_size()` when run on a platform with high-DPI support
-pub fn drawable_size(ctx: &Context) -> (f32, f32) {
-    ctx.quad_ctx.screen_size()
+pub fn drawable_size(quad_ctx: &miniquad::graphics::GraphicsContext) -> (f32, f32) {
+    quad_ctx.screen_size()
 }
 
 /// Sets the bounds of the screen viewport.
@@ -137,9 +141,13 @@ pub fn screen_coordinates(ctx: &Context) -> Rect {
 
 /// Sets the global blend mode. Note that whenever a `Drawable` has its own blend mode it will
 /// prioritize it over the global one.
-pub fn set_blend_mode(ctx: &mut Context, mode: BlendMode) -> GameResult {
+pub fn set_blend_mode(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    mode: BlendMode,
+) -> GameResult {
     let (color_blend, alpha_blend) = mode.into();
-    ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+    quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
     ctx.gfx_context.set_blend_mode(mode);
     Ok(())
 }
@@ -162,14 +170,20 @@ pub fn default_filter(ctx: &Context) -> FilterMode {
 }
 
 /// makes this blend mode current
-pub(crate) fn set_current_blend_mode(ctx: &mut Context, blend_mode: BlendMode) {
+pub(crate) fn set_current_blend_mode(
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    blend_mode: BlendMode,
+) {
     let (color_blend, alpha_blend) = blend_mode.into();
-    ctx.quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
+    quad_ctx.set_blend(Some(color_blend), Some(alpha_blend));
 }
 
 /// makes the global blend mode the current one
-pub(crate) fn restore_blend_mode(ctx: &mut Context) {
-    set_current_blend_mode(ctx, ctx.gfx_context.blend_mode)
+pub(crate) fn restore_blend_mode(
+    ctx: &Context,
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
+) {
+    set_current_blend_mode(quad_ctx, ctx.gfx_context.blend_mode)
 }
 
 /// Tells the graphics system to actually put everything on the screen.
@@ -177,28 +191,35 @@ pub(crate) fn restore_blend_mode(ctx: &mut Context) {
 /// [`draw()`](../event/trait.EventHandler.html#tymethod.draw) method.
 ///
 /// Unsets any active canvas.
-pub fn present(ctx: &mut Context) -> GameResult<()> {
+pub fn present(
+    ctx: &mut Context,
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
+) -> GameResult<()> {
     crate::graphics::set_canvas(ctx, None);
-    ctx.quad_ctx.commit_frame();
+    quad_ctx.commit_frame();
     Ok(())
 }
 
 /// Sets the window to fullscreen or back.
-pub fn set_fullscreen(context: &mut Context, fullscreen: bool) {
-    context.quad_ctx.set_fullscreen(fullscreen);
+pub fn set_fullscreen(quad_ctx: &mut miniquad::graphics::GraphicsContext, fullscreen: bool) {
+    quad_ctx.set_fullscreen(fullscreen);
 }
 
 /// Sets the window size (in physical pixels) / resolution to the specified width and height.
 ///
 /// Note: Currently only available on Windows and currently buggy as well (sets window to a slightly wrong size).
-pub fn set_drawable_size(context: &mut Context, width: u32, height: u32) {
-    context.quad_ctx.set_window_size(width, height);
+pub fn set_drawable_size(
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
+    width: u32,
+    height: u32,
+) {
+    quad_ctx.set_window_size(width, height);
 }
 
 /// Deletes all cached font data.
 ///
 /// Suggest this only gets used if you're sure you actually need it.
-pub fn clear_font_cache(ctx: &mut Context) {
+pub fn clear_font_cache(ctx: &mut Context, quad_ctx: &mut miniquad::graphics::GraphicsContext) {
     use glyph_brush::GlyphBrushBuilder;
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -209,6 +230,7 @@ pub fn clear_font_cache(ctx: &mut Context) {
     let initial_contents = vec![255; 4 * glyph_cache_width as usize * glyph_cache_height as usize];
     let glyph_cache = Image::from_rgba8(
         ctx,
+        quad_ctx,
         glyph_cache_width.try_into().unwrap(),
         glyph_cache_height.try_into().unwrap(),
         &initial_contents,
@@ -227,7 +249,12 @@ pub trait Drawable {
     /// Draws the drawable onto the rendering target.
     ///
     /// ALSO TODO: Expand docs
-    fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult;
+    fn draw(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        param: DrawParam,
+    ) -> GameResult;
 
     /// Sets the blend mode to be used when drawing this drawable.
     /// This overrides the general [`graphics::set_blend_mode()`](fn.set_blend_mode.html).

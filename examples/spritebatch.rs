@@ -6,6 +6,7 @@ extern crate good_web_game as ggez;
 
 use ggez::event;
 use ggez::graphics;
+use ggez::miniquad;
 
 use ggez::timer;
 use ggez::{Context, GameResult};
@@ -17,8 +18,8 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let image = graphics::Image::new(ctx, "tile.png").unwrap();
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
+        let image = graphics::Image::new(ctx, quad_ctx, "tile.png").unwrap();
         let batch = graphics::spritebatch::SpriteBatch::new(image);
         let s = MainState { spritebatch: batch };
         Ok(s)
@@ -26,7 +27,11 @@ impl MainState {
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         if timer::ticks(ctx) % 100 == 0 {
             println!("Delta frame time: {:?} ", timer::delta(ctx));
             println!("Average FPS: {}", timer::fps(ctx));
@@ -34,8 +39,8 @@ impl event::EventHandler<ggez::GameError> for MainState {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, graphics::Color::BLACK);
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, graphics::Color::BLACK);
 
         let time = (timer::duration_to_f64(timer::time_since_start(ctx)) * 1000.0) as u32;
         let cycle = 10_000;
@@ -74,18 +79,17 @@ impl event::EventHandler<ggez::GameError> for MainState {
             //.src([0.25,0.25,0.5,0.5].into())
             .offset(Point2::new(750.0, 750.0));
 
-        graphics::draw(ctx, &self.spritebatch, param)?;
+        graphics::draw(ctx, quad_ctx, &self.spritebatch, param)?;
         self.spritebatch.clear();
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 }
 
 pub fn main() -> GameResult {
     ggez::start(
-        ggez::conf::Conf::default()
-            .cache(Some(include_bytes!("resources.tar"))),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        ggez::conf::Conf::default().cache(Some(include_bytes!("resources.tar"))),
+        |mut context, quad_ctx| Box::new(MainState::new(&mut context, quad_ctx).unwrap()),
     )
 }

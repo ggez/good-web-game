@@ -104,8 +104,12 @@ impl SpriteBatch {
 }
 
 impl graphics::Drawable for SpriteBatch {
-    fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
-
+    fn draw(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        param: DrawParam,
+    ) -> GameResult {
         {
             let mut image = self.image.borrow_mut();
             let mut gpu_sprites = self.gpu_sprites.borrow_mut();
@@ -114,7 +118,7 @@ impl graphics::Drawable for SpriteBatch {
                 gpu_sprites.resize(self.sprites.len(), InstanceAttributes::default());
 
                 let buffer = Buffer::stream(
-                    &mut ctx.quad_ctx,
+                    quad_ctx,
                     BufferType::VertexBuffer,
                     std::mem::size_of::<InstanceAttributes>() * self.sprites.len(),
                 );
@@ -148,19 +152,19 @@ impl graphics::Drawable for SpriteBatch {
                 gpu_sprites[n] = instance;
             }
 
-            image.bindings.vertex_buffers[1]
-                .update(&mut ctx.quad_ctx, &gpu_sprites[0..self.sprites.len()]);
+            image.bindings.vertex_buffers[1].update(quad_ctx, &gpu_sprites[0..self.sprites.len()]);
 
             let pass = ctx.framebuffer();
-            ctx.quad_ctx.begin_pass(pass, PassAction::Nothing);
-            ctx.quad_ctx.apply_bindings(&image.bindings);
+            quad_ctx.begin_pass(pass, PassAction::Nothing);
+            quad_ctx.apply_bindings(&image.bindings);
         }
         let shader_id = *ctx.gfx_context.current_shader.borrow();
         let current_shader = &mut ctx.gfx_context.shaders[shader_id];
-        ctx.quad_ctx.apply_pipeline(&current_shader.pipeline);
+        quad_ctx.apply_pipeline(&current_shader.pipeline);
 
         apply_uniforms(
             ctx,
+            quad_ctx,
             shader_id,
             Some(cgmath::Matrix4::from(param.trans.to_bare_matrix())),
         );
@@ -168,17 +172,17 @@ impl graphics::Drawable for SpriteBatch {
         let mut custom_blend = false;
         if let Some(blend_mode) = self.blend_mode() {
             custom_blend = true;
-            crate::graphics::set_current_blend_mode(ctx, blend_mode)
+            crate::graphics::set_current_blend_mode(quad_ctx, blend_mode)
         }
 
-        ctx.quad_ctx.draw(0, 6, self.sprites.len() as i32);
+        quad_ctx.draw(0, 6, self.sprites.len() as i32);
 
         // restore default blend mode
         if custom_blend {
-            crate::graphics::restore_blend_mode(ctx);
+            crate::graphics::restore_blend_mode(ctx, quad_ctx);
         }
 
-        ctx.quad_ctx.end_render_pass();
+        quad_ctx.end_render_pass();
 
         Ok(())
     }

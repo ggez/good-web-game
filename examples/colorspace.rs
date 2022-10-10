@@ -70,6 +70,7 @@ extern crate good_web_game as ggez;
 
 use ggez::event;
 use ggez::graphics::{self, Color, DrawParam};
+use ggez::miniquad;
 use ggez::{Context, GameResult};
 use glam::*;
 
@@ -87,9 +88,10 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
+    fn new(ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult<MainState> {
         let demo_mesh = graphics::Mesh::new_circle(
             ctx,
+            quad_ctx,
             graphics::DrawMode::fill(),
             Vec2::new(0.0, 0.0),
             100.0,
@@ -98,11 +100,12 @@ impl MainState {
         )?;
         let square_mesh = graphics::Mesh::new_rectangle(
             ctx,
+            quad_ctx,
             graphics::DrawMode::fill(),
             graphics::Rect::new(0.0, 0.0, 400.0, 400.0),
             Color::WHITE,
         )?;
-        let demo_image = graphics::Image::solid(ctx, 200, AQUA)?;
+        let demo_image = graphics::Image::solid(ctx, quad_ctx, 200, AQUA)?;
         let demo_text = graphics::Text::new(graphics::TextFragment {
             text: "-".to_string(),
             color: Some(AQUA),
@@ -123,16 +126,21 @@ impl MainState {
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    fn update(
+        &mut self,
+        _ctx: &mut Context,
+        _quad_ctx: &mut miniquad::GraphicsContext,
+    ) -> GameResult {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, AQUA);
+    fn draw(&mut self, ctx: &mut Context, quad_ctx: &mut miniquad::GraphicsContext) -> GameResult {
+        graphics::clear(ctx, quad_ctx, AQUA);
 
         // Draw a white square so we can see things
         graphics::draw(
             ctx,
+            quad_ctx,
             &self.square_mesh,
             DrawParam::default().dest(Vec2::new(200.0, 100.0)),
         )?;
@@ -144,6 +152,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
         // mesh
         graphics::draw(
             ctx,
+            quad_ctx,
             &self.demo_mesh,
             DrawParam::default().dest(Vec2::new(150.0, 200.0)),
         )?;
@@ -151,6 +160,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
         // image
         graphics::draw(
             ctx,
+            quad_ctx,
             &self.demo_image,
             DrawParam::default().dest(Vec2::new(450.0, 200.0)),
         )?;
@@ -158,6 +168,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
         // text
         graphics::draw(
             ctx,
+            quad_ctx,
             &self.demo_text,
             DrawParam::default().dest(Vec2::new(150.0, 135.0)),
         )?;
@@ -175,12 +186,13 @@ impl event::EventHandler<ggez::GameError> for MainState {
         );
         graphics::draw(
             ctx,
+            quad_ctx,
             &self.demo_spritebatch,
             DrawParam::default().dest(Vec2::new(0.0, 0.0)),
         )?;
         self.demo_spritebatch.clear();
 
-        graphics::present(ctx)?;
+        graphics::present(ctx, quad_ctx)?;
         Ok(())
     }
 }
@@ -200,6 +212,6 @@ pub fn main() -> GameResult {
         ggez::conf::Conf::default()
             .cache(Some(include_bytes!("resources.tar")))
             .physical_root_dir(Some(resource_dir)),
-        |mut context| Box::new(MainState::new(&mut context).unwrap()),
+        |mut context, quad_ctx| Box::new(MainState::new(&mut context, quad_ctx).unwrap()),
     )
 }

@@ -401,10 +401,15 @@ impl Text {
 }
 
 impl Drawable for Text {
-    fn draw(&self, ctx: &mut Context, param: DrawParam) -> GameResult {
+    fn draw(
+        &self,
+        ctx: &mut Context,
+        quad_ctx: &mut miniquad::graphics::GraphicsContext,
+        param: DrawParam,
+    ) -> GameResult {
         // Converts fraction-of-bounding-box to screen coordinates, as required by `draw_queued()`.
         queue_text(ctx, self, Point2::new(0.0, 0.0), Some(param.color));
-        draw_queued_text(ctx, param, self.blend_mode, self.filter_mode)
+        draw_queued_text(ctx, quad_ctx, param, self.blend_mode, self.filter_mode)
     }
 
     fn dimensions(&self, ctx: &mut Context) -> Option<Rect> {
@@ -514,6 +519,7 @@ where
 /// for more info.
 pub fn draw_queued_text<D>(
     ctx: &mut Context,
+    quad_ctx: &mut miniquad::graphics::GraphicsContext,
     param: D,
     blend: Option<BlendMode>,
     filter: FilterMode,
@@ -525,7 +531,6 @@ where
 
     let gb = &mut ctx.gfx_context.glyph_brush;
     let gc = &ctx.gfx_context.glyph_cache.texture;
-    let quad_ctx = &mut ctx.quad_ctx;
 
     let action = gb.borrow_mut().process_queued(
         |rect, tex_data| {
@@ -545,7 +550,7 @@ where
             let spritebatch = &mut *spritebatch.borrow_mut();
             spritebatch.set_blend_mode(blend);
             spritebatch.set_filter(filter);
-            draw(ctx, &*spritebatch, param)?;
+            draw(ctx, quad_ctx, &*spritebatch, param)?;
         }
         Ok(glyph_brush::BrushAction::Draw(drawparams)) => {
             // Gotta clone the image to avoid double-borrow's.
@@ -558,13 +563,14 @@ where
                 // Ignore returned sprite index.
                 let _ = spritebatch.add(*p);
             }
-            draw(ctx, &*spritebatch, param)?;
+            draw(ctx, quad_ctx, &*spritebatch, param)?;
         }
         Err(glyph_brush::BrushError::TextureTooSmall { suggested }) => {
             let (new_width, new_height) = suggested;
             let data = vec![255; 4 * new_width as usize * new_height as usize];
             let new_glyph_cache = Image::from_rgba8(
                 ctx,
+                quad_ctx,
                 u16::try_from(new_width).unwrap(),
                 u16::try_from(new_height).unwrap(),
                 &data,

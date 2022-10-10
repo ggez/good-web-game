@@ -1,3 +1,17 @@
+# 0.6.0
+
+Rewrote the library to deal with the loss of `EventHandlerFree` from miniquad, meaning we don't get to own the miniquad
+context anymore.
+
+Therefore it has now to be handed around a lot.
+
+On the upside, improvements made from the long alpha and the next steps after that inside of miniquad are now part of gwg as well.
+
+## Added
+
+* added the `shader.rs` example from `ggez`, though there's still an error somewhere, keeping it from working properly...
+(in case you find out how to fix it, please let me know!)
+
 # 0.5.0
 
 ## Added

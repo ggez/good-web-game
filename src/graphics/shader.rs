@@ -113,8 +113,6 @@ pub type ShaderId = usize;
 
 const MATRIX_SIZE: isize = std::mem::size_of::<Matrix4<f32>>() as isize;
 
-trait Uniform {}
-
 #[derive(Debug)]
 pub struct Shader {
     pub(crate) pipeline: miniquad::Pipeline,
